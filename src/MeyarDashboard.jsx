@@ -49,13 +49,22 @@ import {
   Scale,
   BadgeCheck,
   BookOpenCheck,
+  ClipboardList,
+  History,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // API config
 // ---------------------------------------------------------------------------
 
-const API_BASE = "/api";
+// In local dev, "/api" is handled by Vite's proxy (see vite.config.js) to
+// localhost:8000. In production, the frontend and backend are typically
+// hosted separately (e.g. Vercel + Render), so VITE_API_BASE must be set at
+// build time to the deployed backend's full URL, e.g.
+// VITE_API_BASE=https://meyar-backend.onrender.com/api
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 // ---------------------------------------------------------------------------
 // i18n — UI strings
@@ -70,6 +79,8 @@ const STR = {
     nav: {
       overview: "نظرة عامة",
       monitor: "المراقبة اللحظية",
+      review: "قائمة المراجعة",
+      audit: "سجل التدقيق",
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
       limits: "الحدود والمسؤولية",
@@ -167,6 +178,28 @@ const STR = {
         "لا تتوفر إجابة موثوقة لهذا السؤال ضمن قاعدة المعرفة الحالية. للمصدر الرسمي يُرجى مراجعة sama.gov.sa مباشرة.",
       confidence: { high: "تطابق قوي", medium: "تطابق جزئي", none: "غير موجود" },
     },
+    reviewQueue: {
+      title: "قائمة المراجعة",
+      subtitle: "معاملات المستوى ٢ المعلَّقة — بانتظار قرار بشري نهائي",
+      empty: "لا توجد معاملات معلَّقة حالياً 🎉",
+      pending: "معلَّقة",
+      approvedToday: "موافقة اليوم",
+      rejectedToday: "مرفوضة اليوم",
+      approvalRate: "نسبة الموافقة",
+      approve: "موافقة",
+      reject: "رفض",
+      reviewerLabel: "المراجع:",
+      defaultReviewer: "موظف الامتثال (تجريبي)",
+      decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
+    },
+    auditTrail: {
+      title: "سجل التدقيق",
+      subtitle: "كل قرار اتخذه النظام أو موظف بشري — موثّق بالوقت والسبب والجهة",
+      empty: "لا توجد قرارات مسجّلة بعد",
+      autoLabel: "آلي",
+      humanLabel: "بشري",
+      decisionLabels: { blocked: "محظورة", approved: "موافَق عليها", rejected: "مرفوضة" },
+    },
     guardian: {
       title: "الحارس الرقمي — الحالة اللحظية",
       description:
@@ -226,6 +259,8 @@ const STR = {
     nav: {
       overview: "Overview",
       monitor: "Live Monitor",
+      review: "Review queue",
+      audit: "Audit trail",
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
       limits: "Limits & Liability",
@@ -322,6 +357,28 @@ const STR = {
       noMatch: "No reliable answer is available for this question in the current knowledge base. For the official source, consult sama.gov.sa directly.",
       confidence: { high: "Strong match", medium: "Partial match", none: "Not found" },
     },
+    reviewQueue: {
+      title: "Review queue",
+      subtitle: "Pending Level-2 transactions — awaiting a final human decision",
+      empty: "No pending transactions right now 🎉",
+      pending: "Pending",
+      approvedToday: "Approved today",
+      rejectedToday: "Rejected today",
+      approvalRate: "Approval rate",
+      approve: "Approve",
+      reject: "Reject",
+      reviewerLabel: "Reviewer:",
+      defaultReviewer: "Compliance officer (demo)",
+      decidedToast: "Decision recorded and added to the audit trail",
+    },
+    auditTrail: {
+      title: "Audit trail",
+      subtitle: "Every decision made by the system or a human reviewer — logged with time, reason, and actor",
+      empty: "No decisions logged yet",
+      autoLabel: "Automatic",
+      humanLabel: "Human",
+      decisionLabels: { blocked: "Blocked", approved: "Approved", rejected: "Rejected" },
+    },
     guardian: {
       title: "Digital Guardian — Live Status",
       description:
@@ -375,10 +432,12 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "analytics", "regulatory", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
+  review: ClipboardList,
+  audit: History,
   analytics: BarChart3,
   regulatory: FileText,
   limits: ShieldAlert,
@@ -702,6 +761,60 @@ function makeFallbackRegulatory() {
     rules_generated: rules,
     affected_institutions: 6 + i,
   }));
+}
+
+function makeFallbackReviewQueue() {
+  const items = [];
+  let attempts = 0;
+  while (items.length < 8 && attempts < 60) {
+    const tx = makeFallbackTransaction(9000 + attempts);
+    if (tx.status === "flagged") items.push(tx);
+    attempts += 1;
+  }
+  return items;
+}
+
+function makeFallbackAuditEntry(tx, level, decision, actor, note = null) {
+  return {
+    id: `AUD-LOCAL-${tx.id}-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    transaction_id: tx.id,
+    level,
+    decision,
+    reason: tx.legal_reason,
+    amount_sar: tx.amount_sar,
+    institution: tx.institution,
+    actor,
+    note,
+  };
+}
+
+function makeFallbackAuditLog() {
+  const entries = [];
+  for (let i = 0; i < 6; i++) {
+    const tx = makeFallbackTransaction(9500 + i);
+    if (tx.status === "blocked") {
+      entries.push(makeFallbackAuditEntry(tx, "auto_block", "blocked", "النظام (قاعدة آلية)"));
+    } else if (tx.status === "flagged") {
+      const decision = Math.random() > 0.5 ? "approved" : "rejected";
+      entries.push(makeFallbackAuditEntry(tx, "human_review", decision, tx.reviewer_required || "موظف الامتثال"));
+    }
+  }
+  return entries;
+}
+
+function computeReviewStats(reviewQueue, auditLog) {
+  const today = new Date().toDateString();
+  const isToday = (ts) => new Date(ts).toDateString() === today;
+  const approvedToday = auditLog.filter((e) => e.decision === "approved" && isToday(e.timestamp)).length;
+  const rejectedToday = auditLog.filter((e) => e.decision === "rejected" && isToday(e.timestamp)).length;
+  const total = approvedToday + rejectedToday;
+  return {
+    pending: reviewQueue.length,
+    approved_today: approvedToday,
+    rejected_today: rejectedToday,
+    approval_rate_pct: total ? Math.round((approvedToday / total) * 1000) / 10 : 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1423,6 +1536,156 @@ function RegulatoryTab({ regulatory, lang, t }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Review Queue + Audit Trail
+//
+// This is what makes "flagged transactions go to human review" a real,
+// clickable workflow instead of a sentence in the pitch: a compliance
+// officer can approve or reject each Level-2 transaction here, and every
+// decision — human or automatic — is permanently written to the audit
+// trail with who/when/why.
+// ---------------------------------------------------------------------------
+
+function MiniStat({ icon: Icon, label, value, color }) {
+  return (
+    <div className="aurora-border glass-panel rounded-2xl p-4 flex items-center gap-3 animate-fade-up">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}1a`, color }}>
+        <Icon size={16} strokeWidth={2.2} />
+      </div>
+      <div className="min-w-0">
+        <p className="font-display text-lg font-black text-white tabular-nums-ar leading-none">{value}</p>
+        <p className="text-[11px] text-white/40 mt-1 truncate">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function ReviewQueueTab({ reviewQueue, stats, onDecide, lang, t }) {
+  return (
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <ClipboardList size={16} style={{ color: "var(--gold)" }} />
+          {t.reviewQueue.title}
+        </h3>
+        <p className="text-[11px] text-white/40">{t.reviewQueue.subtitle}</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MiniStat icon={ClipboardList} label={t.reviewQueue.pending} value={numberFmt.format(stats.pending)} color="var(--gold)" />
+        <MiniStat icon={ThumbsUp} label={t.reviewQueue.approvedToday} value={numberFmt.format(stats.approved_today)} color="var(--lavender)" />
+        <MiniStat icon={ThumbsDown} label={t.reviewQueue.rejectedToday} value={numberFmt.format(stats.rejected_today)} color="var(--coral)" />
+        <MiniStat icon={BadgeCheck} label={t.reviewQueue.approvalRate} value={`${stats.approval_rate_pct}%`} color="var(--orchid)" />
+      </div>
+
+      <div className="space-y-2.5">
+        {reviewQueue.length === 0 && (
+          <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
+        )}
+        {reviewQueue.map((tx, i) => (
+          <div
+            key={tx.id}
+            style={{ animationDelay: `${i * 40}ms` }}
+            className="animate-slide-in-row aurora-border glass-panel rounded-2xl p-4 flex flex-col md:flex-row md:items-center gap-3"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <p className="text-xs font-bold text-white">{tx.id}</p>
+                <span className="text-[10px] text-white/35">{timeAgo(tx.timestamp, lang)}</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}>
+                  {t.level.pending_review}
+                </span>
+              </div>
+              <p className="text-xs text-white/70 leading-relaxed">{localize(tx.legal_reason, lang)}</p>
+              <p className="text-[10px] text-white/35 mt-1">
+                {localize(tx.institution, lang)} · {currencyFmt(tx.amount_sar, lang)} ·{" "}
+                <span style={{ color: "var(--gold)" }}>{t.level.reviewerPrefix} {localize(tx.reviewer_required, lang)}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => onDecide(tx.id, "approve")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
+                style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
+              >
+                <ThumbsUp size={13} />
+                {t.reviewQueue.approve}
+              </button>
+              <button
+                onClick={() => onDecide(tx.id, "reject")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
+                style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
+              >
+                <ThumbsDown size={13} />
+                {t.reviewQueue.reject}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const AUDIT_DECISION_META = {
+  blocked: { color: "var(--coral)", dot: "bg-[var(--coral)]" },
+  approved: { color: "var(--lavender)", dot: "bg-[var(--lavender)]" },
+  rejected: { color: "var(--coral)", dot: "bg-[var(--coral)]" },
+};
+
+function AuditTrailTab({ auditLog, lang, t }) {
+  return (
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <History size={16} style={{ color: "var(--lavender)" }} />
+          {t.auditTrail.title}
+        </h3>
+        <p className="text-[11px] text-white/40">{t.auditTrail.subtitle}</p>
+      </div>
+
+      <div className="space-y-2">
+        {auditLog.length === 0 && (
+          <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.auditTrail.empty}</div>
+        )}
+        {auditLog.map((e, i) => {
+          const meta = AUDIT_DECISION_META[e.decision] || AUDIT_DECISION_META.approved;
+          return (
+            <div
+              key={e.id}
+              style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+              className="animate-fade-up aurora-border glass-panel rounded-2xl p-4 flex items-start gap-3"
+            >
+              <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${meta.dot}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <p className="text-xs font-bold text-white">{e.transaction_id}</p>
+                  <span className="text-[10px] text-white/35">{timeAgo(e.timestamp, lang)}</span>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                    style={{ color: meta.color, backgroundColor: `${meta.color}1a` }}
+                  >
+                    {t.auditTrail.decisionLabels[e.decision] || e.decision}
+                  </span>
+                  <span className="text-[9px] text-white/30">
+                    {e.level === "auto_block" ? t.auditTrail.autoLabel : t.auditTrail.humanLabel}
+                  </span>
+                </div>
+                <p className="text-xs text-white/60 leading-relaxed">{localize(e.reason, lang)}</p>
+                <p className="text-[10px] text-white/35 mt-1">
+                  {localize(e.institution, lang)} · {currencyFmt(e.amount_sar, lang)} ·{" "}
+                  <span className="text-white/50">{localize(e.actor, lang)}</span>
+                  {e.note && <span> — {e.note}</span>}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
 
 function LimitsTab({ t }) {
@@ -2051,6 +2314,9 @@ export default function MeyarDashboard() {
   const [transactions, setTransactions] = useState([]);
   const [trends, setTrends] = useState([]);
   const [regulatory, setRegulatory] = useState([]);
+  const [reviewQueue, setReviewQueue] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
+  const [reviewStats, setReviewStats] = useState({ pending: 0, approved_today: 0, rejected_today: 0, approval_rate_pct: 0 });
 
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
@@ -2068,16 +2334,22 @@ export default function MeyarDashboard() {
 
   const loadAll = useCallback(async () => {
     try {
-      const [summaryRes, txRes, trendsRes, regRes] = await Promise.all([
+      const [summaryRes, txRes, trendsRes, regRes, reviewRes, auditRes, statsRes] = await Promise.all([
         fetchJSON("/compliance-summary"),
         fetchJSON("/realtime-transactions?limit=30"),
         fetchJSON("/compliance-trends"),
         fetchJSON("/regulatory-updates"),
+        fetchJSON("/review-queue"),
+        fetchJSON("/audit-log"),
+        fetchJSON("/review-queue/stats"),
       ]);
       setSummary(summaryRes);
       setTransactions(txRes.items);
       setTrends(trendsRes.points);
       setRegulatory(regRes.items);
+      setReviewQueue(reviewRes.items);
+      setAuditLog(auditRes.items);
+      setReviewStats(statsRes);
       setOnline(true);
     } catch (err) {
       // Backend unreachable — fall back to locally generated data so the
@@ -2086,6 +2358,8 @@ export default function MeyarDashboard() {
       setTransactions((prev) => (prev.length ? prev : Array.from({ length: 24 }, (_, i) => makeFallbackTransaction(i))));
       setTrends((prev) => (prev.length ? prev : makeFallbackTrends()));
       setRegulatory((prev) => (prev.length ? prev : makeFallbackRegulatory()));
+      setReviewQueue((prev) => (prev.length ? prev : makeFallbackReviewQueue()));
+      setAuditLog((prev) => (prev.length ? prev : makeFallbackAuditLog()));
       setOnline(false);
     } finally {
       setLoading(false);
@@ -2118,6 +2392,38 @@ export default function MeyarDashboard() {
     }, 30000);
     return () => clearInterval(interval);
   }, [loadAll]);
+
+  const handleDecide = useCallback(
+    async (transactionId, decisionWord) => {
+      const tx = reviewQueue.find((t) => t.id === transactionId);
+      if (!tx) return;
+
+      const decision = decisionWord === "approve" ? "approved" : "rejected";
+      const reviewerName = t.reviewQueue.defaultReviewer;
+
+      setReviewQueue((prev) => prev.filter((t) => t.id !== transactionId));
+
+      let entry;
+      try {
+        const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision: decisionWord, reviewer_name: reviewerName }),
+        });
+        if (!res.ok) throw new Error("decide failed");
+        entry = await res.json();
+      } catch {
+        entry = makeFallbackAuditEntry(tx, "human_review", decision, reviewerName);
+      }
+
+      setAuditLog((prev) => {
+        const next = [entry, ...prev];
+        setReviewStats(computeReviewStats(reviewQueue.filter((t) => t.id !== transactionId), next));
+        return next;
+      });
+    },
+    [reviewQueue, t]
+  );
 
   const sparkSeeds = useMemo(() => {
     const seed = (base, variance) =>
@@ -2237,6 +2543,12 @@ export default function MeyarDashboard() {
           )}
 
           {activeTab === "analytics" && <AnalyticsTab trends={trends} summary={summary} lang={lang} t={t} />}
+
+          {activeTab === "review" && (
+            <ReviewQueueTab reviewQueue={reviewQueue} stats={reviewStats} onDecide={handleDecide} lang={lang} t={t} />
+          )}
+
+          {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
 
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
