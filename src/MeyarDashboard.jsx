@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AreaChart,
   Area,
@@ -2404,10 +2405,20 @@ function matchIntentClient(questionTokens) {
   return null;
 }
 
+const CIRCULAR_DIGITS_RE = /[\u0660-\u0669\d]+/;
+
+function circularNumberToken(circularNumber) {
+  if (!circularNumber) return null;
+  const m = circularNumber.match(CIRCULAR_DIGITS_RE);
+  return m ? m[0] : null;
+}
+
 function searchChatbotKB(question) {
   const tokens = tokenizeClient(question);
   const scored = CHATBOT_KB.map((entry) => {
-    const score = entry.keywords.reduce((acc, kw) => acc + (keywordMatchesClient(kw, tokens) ? 1 : 0), 0);
+    let score = entry.keywords.reduce((acc, kw) => acc + (keywordMatchesClient(kw, tokens) ? 1 : 0), 0);
+    const digits = circularNumberToken(entry.circular_number);
+    if (digits && tokens.has(digits)) score += 2;
     return { score, entry };
   }).filter((x) => x.score > 0);
   scored.sort((a, b) => b.score - a.score);
@@ -2480,7 +2491,7 @@ function ChatbotWidget({ lang, t }) {
     [lang, t]
   );
 
-  return (
+  return createPortal(
     <>
       <button
         onClick={() => setOpen((o) => !o)}
@@ -2585,7 +2596,8 @@ function ChatbotWidget({ lang, t }) {
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }
 
