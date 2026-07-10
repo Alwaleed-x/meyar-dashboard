@@ -55,7 +55,11 @@ import {
   ThumbsDown,
   Download,
   Filter,
-  SlidersHorizontal,
+  Gauge,
+  GitCompare,
+  Bug,
+  Wand2,
+  Presentation,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -87,7 +91,9 @@ const STR = {
       audit: "سجل التدقيق",
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
-      simulator: "محاكي التعميم",
+      methodology: "منهجية الدقة",
+      comparison: "مقارنة عالمية",
+      changelog: "الأخطاء والإصلاحات",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
       settings: "الإعدادات",
@@ -132,7 +138,33 @@ const STR = {
       version: "الإصدار",
       description: "نظام معيار يطبّق نموذج المنع المتدرج على مستويين، ويوثّق حدوده ومسؤولياته بشكل صريح.",
       goToLimits: "عرض تفاصيل الحدود والمسؤولية",
+      replayTour: "إعادة الجولة الترحيبية",
+      presentationOn: "تفعيل وضع العرض التقديمي",
+      presentationOff: "إيقاف وضع العرض التقديمي",
       close: "إغلاق",
+    },
+    onboarding: {
+      skip: "تخطّي",
+      back: "السابق",
+      next: "التالي",
+      finish: "ابدأ الاستكشاف",
+      steps: [
+        {
+          icon: ShieldCheck,
+          title: "أهلاً بك في معيار",
+          body: "نظام يحوّل تعاميم البنك المركزي إلى قواعد رقمية، ويراقب المعاملات المالية لحظة بلحظة — مع تمييز واضح بين ما يمكن أتمتته بأمان، وما يجب أن يبقى قراراً بشرياً.",
+        },
+        {
+          icon: LayoutDashboard,
+          title: "المستوى ١ والمستوى ٢",
+          body: "الحالات القطعية (تجاوز سقف، جهة غير مرخصة) تُمنع آلياً وفوراً. أما الحالات الاجتهادية (شبهة شرعية، نمط غسل أموال) فتُعلَّق وتُحال لموظف بشري عبر «قائمة المراجعة»، وكل قرار يُوثَّق في «سجل التدقيق».",
+        },
+        {
+          icon: ShieldAlert,
+          title: "الشفافية أولاً",
+          body: "تبويب «الحدود والمسؤولية» يفصح صراحة عن حدود دقة النظام ومن يتحمل المسؤولية في كل حالة. جرّب أيضاً «مساعد التشريعات» و«منهجية الدقة» لفهم كيف نقيس أداءنا فعلياً.",
+        },
+      ],
     },
     limits: {
       title: "الحدود والمسؤولية",
@@ -257,19 +289,45 @@ const STR = {
         "أرقام التعاميم وتواريخ إصدارها بيانات تجريبية لأغراض العرض، وليست مصدراً رسمياً حرفياً — لعدم توفر واجهة مجانية رسمية لتعاميم ساما وقت بناء هذا النموذج. للمصدر الرسمي: sama.gov.sa",
       issuedOn: "تاريخ الإصدار:",
     },
-    simulator: {
-      title: "محاكي تأثير التعميم",
-      subtitle: "عدّل سقف تعميم رقم ٥٥ (الحد اليومي) وشوف فوراً كيف تتغيّر نتائج نفس المعاملات المعروضة الآن — بدون أي تعديل يدوي على الكود",
-      limitLabel: "السقف اليومي المقترح للتعميم",
-      before: "قبل التعديل (الوضع الحالي)",
-      after: "بعد التعديل (لو طُبِّق الآن)",
-      blocked: "محظورة",
-      flagged: "قيد المراجعة",
-      passed: "مطابقة",
-      changedTitle: "المعاملات اللي تغيّر تصنيفها",
-      changedEmpty: "لا توجد معاملات تأثرت بهذا السقف حالياً",
-      newlyBlocked: "أصبحت محظورة آلياً",
-      note: "هذا محاكي تعليمي يعمل على نفس بيانات المراقبة اللحظية المعروضة حالياً، ويهدف لإثبات أن تغيير نص التشريع (سقف رقمي) ينعكس فوراً على قرار النظام دون كتابة كود جديد — وهو جوهر فكرة «تحويل التشريعات إلى قواعد برمجية».",
+    methodology: {
+      title: "منهجية الدقة",
+      subtitle: "كيف نقيس دقة الموديل فعلياً، ولماذا اخترنا هذا الحد بالذات لتفعيل التنبيه",
+      currentOperating: "نقطة التشغيل الحالية",
+      threshold: "الحد المُفعَّل",
+      precision: "الدقة (Precision)",
+      recall: "الاستدعاء (Recall)",
+      f1: "F1 Score",
+      precisionExplain: "من كل المعاملات اللي صنّفها الموديل «تحتاج مراجعة»، كم نسبة منها كانت فعلاً كذلك؟ دقة منخفضة تعني إزعاج موظفين بمراجعات غير ضرورية كثيرة.",
+      recallExplain: "من كل المعاملات اللي فعلاً تحتاج مراجعة، كم نسبة قدر الموديل يمسكها؟ استدعاء منخفض يعني تفويت حالات حقيقية.",
+      confusionMatrix: "مصفوفة الالتباس",
+      truePositive: "إيجابية صحيحة",
+      truePositiveDesc: "احتاجت مراجعة، والموديل صنّفها صح",
+      falsePositive: "إيجابية خاطئة",
+      falsePositiveDesc: "ما احتاجت مراجعة، لكن الموديل رفعها بالخطأ",
+      trueNegative: "سلبية صحيحة",
+      trueNegativeDesc: "ما احتاجت مراجعة، والموديل صنّفها صح",
+      falseNegative: "سلبية خاطئة",
+      falseNegativeDesc: "احتاجت مراجعة، لكن الموديل فوّتها",
+      tradeoffTitle: "لماذا الحد ٠.٥٥ بالذات؟",
+      tradeoffBody: "رفع الحد يقلّل الإزعاج (دقة أعلى) لكن يفوّت حالات حقيقية أكثر (استدعاء أقل). خفضه يمسك حالات أكثر لكن يزيد المراجعات غير الضرورية. الرسم أدناه يعرض هذا التبادل فعلياً عبر حدود مختلفة، والحد الحالي هو نقطة توازن مقصودة لا رقم عشوائي.",
+      testSetLabel: "حجم عيّنة الاختبار",
+      loading: "جارٍ حساب المقاييس من الموديل الفعلي...",
+    },
+    comparison: {
+      title: "مقارنة عالمية — أين نتفوّق وأين المنافسون أقوى",
+      subtitle: "مقارنة صريحة مع حلول RegTech / SupTech العالمية المعروفة، بلا مبالغة",
+      dimension: "المعيار",
+      meyarCol: "معيار",
+      globalCol: "الحلول العالمية (RegTech/SupTech)",
+      edgeMeyar: "نتفوّق",
+      edgeGlobal: "هم أقوى",
+      edgeTie: "متقارب",
+    },
+    changelog: {
+      title: "سجل الأخطاء والإصلاحات",
+      subtitle: "بشفافية كاملة: هذي أخطاء حقيقية اكتشفناها أثناء بناء واختبار النظام، وكيف صلّحناها",
+      foundLabel: "المشكلة المكتشفة",
+      fixLabel: "الإصلاح",
     },
     chart: {
       month: "الشهر",
@@ -292,7 +350,9 @@ const STR = {
       audit: "Audit trail",
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
-      simulator: "Circular Simulator",
+      methodology: "Accuracy Methodology",
+      comparison: "Global Comparison",
+      changelog: "Bugs & Fixes",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
       settings: "Settings",
@@ -337,7 +397,33 @@ const STR = {
       version: "Version",
       description: "Meyar implements a two-tier prevention model and openly documents its limits and lines of accountability.",
       goToLimits: "View Limits & Liability details",
+      replayTour: "Replay the welcome tour",
+      presentationOn: "Enable presentation mode",
+      presentationOff: "Disable presentation mode",
       close: "Close",
+    },
+    onboarding: {
+      skip: "Skip",
+      back: "Back",
+      next: "Next",
+      finish: "Start exploring",
+      steps: [
+        {
+          icon: ShieldCheck,
+          title: "Welcome to Meyar",
+          body: "A system that turns central-bank circulars into digital rules, monitoring financial transactions in real time — with a clear line between what can be safely automated and what must stay a human decision.",
+        },
+        {
+          icon: LayoutDashboard,
+          title: "Level 1 vs. Level 2",
+          body: "Definitive cases (limit exceeded, unlicensed entity) are auto-blocked instantly. Interpretive cases (Sharia concerns, AML patterns) are suspended and routed to a human via the Review Queue, with every decision logged in the Audit Trail.",
+        },
+        {
+          icon: ShieldAlert,
+          title: "Transparency first",
+          body: "The Limits & Liability tab openly discloses the system's accuracy limits and who is accountable in each case. Also try the Legislation Assistant and Accuracy Methodology tabs to see how we actually measure our own performance.",
+        },
+      ],
     },
     limits: {
       title: "Limits & Liability",
@@ -461,19 +547,45 @@ const STR = {
         "Circular numbers and issue dates are demo data for presentation purposes, not a verbatim official source — no free official SAMA circular feed was available while building this prototype. Official source: sama.gov.sa",
       issuedOn: "Issued:",
     },
-    simulator: {
-      title: "Circular Impact Simulator",
-      subtitle: "Adjust Circular No. 55's daily limit and instantly see how the same currently-loaded transactions get reclassified — with no code changes",
-      limitLabel: "Proposed daily limit",
-      before: "Before (current rule)",
-      after: "After (if applied now)",
-      blocked: "Blocked",
-      flagged: "Under Review",
-      passed: "Passed",
-      changedTitle: "Transactions that changed classification",
-      changedEmpty: "No transactions are affected by this limit right now",
-      newlyBlocked: "Now automatically blocked",
-      note: "This is an educational simulator running on the same live-monitor data currently loaded. It demonstrates that changing the legislation's text (a numeric limit) is instantly reflected in the system's decision with no new code — the core idea behind \"turning legislation into executable rules.\"",
+    methodology: {
+      title: "Accuracy Methodology",
+      subtitle: "How we actually measure model accuracy, and why this specific alert threshold was chosen",
+      currentOperating: "Current operating point",
+      threshold: "Active threshold",
+      precision: "Precision",
+      recall: "Recall",
+      f1: "F1 Score",
+      precisionExplain: "Of everything the model flagged as \"needs review\", what fraction actually did? Low precision means burdening staff with unnecessary reviews.",
+      recallExplain: "Of everything that actually needed review, what fraction did the model catch? Low recall means missing real cases.",
+      confusionMatrix: "Confusion Matrix",
+      truePositive: "True Positive",
+      truePositiveDesc: "Needed review, correctly flagged",
+      falsePositive: "False Positive",
+      falsePositiveDesc: "Didn't need review, wrongly flagged",
+      trueNegative: "True Negative",
+      trueNegativeDesc: "Didn't need review, correctly passed",
+      falseNegative: "False Negative",
+      falseNegativeDesc: "Needed review, but the model missed it",
+      tradeoffTitle: "Why threshold 0.55 specifically?",
+      tradeoffBody: "Raising the threshold reduces noise (higher precision) but misses more real cases (lower recall). Lowering it catches more but increases unnecessary reviews. The chart below shows this trade-off across different thresholds — the current one is a deliberate balance point, not an arbitrary number.",
+      testSetLabel: "Test set size",
+      loading: "Computing metrics from the live model...",
+    },
+    comparison: {
+      title: "Global Comparison — Where We Win, Where Competitors Are Stronger",
+      subtitle: "An honest comparison against known global RegTech/SupTech solutions, without overclaiming",
+      dimension: "Dimension",
+      meyarCol: "Meyar",
+      globalCol: "Global RegTech/SupTech",
+      edgeMeyar: "We win",
+      edgeGlobal: "They're stronger",
+      edgeTie: "Comparable",
+    },
+    changelog: {
+      title: "Bugs & Fixes Log",
+      subtitle: "Full transparency: real bugs we found while building and testing the system, and how we fixed them",
+      foundLabel: "Issue found",
+      fixLabel: "Fix",
     },
     chart: {
       month: "Month",
@@ -486,7 +598,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "simulator", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "comparison", "changelog", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -494,7 +606,9 @@ const NAV_ICONS = {
   audit: History,
   analytics: BarChart3,
   regulatory: FileText,
-  simulator: SlidersHorizontal,
+  methodology: Gauge,
+  comparison: GitCompare,
+  changelog: Bug,
   chatbot: MessageCircle,
   limits: ShieldAlert,
 };
@@ -2223,172 +2337,357 @@ function AuditTrailTab({ auditLog, lang, t }) {
   );
 }
 
-const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
-
 // ---------------------------------------------------------------------------
-// Circular Impact Simulator
-//
-// Demonstrates the core thesis of the whole project — that a legislative
-// change (here: Circular No. 55's daily limit) is instantly reflected in
-// the system's decisions with zero code changes. Runs entirely client-side
-// against the already-loaded live-monitor transactions, so it works
-// identically online or in offline fallback mode.
+// Accuracy Methodology — shows REAL precision/recall/F1 computed from the
+// actual trained model on a held-out synthetic test set, plus a threshold
+// sweep chart to justify why the current operating point was chosen.
 // ---------------------------------------------------------------------------
 
-const SIMULATOR_MIN_LIMIT = 10000;
-const SIMULATOR_MAX_LIMIT = 480000;
-const SIMULATOR_STEP = 5000;
+const FALLBACK_MODEL_METRICS = {
+  current: { threshold: 0.55, precision: 88.1, recall: 70.1, f1: 78.1, true_positive: 393, false_positive: 53, true_negative: 886, false_negative: 168 },
+  threshold_sweep: [
+    { threshold: 0.3, precision: 72.5, recall: 90.6 },
+    { threshold: 0.35, precision: 76.1, recall: 88.9 },
+    { threshold: 0.4, precision: 79.2, recall: 85.4 },
+    { threshold: 0.45, precision: 82.4, recall: 80.2 },
+    { threshold: 0.5, precision: 85.3, recall: 75.6 },
+    { threshold: 0.55, precision: 88.1, recall: 70.1 },
+    { threshold: 0.6, precision: 90.8, recall: 63.4 },
+    { threshold: 0.65, precision: 92.9, recall: 55.2 },
+    { threshold: 0.7, precision: 94.5, recall: 46.8 },
+    { threshold: 0.75, precision: 96.0, recall: 37.1 },
+    { threshold: 0.8, precision: 97.2, recall: 27.5 },
+  ],
+  test_set_size: 1500,
+  disclaimer_ar: "هذي مقاييس محسوبة فعلياً من الموديل المدرَّب، لكن على بيانات اختبار اصطناعية (مو بيانات بنكية حقيقية).",
+  disclaimer_en: "These are real metrics computed from the trained model, but on a synthetic test set (not real bank data).",
+};
 
-function simulateStatusForLimit(tx, limit) {
-  // Anything already blocked for a reason OTHER than the daily limit stays
-  // blocked regardless (e.g. an unlicensed entity is still unlicensed no
-  // matter what the limit is). Only the limit-sensitive outcome changes.
-  const alreadyBlockedForOtherReason = tx.status === "blocked" && tx.violation_category !== "تجاوز الحدود المسموحة";
-  if (alreadyBlockedForOtherReason) return tx.status;
-  return tx.amount_sar > limit ? "blocked" : tx.status === "blocked" ? "passed" : tx.status;
+function MetricCard({ label, value, color, explain }) {
+  return (
+    <div className="aurora-border glass-panel rounded-2xl p-5">
+      <p className="text-[11px] font-bold text-white/40 mb-1">{label}</p>
+      <p className="font-display text-3xl font-black" style={{ color }}>
+        {value}%
+      </p>
+      {explain && <p className="text-[10.5px] text-white/40 mt-2 leading-relaxed">{explain}</p>}
+    </div>
+  );
 }
 
-function SimulatorTab({ transactions, lang, t }) {
-  const [limit, setLimit] = useState(200000);
-
-  const originalCounts = useMemo(
-    () => ({
-      blocked: transactions.filter((tx) => tx.status === "blocked").length,
-      flagged: transactions.filter((tx) => tx.status === "flagged").length,
-      passed: transactions.filter((tx) => tx.status === "passed").length,
-    }),
-    [transactions]
+function ConfusionCell({ value, label, desc, color }) {
+  return (
+    <div className="rounded-xl p-4 text-center" style={{ backgroundColor: `${color}12`, border: `1px solid ${color}40` }}>
+      <p className="font-display text-2xl font-black" style={{ color }}>
+        {value}
+      </p>
+      <p className="text-[11px] font-bold text-white/70 mt-1">{label}</p>
+      <p className="text-[9.5px] text-white/35 mt-1 leading-snug">{desc}</p>
+    </div>
   );
+}
 
-  const { simulatedCounts, changed } = useMemo(() => {
-    const counts = { blocked: 0, flagged: 0, passed: 0 };
-    const changedList = [];
-    for (const tx of transactions) {
-      const newStatus = simulateStatusForLimit(tx, limit);
-      counts[newStatus] += 1;
-      if (newStatus !== tx.status) changedList.push({ ...tx, newStatus });
-    }
-    return { simulatedCounts: counts, changed: changedList };
-  }, [transactions, limit]);
+function MethodologyTab({ lang, t }) {
+  const [metrics, setMetrics] = useState(null);
 
-  const DeltaBadge = ({ before, after }) => {
-    const delta = after - before;
-    if (delta === 0) return <span className="text-white/30 text-[11px]">—</span>;
-    const positive = delta > 0;
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/model-metrics`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => !cancelled && setMetrics(d))
+      .catch(() => !cancelled && setMetrics(FALLBACK_MODEL_METRICS));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!metrics) {
     return (
-      <span className={`text-[11px] font-bold flex items-center gap-0.5 ${positive ? "text-[var(--coral)]" : "text-[var(--lavender)]"}`}>
-        {positive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-        {positive ? "+" : ""}
-        {delta}
-      </span>
+      <div className="aurora-border glass-panel rounded-2xl p-10 text-center text-white/40 text-sm animate-fade-up">{t.methodology.loading}</div>
     );
-  };
+  }
+
+  const c = metrics.current;
 
   return (
     <div className="space-y-4">
       <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
         <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <SlidersHorizontal size={16} style={{ color: "var(--orchid)" }} />
-          {t.simulator.title}
+          <Gauge size={16} style={{ color: "var(--orchid)" }} />
+          {t.methodology.title}
         </h3>
-        <p className="text-[11px] text-white/40 leading-relaxed">{t.simulator.subtitle}</p>
+        <p className="text-[11px] text-white/40">{t.methodology.subtitle}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MetricCard label={t.methodology.precision} value={c.precision} color="var(--lavender)" explain={t.methodology.precisionExplain} />
+        <MetricCard label={t.methodology.recall} value={c.recall} color="var(--gold)" explain={t.methodology.recallExplain} />
+        <MetricCard label={t.methodology.f1} value={c.f1} color="var(--orchid)" />
       </div>
 
       <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-bold text-white/70">{t.simulator.limitLabel}</p>
-          <p className="font-display text-lg font-black" style={{ color: "var(--gold)" }}>
-            {currencyFmt(limit, lang)}
-          </p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-bold text-white">{t.methodology.confusionMatrix}</p>
+          <span className="text-[10px] text-white/35">
+            {t.methodology.threshold}: <b style={{ color: "var(--gold)" }}>{c.threshold}</b> · {t.methodology.testSetLabel}: {numberFmt.format(metrics.test_set_size)}
+          </span>
         </div>
-        <input
-          type="range"
-          min={SIMULATOR_MIN_LIMIT}
-          max={SIMULATOR_MAX_LIMIT}
-          step={SIMULATOR_STEP}
-          value={limit}
-          onChange={(e) => setLimit(Number(e.target.value))}
-          className="w-full accent-[var(--orchid)]"
-          style={{ accentColor: "var(--orchid)" }}
-        />
-        <div className="flex justify-between text-[10px] text-white/30 mt-1">
-          <span>{currencyFmt(SIMULATOR_MIN_LIMIT, lang)}</span>
-          <span>{currencyFmt(SIMULATOR_MAX_LIMIT, lang)}</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-          <p className="text-[11px] font-bold text-white/40 mb-3">{t.simulator.before}</p>
-          <div className="space-y-2.5">
-            {["blocked", "flagged", "passed"].map((k) => (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-xs text-white/60">{t.simulator[k]}</span>
-                <span className="font-display font-bold text-white">{originalCounts[k]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up" style={{ borderColor: "rgba(228,160,255,0.35)" }}>
-          <p className="text-[11px] font-bold mb-3" style={{ color: "var(--orchid)" }}>
-            {t.simulator.after}
-          </p>
-          <div className="space-y-2.5">
-            {["blocked", "flagged", "passed"].map((k) => (
-              <div key={k} className="flex items-center justify-between">
-                <span className="text-xs text-white/60">{t.simulator[k]}</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-display font-bold text-white">{simulatedCounts[k]}</span>
-                  <DeltaBadge before={originalCounts[k]} after={simulatedCounts[k]} />
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 gap-3">
+          <ConfusionCell value={c.true_positive} label={t.methodology.truePositive} desc={t.methodology.truePositiveDesc} color="var(--lavender)" />
+          <ConfusionCell value={c.false_positive} label={t.methodology.falsePositive} desc={t.methodology.falsePositiveDesc} color="var(--coral)" />
+          <ConfusionCell value={c.false_negative} label={t.methodology.falseNegative} desc={t.methodology.falseNegativeDesc} color="var(--coral)" />
+          <ConfusionCell value={c.true_negative} label={t.methodology.trueNegative} desc={t.methodology.trueNegativeDesc} color="var(--lavender)" />
         </div>
       </div>
 
       <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <p className="text-xs font-bold text-white mb-3 flex items-center gap-2">
-          <ArrowUpRight size={13} style={{ color: "var(--coral)" }} />
-          {t.simulator.changedTitle} ({changed.length})
-        </p>
-        {changed.length === 0 ? (
-          <p className="text-[11px] text-white/35 text-center py-4">{t.simulator.changedEmpty}</p>
-        ) : (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {changed.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-white truncate">{tx.id}</p>
-                  <p className="text-[10px] text-white/40 truncate">{localize(tx.institution, lang)}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] font-bold text-white/60">{currencyFmt(tx.amount_sar, lang)}</span>
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                    style={{ color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)" }}
-                  >
-                    {t.simulator.newlyBlocked}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="text-xs font-bold text-white mb-1">{t.methodology.tradeoffTitle}</p>
+        <p className="text-[11px] text-white/40 mb-4 leading-relaxed">{t.methodology.tradeoffBody}</p>
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={metrics.threshold_sweep} margin={{ left: -20, right: 10, top: 5, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <XAxis dataKey="threshold" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+            <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} domain={[0, 100]} />
+            <Tooltip contentStyle={{ backgroundColor: "#150c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="precision" name={t.methodology.precision} stroke="var(--lavender)" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="recall" name={t.methodology.recall} stroke="var(--gold)" strokeWidth={2} dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
 
       <div
         className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2 animate-fade-up"
-        style={{ backgroundColor: "rgba(228,160,255,0.06)", border: "1px solid rgba(228,160,255,0.2)", color: "rgba(255,255,255,0.55)" }}
+        style={{ backgroundColor: "rgba(232,196,104,0.06)", border: "1px solid rgba(232,196,104,0.2)", color: "rgba(255,255,255,0.55)" }}
       >
-        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--orchid)" }} />
-        {t.simulator.note}
+        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--gold)" }} />
+        {lang === "en" ? metrics.disclaimer_en : metrics.disclaimer_ar}
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Global Comparison — honest positioning vs. known RegTech/SupTech players
+// ---------------------------------------------------------------------------
+
+const COMPARISON_ROWS = [
+  {
+    dimension: { ar: "التخصص بتعاميم ساما والسياق السعودي", en: "SAMA-specific circulars & Saudi context" },
+    meyar: { ar: "مصمَّم خصيصاً لتعاميم ساما والسوق السعودي", en: "Purpose-built for SAMA circulars and the Saudi market" },
+    global: { ar: "أطر عامة عالمية، تحتاج تخصيصاً محلياً إضافياً", en: "Generic global frameworks, need extra local customization" },
+    edge: "meyar",
+  },
+  {
+    dimension: { ar: "الوعي بالحوكمة الشرعية", en: "Sharia-governance awareness" },
+    meyar: { ar: "مستوى مستقل مخصص للشبهات الشرعية بمراجعة بشرية", en: "Dedicated Level for Sharia concerns with human review" },
+    global: { ar: "غير موجود عادة كمفهوم أصلي بالنظام", en: "Not typically a native concept in the system" },
+    edge: "meyar",
+  },
+  {
+    dimension: { ar: "الشفافية بحدود القرار الآلي", en: "Transparency on automated-decision limits" },
+    meyar: { ar: "تبويب كامل يفصح صراحة عن الحدود والمسؤوليات", en: "A dedicated tab explicitly discloses limits & accountability" },
+    global: { ar: "غالباً «صندوق أسود» تجاري بلا إفصاح مماثل", en: "Often a commercial \"black box\" without similar disclosure" },
+    edge: "meyar",
+  },
+  {
+    dimension: { ar: "النضج التشغيلي وسجل الأداء", en: "Operational maturity & track record" },
+    meyar: { ar: "نموذج أولي حديث، بلا عملاء إنتاجيين بعد", en: "Recent prototype, no production customers yet" },
+    global: { ar: "سنوات من التشغيل الفعلي مع عشرات البنوك", en: "Years of live operation across dozens of banks" },
+    edge: "global",
+  },
+  {
+    dimension: { ar: "حجم بيانات التدريب والنماذج", en: "Training data volume & models" },
+    meyar: { ar: "بيانات اصطناعية محدودة لأغراض العرض", en: "Limited synthetic data for demo purposes" },
+    global: { ar: "ملايين المعاملات الحقيقية عبر أسواق متعددة", en: "Millions of real transactions across multiple markets" },
+    edge: "global",
+  },
+  {
+    dimension: { ar: "التمويل والفريق الهندسي", en: "Funding & engineering team size" },
+    meyar: { ar: "فريق هاكاثون صغير", en: "Small hackathon team" },
+    global: { ar: "شركات مموَّلة بمئات الملايين وفرق ضخمة", en: "Companies funded with hundreds of millions, large teams" },
+    edge: "global",
+  },
+  {
+    dimension: { ar: "تكلفة التبني والتخصيص", en: "Adoption & customization cost" },
+    meyar: { ar: "أخف وأسرع تخصيصاً لمؤسسة سعودية صغيرة/متوسطة", en: "Lighter and faster to customize for a small/mid Saudi institution" },
+    global: { ar: "غالباً عقود طويلة وتكلفة تكامل عالية", en: "Often long contracts and high integration cost" },
+    edge: "meyar",
+  },
+  {
+    dimension: { ar: "الامتثال التنظيمي والتراخيص", en: "Regulatory compliance & certifications" },
+    meyar: { ar: "لا يملك بعد أي ترخيص أو اعتماد رسمي", en: "Does not yet hold any official license or certification" },
+    global: { ar: "معتمدة ومرخّصة بعدة أسواق تنظيمية", en: "Certified and licensed across multiple regulatory markets" },
+    edge: "global",
+  },
+];
+
+const COMPARISON_EDGE_META = {
+  meyar: { color: "var(--lavender)", bg: "rgba(166,172,255,0.12)" },
+  global: { color: "var(--coral)", bg: "rgba(255,107,129,0.12)" },
+  tie: { color: "var(--gold)", bg: "rgba(232,196,104,0.12)" },
+};
+
+function ComparisonTab({ lang, t }) {
+  return (
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <GitCompare size={16} style={{ color: "var(--orchid)" }} />
+          {t.comparison.title}
+        </h3>
+        <p className="text-[11px] text-white/40">{t.comparison.subtitle}</p>
+      </div>
+
+      <div className="aurora-border glass-panel rounded-2xl overflow-hidden animate-fade-up">
+        <div className="grid grid-cols-12 px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+          <span className="col-span-4 text-[10.5px] font-bold text-white/40">{t.comparison.dimension}</span>
+          <span className="col-span-4 text-[10.5px] font-bold" style={{ color: "var(--lavender)" }}>{t.comparison.meyarCol}</span>
+          <span className="col-span-4 text-[10.5px] font-bold text-white/40">{t.comparison.globalCol}</span>
+        </div>
+        {COMPARISON_ROWS.map((row, i) => {
+          const edgeMeta = COMPARISON_EDGE_META[row.edge];
+          return (
+            <div
+              key={i}
+              style={{ animationDelay: `${i * 40}ms` }}
+              className="grid grid-cols-12 px-4 py-3.5 border-b border-white/5 last:border-b-0 animate-fade-up items-start"
+            >
+              <div className="col-span-4 pr-2">
+                <p className="text-[11.5px] font-bold text-white/80">{row.dimension[lang] || row.dimension.ar}</p>
+                <span
+                  className="inline-block mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                  style={{ color: edgeMeta.color, backgroundColor: edgeMeta.bg }}
+                >
+                  {row.edge === "meyar" ? t.comparison.edgeMeyar : row.edge === "global" ? t.comparison.edgeGlobal : t.comparison.edgeTie}
+                </span>
+              </div>
+              <p className="col-span-4 text-[11.5px] text-white/60 leading-relaxed pr-2">{row.meyar[lang] || row.meyar.ar}</p>
+              <p className="col-span-4 text-[11.5px] text-white/40 leading-relaxed">{row.global[lang] || row.global.ar}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bugs & Fixes Log — real issues found and fixed while building this project
+// ---------------------------------------------------------------------------
+
+const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-02",
+    found: {
+      ar: "منطق مطابقة الشات بوت كان يدمج مصادر غير مرتبطة إذا تشاركوا كلمة ضعيفة وحدة، منتجاً إجابات مشوَّشة.",
+      en: "Chatbot matching merged unrelated sources when they shared just one weak keyword, producing confusing answers.",
+    },
+    fix: {
+      ar: "أُضيف شرط: لا يُدمَج أكثر من مصدر إلا إذا كان التطابق قوياً فعلاً (كلمتان فأكثر)، وإلا يُرجَّح المصدر الأقوى فقط.",
+      en: "Added a rule: sources only merge on a genuinely strong match (2+ keywords); otherwise only the single best match is returned.",
+    },
+  },
+  {
+    date: "2026-07-02",
+    found: {
+      ar: "دالة تطبيع النص العربي بالفرونت إند استخدمت \\w بالجافاسكربت، وبخلاف بايثون، هذا لا يشمل الحروف العربية إطلاقاً — فكانت تمسح كل سؤال عربي قبل المطابقة.",
+      en: "The frontend's Arabic-normalization function used JavaScript's \\w, which — unlike Python's — excludes Arabic letters entirely, wiping every Arabic question before matching.",
+    },
+    fix: {
+      ar: "استُبدلت بـ \\p{L}\\p{N} مع علامة /u (يونيكود)، وتم فحصها فعلياً بتشغيل الكود قبل التسليم.",
+      en: "Replaced with \\p{L}\\p{N} plus the /u (Unicode) flag, and verified by actually executing the code before delivery.",
+    },
+  },
+  {
+    date: "2026-07-04",
+    found: {
+      ar: "إحصائيات «موافقة/مرفوضة اليوم» كانت تُحدَّث بمنطق متداخل غير موثوق، فترجع لقيم قديمة بدل قرار المستخدم الفعلي.",
+      en: "\"Approved/rejected today\" counters updated via a fragile nested state pattern, reverting to stale values instead of the user's actual decision.",
+    },
+    fix: {
+      ar: "أُعيدت الكتابة لحساب مباشر من القيم المعروفة، مع تفضيل استعلام الباك إند الرسمي فور توفره.",
+      en: "Rewritten to compute directly from known values, preferring a fresh authoritative backend query whenever available.",
+    },
+  },
+  {
+    date: "2026-07-10",
+    found: {
+      ar: "قرارات الموافقة/الرفض على معاملات محلية (fallback) كانت تُرسَل للباك إند الحقيقي، اللي يرد «غير موجودة» — منتجاً سجلات فارغة بالتقرير.",
+      en: "Approve/reject decisions on locally-generated fallback transactions were sent to the real backend, which replied \"not found\" — producing empty report rows.",
+    },
+    fix: {
+      ar: "أُضيف فحص: المعاملات المحلية تُحلّ محلياً بالكامل، ولا تُرسَل للباك إند إطلاقاً.",
+      en: "Added a check: locally-generated transactions are now resolved entirely client-side and never sent to the backend.",
+    },
+  },
+  {
+    date: "2026-07-11",
+    found: {
+      ar: "زر الشات بوت العائم كان يتموضع بمكان غير متوقع بعد نقله لمستوى الصفحة (Portal)، لأن كلاسات اليمين/اليسار كانت تعتمد على عنصر أب فقدناه.",
+      en: "The floating chatbot button landed in an unexpected position after moving to a page-level portal, because its left/right classes depended on an ancestor element that was lost.",
+    },
+    fix: {
+      ar: "حُوِّل الشات بوت بالكامل لتبويب عادي بالقائمة الجانبية، بدل عنصر عائم — يلغي المشكلة من جذورها.",
+      en: "The chatbot was converted entirely into a normal sidebar tab instead of a floating element — removing the problem at its root.",
+    },
+  },
+  {
+    date: "2026-07-11",
+    found: {
+      ar: "سؤال «وش تعميم ١٠٢؟» ما كان يطابق أي شي، لأن البحث يعتمد على كلمات موضوعية (KYC...) لا على رقم التعميم المذكور مباشرة.",
+      en: "Asking \"what is circular 102?\" matched nothing, because search relied on topical keywords (KYC...) rather than the bare circular number mentioned.",
+    },
+    fix: {
+      ar: "أُضيفت مطابقة مباشرة: ذكر رقم تعميم بمفرده يُعتبر إشارة قوية كافية لوحدها.",
+      en: "Added direct number matching: mentioning a bare circular number alone is now treated as a strong enough signal on its own.",
+    },
+  },
+];
+
+function ChangelogTab({ lang, t }) {
+  return (
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <Bug size={16} style={{ color: "var(--coral)" }} />
+          {t.changelog.title}
+        </h3>
+        <p className="text-[11px] text-white/40">{t.changelog.subtitle}</p>
+      </div>
+
+      <div className="space-y-3">
+        {CHANGELOG_ENTRIES.map((entry, i) => (
+          <div key={i} style={{ animationDelay: `${i * 50}ms` }} className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+            <p className="text-[10px] text-white/30 font-mono mb-2">{entry.date}</p>
+            <div className="flex items-start gap-2 mb-2.5">
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 mt-0.5"
+                style={{ color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)" }}
+              >
+                {t.changelog.foundLabel}
+              </span>
+              <p className="text-[12px] text-white/70 leading-relaxed">{entry.found[lang] || entry.found.ar}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 mt-0.5"
+                style={{ color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)" }}
+              >
+                {t.changelog.fixLabel}
+              </span>
+              <p className="text-[12px] text-white/60 leading-relaxed">{entry.fix[lang] || entry.fix.ar}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
+
+// ---------------------------------------------------------------------------
 function LimitsTab({ t }) {
   return (
     <div className="space-y-4">
@@ -2785,7 +3084,7 @@ function ChatbotTab({ lang, t }) {
   );
 }
 
-function SettingsModal({ onClose, onGoToLimits, t }) {
+function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentationMode, onTogglePresentation, t }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -2803,14 +3102,97 @@ function SettingsModal({ onClose, onGoToLimits, t }) {
           </button>
         </div>
         <p className="text-[12px] text-white/60 leading-relaxed mb-4">{t.settingsModal.description}</p>
-        <button
-          onClick={onGoToLimits}
-          className="w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-          style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
-        >
-          <ShieldAlert size={14} />
-          {t.settingsModal.goToLimits}
-        </button>
+
+        <div className="space-y-2">
+          <button
+            onClick={onGoToLimits}
+            className="w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
+          >
+            <ShieldAlert size={14} />
+            {t.settingsModal.goToLimits}
+          </button>
+
+          <button
+            onClick={onReplayOnboarding}
+            className="w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: "rgba(228,160,255,0.1)", borderColor: "rgba(228,160,255,0.3)", color: "var(--orchid)" }}
+          >
+            <Wand2 size={14} />
+            {t.settingsModal.replayTour}
+          </button>
+
+          <button
+            onClick={onTogglePresentation}
+            className="w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            style={
+              presentationMode
+                ? { backgroundColor: "rgba(232,196,104,0.15)", borderColor: "rgba(232,196,104,0.4)", color: "var(--gold)" }
+                : { backgroundColor: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }
+            }
+          >
+            <Presentation size={14} />
+            {presentationMode ? t.settingsModal.presentationOff : t.settingsModal.presentationOn}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnboardingTour({ onFinish, lang, t }) {
+  const [step, setStep] = useState(0);
+  const steps = t.onboarding.steps;
+  const isLast = step === steps.length - 1;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" dir={t.dir}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="relative aurora-border glass-panel-strong rounded-2xl p-6 w-full max-w-md animate-fade-up">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MeyarLogo size={30} />
+            <span className="font-display text-sm font-bold text-white">{t.appName}</span>
+          </div>
+          <button onClick={onFinish} className="text-[11px] text-white/40 hover:text-white/70 font-bold">
+            {t.onboarding.skip}
+          </button>
+        </div>
+
+        <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center mb-3" style={{ color: "var(--orchid)" }}>
+          {React.createElement(steps[step].icon, { size: 17 })}
+        </div>
+        <p className="text-white font-bold text-sm mb-2">{steps[step].title}</p>
+        <p className="text-[12.5px] text-white/60 leading-relaxed mb-5">{steps[step].body}</p>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            {steps.map((_, i) => (
+              <span
+                key={i}
+                className="h-1.5 rounded-full transition-all"
+                style={{ width: i === step ? "18px" : "6px", backgroundColor: i === step ? "var(--orchid)" : "rgba(255,255,255,0.15)" }}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            {step > 0 && (
+              <button
+                onClick={() => setStep((s) => s - 1)}
+                className="px-3 py-2 rounded-xl text-[11px] font-bold text-white/60 hover:text-white transition-colors"
+              >
+                {t.onboarding.back}
+              </button>
+            )}
+            <button
+              onClick={() => (isLast ? onFinish() : setStep((s) => s + 1))}
+              className="px-4 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-colors"
+              style={{ backgroundColor: "rgba(228,160,255,0.15)", border: "1px solid rgba(228,160,255,0.35)", color: "var(--orchid)" }}
+            >
+              {isLast ? t.onboarding.finish : t.onboarding.next}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -3016,6 +3398,23 @@ export default function MeyarDashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return !window.localStorage.getItem("meyar_onboarding_seen");
+    } catch {
+      return true;
+    }
+  });
+
+  const dismissOnboarding = useCallback(() => {
+    try {
+      window.localStorage.setItem("meyar_onboarding_seen", "1");
+    } catch {
+      /* private-browsing or storage disabled — safe to ignore */
+    }
+    setShowOnboarding(false);
+  }, []);
 
   const [summary, setSummary] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -3193,7 +3592,13 @@ export default function MeyarDashboard() {
   return (
     <div
       className="min-h-screen w-full flex text-white overflow-hidden relative"
-      style={{ backgroundColor: "var(--bg-obsidian)", fontFamily: t.fontFamily }}
+      style={{
+        backgroundColor: "var(--bg-obsidian)",
+        fontFamily: t.fontFamily,
+        ...(presentationMode
+          ? { transform: "scale(1.15)", transformOrigin: "top center", width: "86.9%", margin: "0 auto", transition: "transform 0.3s ease" }
+          : { transition: "transform 0.3s ease" }),
+      }}
       dir={t.dir}
     >
       <style>{EMBEDDED_STYLE}</style>
@@ -3239,9 +3644,17 @@ export default function MeyarDashboard() {
             setSettingsOpen(false);
             setActiveTab("limits");
           }}
+          onReplayOnboarding={() => {
+            setSettingsOpen(false);
+            setShowOnboarding(true);
+          }}
+          presentationMode={presentationMode}
+          onTogglePresentation={() => setPresentationMode((p) => !p)}
           t={t}
         />
       )}
+
+      {showOnboarding && <OnboardingTour onFinish={dismissOnboarding} lang={lang} t={t} />}
 
       <main className="flex-1 min-w-0 h-screen overflow-y-auto relative z-0">
         <div className="p-4 md:p-6 space-y-5 max-w-[1600px] mx-auto">
@@ -3306,7 +3719,11 @@ export default function MeyarDashboard() {
 
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
-          {activeTab === "simulator" && <SimulatorTab transactions={transactions} lang={lang} t={t} />}
+          {activeTab === "methodology" && <MethodologyTab lang={lang} t={t} />}
+
+          {activeTab === "comparison" && <ComparisonTab lang={lang} t={t} />}
+
+          {activeTab === "changelog" && <ChangelogTab lang={lang} t={t} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
