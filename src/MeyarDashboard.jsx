@@ -2455,7 +2455,7 @@ function ChatbotWidget({ lang, t }) {
         });
         if (!res.ok) throw new Error("bad response");
         const data = await res.json();
-        setMessages((m) => [...m, { role: "bot", text: data.answer, sources: data.sources, confidence: data.confidence, disclaimer: data.disclaimer }]);
+        setMessages((m) => [...m, { role: "bot", text: data.answer, sources: data.sources, confidence: data.confidence, disclaimer: data.disclaimer, aiPowered: data.ai_powered }]);
       } catch {
         const tokens = tokenizeClient(question);
         const intent = matchIntentClient(tokens);
@@ -2536,7 +2536,7 @@ function ChatbotWidget({ lang, t }) {
                 >
                   {m.text}
                   {m.role === "bot" && m.sources && m.sources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
+                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
                       {m.sources.map((s) => (
                         <span
                           key={s.circular_number}
@@ -2546,6 +2546,15 @@ function ChatbotWidget({ lang, t }) {
                           {s.circular_number}
                         </span>
                       ))}
+                      {m.aiPowered && (
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
+                          style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}
+                        >
+                          <Sparkles size={9} />
+                          Gemini
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
