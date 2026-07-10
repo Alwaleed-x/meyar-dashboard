@@ -55,6 +55,7 @@ import {
   ThumbsDown,
   Download,
   Filter,
+  SlidersHorizontal,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -86,6 +87,7 @@ const STR = {
       audit: "سجل التدقيق",
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
+      simulator: "محاكي التعميم",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
       settings: "الإعدادات",
@@ -255,6 +257,20 @@ const STR = {
         "أرقام التعاميم وتواريخ إصدارها بيانات تجريبية لأغراض العرض، وليست مصدراً رسمياً حرفياً — لعدم توفر واجهة مجانية رسمية لتعاميم ساما وقت بناء هذا النموذج. للمصدر الرسمي: sama.gov.sa",
       issuedOn: "تاريخ الإصدار:",
     },
+    simulator: {
+      title: "محاكي تأثير التعميم",
+      subtitle: "عدّل سقف تعميم رقم ٥٥ (الحد اليومي) وشوف فوراً كيف تتغيّر نتائج نفس المعاملات المعروضة الآن — بدون أي تعديل يدوي على الكود",
+      limitLabel: "السقف اليومي المقترح للتعميم",
+      before: "قبل التعديل (الوضع الحالي)",
+      after: "بعد التعديل (لو طُبِّق الآن)",
+      blocked: "محظورة",
+      flagged: "قيد المراجعة",
+      passed: "مطابقة",
+      changedTitle: "المعاملات اللي تغيّر تصنيفها",
+      changedEmpty: "لا توجد معاملات تأثرت بهذا السقف حالياً",
+      newlyBlocked: "أصبحت محظورة آلياً",
+      note: "هذا محاكي تعليمي يعمل على نفس بيانات المراقبة اللحظية المعروضة حالياً، ويهدف لإثبات أن تغيير نص التشريع (سقف رقمي) ينعكس فوراً على قرار النظام دون كتابة كود جديد — وهو جوهر فكرة «تحويل التشريعات إلى قواعد برمجية».",
+    },
     chart: {
       month: "الشهر",
       tooltipCurrency: "ر.س",
@@ -276,6 +292,7 @@ const STR = {
       audit: "Audit trail",
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
+      simulator: "Circular Simulator",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
       settings: "Settings",
@@ -444,6 +461,20 @@ const STR = {
         "Circular numbers and issue dates are demo data for presentation purposes, not a verbatim official source — no free official SAMA circular feed was available while building this prototype. Official source: sama.gov.sa",
       issuedOn: "Issued:",
     },
+    simulator: {
+      title: "Circular Impact Simulator",
+      subtitle: "Adjust Circular No. 55's daily limit and instantly see how the same currently-loaded transactions get reclassified — with no code changes",
+      limitLabel: "Proposed daily limit",
+      before: "Before (current rule)",
+      after: "After (if applied now)",
+      blocked: "Blocked",
+      flagged: "Under Review",
+      passed: "Passed",
+      changedTitle: "Transactions that changed classification",
+      changedEmpty: "No transactions are affected by this limit right now",
+      newlyBlocked: "Now automatically blocked",
+      note: "This is an educational simulator running on the same live-monitor data currently loaded. It demonstrates that changing the legislation's text (a numeric limit) is instantly reflected in the system's decision with no new code — the core idea behind \"turning legislation into executable rules.\"",
+    },
     chart: {
       month: "Month",
       tooltipCurrency: "SAR",
@@ -455,7 +486,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "simulator", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -463,6 +494,7 @@ const NAV_ICONS = {
   audit: History,
   analytics: BarChart3,
   regulatory: FileText,
+  simulator: SlidersHorizontal,
   chatbot: MessageCircle,
   limits: ShieldAlert,
 };
@@ -2193,6 +2225,170 @@ function AuditTrailTab({ auditLog, lang, t }) {
 
 const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
 
+// ---------------------------------------------------------------------------
+// Circular Impact Simulator
+//
+// Demonstrates the core thesis of the whole project — that a legislative
+// change (here: Circular No. 55's daily limit) is instantly reflected in
+// the system's decisions with zero code changes. Runs entirely client-side
+// against the already-loaded live-monitor transactions, so it works
+// identically online or in offline fallback mode.
+// ---------------------------------------------------------------------------
+
+const SIMULATOR_MIN_LIMIT = 10000;
+const SIMULATOR_MAX_LIMIT = 480000;
+const SIMULATOR_STEP = 5000;
+
+function simulateStatusForLimit(tx, limit) {
+  // Anything already blocked for a reason OTHER than the daily limit stays
+  // blocked regardless (e.g. an unlicensed entity is still unlicensed no
+  // matter what the limit is). Only the limit-sensitive outcome changes.
+  const alreadyBlockedForOtherReason = tx.status === "blocked" && tx.violation_category !== "تجاوز الحدود المسموحة";
+  if (alreadyBlockedForOtherReason) return tx.status;
+  return tx.amount_sar > limit ? "blocked" : tx.status === "blocked" ? "passed" : tx.status;
+}
+
+function SimulatorTab({ transactions, lang, t }) {
+  const [limit, setLimit] = useState(200000);
+
+  const originalCounts = useMemo(
+    () => ({
+      blocked: transactions.filter((tx) => tx.status === "blocked").length,
+      flagged: transactions.filter((tx) => tx.status === "flagged").length,
+      passed: transactions.filter((tx) => tx.status === "passed").length,
+    }),
+    [transactions]
+  );
+
+  const { simulatedCounts, changed } = useMemo(() => {
+    const counts = { blocked: 0, flagged: 0, passed: 0 };
+    const changedList = [];
+    for (const tx of transactions) {
+      const newStatus = simulateStatusForLimit(tx, limit);
+      counts[newStatus] += 1;
+      if (newStatus !== tx.status) changedList.push({ ...tx, newStatus });
+    }
+    return { simulatedCounts: counts, changed: changedList };
+  }, [transactions, limit]);
+
+  const DeltaBadge = ({ before, after }) => {
+    const delta = after - before;
+    if (delta === 0) return <span className="text-white/30 text-[11px]">—</span>;
+    const positive = delta > 0;
+    return (
+      <span className={`text-[11px] font-bold flex items-center gap-0.5 ${positive ? "text-[var(--coral)]" : "text-[var(--lavender)]"}`}>
+        {positive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+        {positive ? "+" : ""}
+        {delta}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <SlidersHorizontal size={16} style={{ color: "var(--orchid)" }} />
+          {t.simulator.title}
+        </h3>
+        <p className="text-[11px] text-white/40 leading-relaxed">{t.simulator.subtitle}</p>
+      </div>
+
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold text-white/70">{t.simulator.limitLabel}</p>
+          <p className="font-display text-lg font-black" style={{ color: "var(--gold)" }}>
+            {currencyFmt(limit, lang)}
+          </p>
+        </div>
+        <input
+          type="range"
+          min={SIMULATOR_MIN_LIMIT}
+          max={SIMULATOR_MAX_LIMIT}
+          step={SIMULATOR_STEP}
+          value={limit}
+          onChange={(e) => setLimit(Number(e.target.value))}
+          className="w-full accent-[var(--orchid)]"
+          style={{ accentColor: "var(--orchid)" }}
+        />
+        <div className="flex justify-between text-[10px] text-white/30 mt-1">
+          <span>{currencyFmt(SIMULATOR_MIN_LIMIT, lang)}</span>
+          <span>{currencyFmt(SIMULATOR_MAX_LIMIT, lang)}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+          <p className="text-[11px] font-bold text-white/40 mb-3">{t.simulator.before}</p>
+          <div className="space-y-2.5">
+            {["blocked", "flagged", "passed"].map((k) => (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-xs text-white/60">{t.simulator[k]}</span>
+                <span className="font-display font-bold text-white">{originalCounts[k]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up" style={{ borderColor: "rgba(228,160,255,0.35)" }}>
+          <p className="text-[11px] font-bold mb-3" style={{ color: "var(--orchid)" }}>
+            {t.simulator.after}
+          </p>
+          <div className="space-y-2.5">
+            {["blocked", "flagged", "passed"].map((k) => (
+              <div key={k} className="flex items-center justify-between">
+                <span className="text-xs text-white/60">{t.simulator[k]}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-display font-bold text-white">{simulatedCounts[k]}</span>
+                  <DeltaBadge before={originalCounts[k]} after={simulatedCounts[k]} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <p className="text-xs font-bold text-white mb-3 flex items-center gap-2">
+          <ArrowUpRight size={13} style={{ color: "var(--coral)" }} />
+          {t.simulator.changedTitle} ({changed.length})
+        </p>
+        {changed.length === 0 ? (
+          <p className="text-[11px] text-white/35 text-center py-4">{t.simulator.changedEmpty}</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {changed.map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-white truncate">{tx.id}</p>
+                  <p className="text-[10px] text-white/40 truncate">{localize(tx.institution, lang)}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] font-bold text-white/60">{currencyFmt(tx.amount_sar, lang)}</span>
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                    style={{ color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)" }}
+                  >
+                    {t.simulator.newlyBlocked}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2 animate-fade-up"
+        style={{ backgroundColor: "rgba(228,160,255,0.06)", border: "1px solid rgba(228,160,255,0.2)", color: "rgba(255,255,255,0.55)" }}
+      >
+        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--orchid)" }} />
+        {t.simulator.note}
+      </div>
+    </div>
+  );
+}
+
 function LimitsTab({ t }) {
   return (
     <div className="space-y-4">
@@ -3109,6 +3305,8 @@ export default function MeyarDashboard() {
           {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
 
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
+
+          {activeTab === "simulator" && <SimulatorTab transactions={transactions} lang={lang} t={t} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
