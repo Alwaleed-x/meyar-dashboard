@@ -195,6 +195,7 @@ const STR = {
       reviewerLabel: "المراجع:",
       defaultReviewer: "موظف الامتثال (تجريبي)",
       decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
+      exportPdf: "تقرير PDF",
       exportDecisions: "تقرير القرارات (موافقة/رفض)",
       exportPending: "تصدير المعلَّقة فقط",
     },
@@ -382,6 +383,7 @@ const STR = {
       reviewerLabel: "Reviewer:",
       defaultReviewer: "Compliance officer (demo)",
       decidedToast: "Decision recorded and added to the audit trail",
+      exportPdf: "PDF Report",
       exportDecisions: "Decisions report (approved/rejected)",
       exportPending: "Export pending only",
     },
@@ -657,6 +659,157 @@ function exportToExcel({ rows, columns, sheetTitle, fileName }) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Meyar");
   XLSX.writeFile(wb, `${fileName}.xlsx`);
+}
+
+// ---------------------------------------------------------------------------
+// PDF report generator — renders a full HTML document in a new tab, styled
+// with the dashboard's own dark/aurora theme and Cairo font, then triggers
+// the browser's native print dialog ("Save as PDF"). This is deliberate:
+// JS PDF libraries (jsPDF etc.) render Arabic text glyph-by-glyph without
+// proper shaping/joining, producing garbled output — the browser's own
+// text engine handles Arabic correctly because it's just HTML.
+// ---------------------------------------------------------------------------
+
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function generatePdfReport({ lang, title, subtitle, generatedAtLabel, statCards, columns, rows, disclaimer, emptyLabel }) {
+  const dir = lang === "en" ? "ltr" : "rtl";
+  const isEn = lang === "en";
+
+  const statCardsHtml = statCards
+    .map(
+      (s) => `
+        <div class="stat-card">
+          <div class="stat-value">${escapeHtml(s.value)}</div>
+          <div class="stat-label">${escapeHtml(s.label)}</div>
+        </div>`
+    )
+    .join("");
+
+  const theadHtml = `<tr>${columns.map((c) => `<th>${escapeHtml(c.header)}</th>`).join("")}</tr>`;
+  const tbodyHtml = rows.length
+    ? rows.map((r) => `<tr>${columns.map((c) => `<td>${escapeHtml(c.value(r))}</td>`).join("")}</tr>`).join("")
+    : `<tr><td class="empty-row" colspan="${columns.length}">${escapeHtml(emptyLabel)}</td></tr>`;
+
+  const html = `<!doctype html>
+<html lang="${lang}" dir="${dir}">
+<head>
+<meta charset="UTF-8" />
+<title>${escapeHtml(title)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=El+Messiri:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-obsidian: #0b0813;
+    --card-bg: rgba(24, 15, 38, 0.9);
+    --border-soft: rgba(255, 255, 255, 0.12);
+    --orchid: #e4a0ff;
+    --gold: #e8c468;
+    --lavender: #a6acff;
+    --coral: #ff6b81;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    font-family: "Cairo", "Segoe UI", sans-serif;
+    background: var(--bg-obsidian);
+    color: rgba(255,255,255,0.9);
+    padding: 28px 32px;
+    direction: ${dir};
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--border-soft);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-shield {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(228,160,255,0.25), rgba(166,172,255,0.15));
+    border: 1.5px solid rgba(228,160,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "El Messiri", serif; font-weight: 700; font-size: 20px; color: var(--orchid);
+  }
+  .brand-name { font-family: "El Messiri", serif; font-weight: 700; font-size: 18px; color: #fff; }
+  .brand-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .report-meta { text-align: ${isEn ? "left" : "right"}; font-size: 11px; color: rgba(255,255,255,0.45); }
+  h1 { font-family: "El Messiri", serif; font-size: 20px; margin: 4px 0 2px; color: #fff; }
+  .subtitle { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 20px; }
+  .stats-row { display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
+  .stat-card {
+    flex: 1; min-width: 110px;
+    background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .stat-value { font-family: "El Messiri", serif; font-size: 20px; font-weight: 700; color: #fff; }
+  .stat-label { font-size: 10.5px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  thead th {
+    background: rgba(228,160,255,0.1); color: var(--orchid);
+    text-align: ${isEn ? "left" : "right"}; padding: 8px 10px; border-bottom: 1.5px solid rgba(228,160,255,0.3);
+    font-weight: 700; white-space: nowrap;
+  }
+  tbody td {
+    padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.8); vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+  .empty-row { text-align: center; color: rgba(255,255,255,0.35); padding: 24px; }
+  .disclaimer {
+    margin-top: 22px; padding: 12px 14px; border-radius: 12px;
+    background: rgba(232,196,104,0.07); border: 1px solid rgba(232,196,104,0.25);
+    font-size: 10.5px; color: rgba(255,255,255,0.55); line-height: 1.6;
+  }
+  .footer { margin-top: 18px; font-size: 9.5px; color: rgba(255,255,255,0.3); text-align: center; }
+  @page { size: A4 ${rows.length > 12 ? "landscape" : "portrait"}; margin: 10mm; }
+  @media print { body { padding: 6mm 8mm; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <div class="brand-shield">M</div>
+      <div>
+        <div class="brand-name">${isEn ? "Meyar" : "معيار"}</div>
+        <div class="brand-sub">${isEn ? "Smart Legislation Enforcer" : "نظام المُشرّع الذكي"}</div>
+      </div>
+    </div>
+    <div class="report-meta">${escapeHtml(generatedAtLabel)}</div>
+  </div>
+
+  <h1>${escapeHtml(title)}</h1>
+  <div class="subtitle">${escapeHtml(subtitle)}</div>
+
+  <div class="stats-row">${statCardsHtml}</div>
+
+  <table>
+    <thead>${theadHtml}</thead>
+    <tbody>${tbodyHtml}</tbody>
+  </table>
+
+  <div class="disclaimer">${escapeHtml(disclaimer)}</div>
+  <div class="footer">${isEn ? "Generated by Meyar" : "تم إصداره بواسطة نظام معيار"} · ${new Date().toISOString()}</div>
+
+  <script>
+    window.onload = function () {
+      setTimeout(function () { window.print(); }, 350);
+    };
+  </script>
+</body>
+</html>`;
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return false;
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  return true;
 }
 
 
@@ -1793,6 +1946,41 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
     });
   };
 
+  const handleExportPdf = () => {
+    generatePdfReport({
+      lang,
+      title: lang === "en" ? "Review Decisions Report" : "تقرير قرارات المراجعة",
+      subtitle:
+        lang === "en"
+          ? "Every Level-2 transaction decided by a human reviewer — approved or rejected, with exact time and legal basis."
+          : "كل معاملة من المستوى ٢ اتُّخذ فيها قرار بشري — موافقة أو رفض — مع الوقت الدقيق والسند القانوني.",
+      generatedAtLabel: (lang === "en" ? "Generated: " : "تاريخ الإصدار: ") + new Date().toLocaleString(lang === "en" ? "en-GB" : "ar-SA"),
+      statCards: [
+        { value: numberFmt.format(stats.pending), label: t.reviewQueue.pending },
+        { value: numberFmt.format(stats.approved_today), label: t.reviewQueue.approvedToday },
+        { value: numberFmt.format(stats.rejected_today), label: t.reviewQueue.rejectedToday },
+        { value: `${stats.approval_rate_pct}%`, label: t.reviewQueue.approvalRate },
+      ],
+      columns: [
+        { header: lang === "en" ? "Transaction" : "المعاملة", value: (r) => r.transaction_id },
+        { header: lang === "en" ? "Decision" : "القرار", value: (r) => t.auditTrail.decisionLabels[r.decision] || r.decision },
+        { header: lang === "en" ? "Exact Time" : "الوقت الدقيق", value: (r) => formatExactTime(r.timestamp) },
+        { header: lang === "en" ? "Category" : "نوع المخالفة", value: (r) => (r.violation_category ? localize(r.violation_category, lang) : "—") },
+        { header: lang === "en" ? "Reason" : "السبب", value: (r) => localize(r.reason, lang) },
+        { header: lang === "en" ? "Circular" : "التعميم", value: (r) => r.circular_number || "—" },
+        { header: lang === "en" ? "Institution" : "المؤسسة", value: (r) => localize(r.institution, lang) },
+        { header: lang === "en" ? "Amount (SAR)" : "المبلغ (ر.س)", value: (r) => currencyFmt(r.amount_sar, lang) },
+        { header: lang === "en" ? "Reviewer" : "المراجع", value: (r) => localize(r.actor, lang) },
+      ],
+      rows: decidedItems,
+      emptyLabel: t.auditTrail.empty,
+      disclaimer:
+        lang === "en"
+          ? "This report reflects demo data generated for hackathon presentation purposes. Circular numbers referenced are for illustration and are not verbatim official SAMA text."
+          : "هذا التقرير يعكس بيانات تجريبية مولَّدة لأغراض عرض الهاكاثون. أرقام التعاميم المذكورة توضيحية وليست نصاً رسمياً حرفياً من ساما.",
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up flex items-start justify-between gap-3 flex-wrap">
@@ -1803,7 +1991,16 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
           </h3>
           <p className="text-[11px] text-white/40">{t.reviewQueue.subtitle}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleExportPdf}
+            title={t.reviewQueue.exportPdf}
+            className="shrink-0 h-9 px-3 rounded-xl flex items-center gap-1.5 border transition-colors text-[11px] font-bold"
+            style={{ backgroundColor: "rgba(228,160,255,0.1)", borderColor: "rgba(228,160,255,0.3)", color: "var(--orchid)" }}
+          >
+            <FileText size={14} />
+            {t.reviewQueue.exportPdf}
+          </button>
           <button
             onClick={handleExportDecisions}
             title={t.reviewQueue.exportDecisions}
