@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   AreaChart,
   Area,
@@ -87,6 +86,7 @@ const STR = {
       audit: "سجل التدقيق",
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
+      chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
       settings: "الإعدادات",
       collapse: "طي القائمة",
@@ -276,6 +276,7 @@ const STR = {
       audit: "Audit trail",
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
+      chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
       settings: "Settings",
       collapse: "Collapse menu",
@@ -454,7 +455,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -462,6 +463,7 @@ const NAV_ICONS = {
   audit: History,
   analytics: BarChart3,
   regulatory: FileText,
+  chatbot: MessageCircle,
   limits: ShieldAlert,
 };
 
@@ -2425,8 +2427,7 @@ function searchChatbotKB(question) {
   return scored;
 }
 
-function ChatbotWidget({ lang, t }) {
-  const [open, setOpen] = useState(false);
+function ChatbotTab({ lang, t }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -2491,120 +2492,100 @@ function ChatbotWidget({ lang, t }) {
     [lang, t]
   );
 
-  return createPortal(
-    <>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`fixed bottom-5 z-40 w-14 h-14 rounded-2xl aurora-border glass-panel-strong flex items-center justify-center shadow-2xl hover:-translate-y-0.5 transition-transform ${
-          lang === "en" ? "right-5" : "left-5"
-        }`}
-        style={{ boxShadow: "0 8px 30px -8px rgba(228,160,255,0.5)" }}
-        aria-label={t.chatbot.fabLabel}
-        title={t.chatbot.fabLabel}
-      >
-        {open ? <X size={20} style={{ color: "var(--orchid)" }} /> : <MessageCircle size={20} style={{ color: "var(--orchid)" }} />}
-      </button>
+  return (
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <BookOpenCheck size={16} style={{ color: "var(--gold)" }} />
+          {t.chatbot.title}
+        </h3>
+        <p className="text-[11px] text-white/40">{t.chatbot.subtitle}</p>
+      </div>
 
-      {open && (
-        <div
-          dir={t.dir}
-          className={`fixed bottom-24 z-40 w-[92vw] max-w-sm h-[520px] max-h-[70vh] aurora-border glass-panel-strong rounded-2xl flex flex-col overflow-hidden animate-fade-up shadow-2xl ${
-            lang === "en" ? "right-5" : "left-5"
-          }`}
-        >
-          <div className="p-4 border-b border-white/5">
-            <p className="text-sm font-bold text-white flex items-center gap-2">
-              <BookOpenCheck size={15} style={{ color: "var(--gold)" }} />
-              {t.chatbot.title}
-            </p>
-            <p className="text-[10px] text-white/40 mt-1">{t.chatbot.subtitle}</p>
+      <div className="aurora-border glass-panel rounded-2xl flex flex-col animate-fade-up" style={{ height: "min(640px, 70vh)" }}>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="text-[11px] text-white/35 bg-white/[0.03] border border-white/10 rounded-xl p-3 leading-relaxed">
+            {t.chatbot.disclaimer}
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-            <div className="text-[10px] text-white/35 bg-white/[0.03] border border-white/10 rounded-xl p-2.5 leading-relaxed">
-              {t.chatbot.disclaimer}
-            </div>
-
-            {messages.length === 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] text-white/40 font-semibold">{t.chatbot.suggestedLabel}</p>
-                {suggested.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => ask(q)}
-                    className="w-full text-start text-[11px] text-white/70 bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] rounded-xl px-3 py-2 text-[12px] leading-relaxed whitespace-pre-line ${
-                    m.role === "user" ? "text-white" : "text-white/80"
-                  }`}
-                  style={
-                    m.role === "user"
-                      ? { backgroundColor: "rgba(228,160,255,0.15)", border: "1px solid rgba(228,160,255,0.3)" }
-                      : { backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }
-                  }
+          {messages.length === 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-white/40 font-semibold">{t.chatbot.suggestedLabel}</p>
+              {suggested.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => ask(q)}
+                  className="w-full text-start text-[12px] text-white/70 bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2.5 transition-colors"
                 >
-                  {m.text}
-                  {m.role === "bot" && m.sources && m.sources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
-                      {m.sources.map((s) => (
-                        <span
-                          key={s.circular_number}
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                          style={{ color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)" }}
-                        >
-                          {s.circular_number}
-                        </span>
-                      ))}
-                      {m.aiPowered && (
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
-                          style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}
-                        >
-                          <Sparkles size={9} />
-                          Gemini
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-line ${
+                  m.role === "user" ? "text-white" : "text-white/80"
+                }`}
+                style={
+                  m.role === "user"
+                    ? { backgroundColor: "rgba(228,160,255,0.15)", border: "1px solid rgba(228,160,255,0.3)" }
+                    : { backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }
+                }
+              >
+                {m.text}
+                {m.role === "bot" && m.sources && m.sources.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
+                    {m.sources.map((s) => (
+                      <span
+                        key={s.circular_number}
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                        style={{ color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)" }}
+                      >
+                        {s.circular_number}
+                      </span>
+                    ))}
+                    {m.aiPowered && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
+                        style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}
+                      >
+                        <Sparkles size={9} />
+                        Gemini
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
+            </div>
+          ))}
 
-            {thinking && <p className="text-[11px] text-white/35 flex items-center gap-1.5"><RefreshCw size={11} className="animate-spin" />{t.chatbot.thinking}</p>}
-          </div>
-
-          <div className="p-3 border-t border-white/5 flex items-center gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && ask(input)}
-              placeholder={t.chatbot.placeholder}
-              className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-[var(--orchid)]/40"
-            />
-            <button
-              onClick={() => ask(input)}
-              disabled={!input.trim() || thinking}
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
-              style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
-              aria-label={t.chatbot.send}
-            >
-              <Send size={14} className={lang === "ar" ? "scale-x-[-1]" : ""} />
-            </button>
-          </div>
+          {thinking && <p className="text-[12px] text-white/35 flex items-center gap-1.5"><RefreshCw size={12} className="animate-spin" />{t.chatbot.thinking}</p>}
         </div>
-      )}
-    </>,
-    document.body
+
+        <div className="p-3 border-t border-white/5 flex items-center gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && ask(input)}
+            placeholder={t.chatbot.placeholder}
+            className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-[var(--orchid)]/40"
+          />
+          <button
+            onClick={() => ask(input)}
+            disabled={!input.trim() || thinking}
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
+            style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
+            aria-label={t.chatbot.send}
+          >
+            <Send size={15} className={lang === "ar" ? "scale-x-[-1]" : ""} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -3066,8 +3047,6 @@ export default function MeyarDashboard() {
         />
       )}
 
-      <ChatbotWidget lang={lang} t={t} />
-
       <main className="flex-1 min-w-0 h-screen overflow-y-auto relative z-0">
         <div className="p-4 md:p-6 space-y-5 max-w-[1600px] mx-auto">
           <div className="flex items-center justify-between gap-3 md:hidden mb-1">
@@ -3130,6 +3109,8 @@ export default function MeyarDashboard() {
           {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
 
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
+
+          {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
           {activeTab === "limits" && <LimitsTab t={t} />}
 
