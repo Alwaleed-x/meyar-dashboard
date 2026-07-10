@@ -710,18 +710,18 @@ const FALLBACK_INSTITUTIONS = [
 // consistent (same wording, same accountability model) whether the AI core
 // is reachable or the UI has fallen back to local generation.
 const FALLBACK_LEVEL1_RULES = [
-  { reason: "تجاوز حدود الرخصة الممنوحة - المادة ٤", basis: "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد", category: "تجاوز الحدود المسموحة" },
-  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد", category: "جهة أو حساب غير موثوق" },
-  { reason: "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد", category: "تجاوز الحدود المسموحة" },
-  { reason: "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية", basis: "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد", category: "جهة أو حساب غير موثوق" },
-  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد", category: "نقص بيانات العميل (KYC)" },
+  { reason: "تجاوز حدود الرخصة الممنوحة - المادة ٤", basis: "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد", category: "تجاوز الحدود المسموحة", circular_number: null },
+  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد", category: "جهة أو حساب غير موثوق", circular_number: "تعميم رقم ٤٩" },
+  { reason: "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد", category: "تجاوز الحدود المسموحة", circular_number: "تعميم رقم ٥٥" },
+  { reason: "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية", basis: "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد", category: "جهة أو حساب غير موثوق", circular_number: null },
+  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد", category: "نقص بيانات العميل (KYC)", circular_number: "تعميم رقم ١٠٢" },
 ];
 
 const FALLBACK_LEVEL2_RULES = [
-  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال", category: "اشتباه غسل أموال" },
-  { reason: "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة", basis: "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد" },
-  { reason: "أول معاملة من هذا النوع لهذا الحساب", basis: "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد" },
-  { reason: "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً", basis: "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها", reviewer: "الهيئة الشرعية", category: "شبهة شرعية" },
+  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال", category: "اشتباه غسل أموال", circular_number: "تعميم رقم ٧٧" },
+  { reason: "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة", basis: "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد", circular_number: null },
+  { reason: "أول معاملة من هذا النوع لهذا الحساب", basis: "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد", circular_number: null },
+  { reason: "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً", basis: "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها", reviewer: "الهيئة الشرعية", category: "شبهة شرعية", circular_number: null },
 ];
 
 const VIOLATION_CATEGORIES = ["تجاوز الحدود المسموحة", "جهة أو حساب غير موثوق", "نقص بيانات العميل (KYC)", "اشتباه غسل أموال", "شبهة شرعية", "نمط سلوكي غير معتاد"];
@@ -741,14 +741,14 @@ function makeFallbackTransaction(i) {
 
   if (roll < 0.08) {
     const rule = FALLBACK_LEVEL1_RULES[Math.floor(Math.random() * FALLBACK_LEVEL1_RULES.length)];
-    return { ...base, status: "blocked", action_level: "auto_block", certainty: "rule_based", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: null, violation_category: rule.category };
+    return { ...base, status: "blocked", action_level: "auto_block", certainty: "rule_based", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: null, violation_category: rule.category, circular_number: rule.circular_number, ai_risk_score: null };
   }
   if (roll < 0.22) {
     const rule = FALLBACK_LEVEL2_RULES[Math.floor(Math.random() * FALLBACK_LEVEL2_RULES.length)];
-    return { ...base, status: "flagged", action_level: "pending_review", certainty: "ai_assessed", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: rule.reviewer, violation_category: rule.category };
+    return { ...base, status: "flagged", action_level: "pending_review", certainty: "ai_assessed", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: rule.reviewer, violation_category: rule.category, circular_number: rule.circular_number, ai_risk_score: Math.round(Math.random() * 30 + 55) / 100 };
   }
   const reason = FALLBACK_PASSED_REASONS[Math.floor(Math.random() * FALLBACK_PASSED_REASONS.length)];
-  return { ...base, status: "passed", action_level: "no_action", certainty: "rule_based", legal_reason: reason, decision_basis: "مطابقة قواعد صريحة معلنة", reviewer_required: null, violation_category: null };
+  return { ...base, status: "passed", action_level: "no_action", certainty: "rule_based", legal_reason: reason, decision_basis: "مطابقة قواعد صريحة معلنة", reviewer_required: null, violation_category: null, circular_number: null, ai_risk_score: Math.round(Math.random() * 40) / 100 };
 }
 
 const FALLBACK_COST_METHODOLOGY_AR =
@@ -871,6 +871,8 @@ function makeFallbackAuditEntry(tx, level, decision, actor, note = null) {
     reason: tx.legal_reason,
     amount_sar: tx.amount_sar,
     institution: tx.institution,
+    violation_category: tx.violation_category || null,
+    circular_number: tx.circular_number || null,
     actor,
     note,
   };
@@ -2631,14 +2633,15 @@ export default function MeyarDashboard() {
   const txCounter = useRef(0);
 
   const fetchJSON = useCallback(async (path) => {
-    // A free-tier backend (e.g. Render) can take 30-60s to wake from sleep.
-    // Without a timeout, the UI would wait indefinitely instead of falling
-    // back to local data — this directly contradicts the app's own design
-    // goal of never appearing stuck or broken. 8s is generous for a warm
-    // backend but short enough that a sleeping one triggers the fallback
-    // quickly; loadAll() retries automatically a few seconds later anyway.
+    // A free-tier backend (e.g. Render) can be slow to respond, especially
+    // waking from sleep. The previous 8s timeout was too aggressive in
+    // practice — it kept tripping into the fallback path even when the
+    // backend was genuinely reachable, just slow, which left the review
+    // queue permanently stuck on locally-generated demo IDs. 15s gives a
+    // slow-but-alive backend a fair chance while still recovering to local
+    // data if it's truly unreachable; loadAll() retries periodically anyway.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
       if (!res.ok) throw new Error(`Request failed: ${path}`);
@@ -2718,19 +2721,37 @@ export default function MeyarDashboard() {
       const reviewerName = t.reviewQueue.defaultReviewer;
       const nextReviewQueue = reviewQueue.filter((t) => t.id !== transactionId);
 
+      // Transactions whose IDs start with "TXN-LOCAL" were generated in the
+      // browser (offline fallback mode) and the backend has never heard of
+      // them — sending them to /decide would always come back "not_found".
+      // Skip the network call entirely and resolve the decision locally.
+      const isLocalOnly = transactionId.startsWith("TXN-LOCAL");
+
       let entry;
       let backendOk = false;
-      try {
-        const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ decision: decisionWord, reviewer_name: reviewerName }),
-        });
-        if (!res.ok) throw new Error("decide failed");
-        entry = await res.json();
-        backendOk = true;
-      } catch (err) {
-        console.error("Review decision request failed, using local fallback:", err);
+      if (!isLocalOnly) {
+        try {
+          const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision: decisionWord, reviewer_name: reviewerName }),
+          });
+          if (!res.ok) throw new Error("decide failed");
+          const result = await res.json();
+          if (result.decision === "not_found") {
+            // The backend is reachable but doesn't recognize this
+            // transaction — treat exactly like a failed request rather
+            // than accepting a decision with empty reason/category/amount.
+            throw new Error("Backend does not recognize this transaction");
+          }
+          entry = result;
+          backendOk = true;
+        } catch (err) {
+          console.error("Review decision request failed, using local fallback:", err);
+        }
+      }
+
+      if (!backendOk) {
         entry = makeFallbackAuditEntry(tx, "human_review", decision, reviewerName);
       }
 
