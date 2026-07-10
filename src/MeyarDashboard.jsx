@@ -2495,7 +2495,9 @@ function ChatbotWidget({ lang, t }) {
     <>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-5 rtl:left-5 ltr:right-5 z-40 w-14 h-14 rounded-2xl aurora-border glass-panel-strong flex items-center justify-center shadow-2xl hover:-translate-y-0.5 transition-transform"
+        className={`fixed bottom-5 z-40 w-14 h-14 rounded-2xl aurora-border glass-panel-strong flex items-center justify-center shadow-2xl hover:-translate-y-0.5 transition-transform ${
+          lang === "en" ? "right-5" : "left-5"
+        }`}
         style={{ boxShadow: "0 8px 30px -8px rgba(228,160,255,0.5)" }}
         aria-label={t.chatbot.fabLabel}
         title={t.chatbot.fabLabel}
@@ -2504,7 +2506,12 @@ function ChatbotWidget({ lang, t }) {
       </button>
 
       {open && (
-        <div className="fixed bottom-24 rtl:left-5 ltr:right-5 z-40 w-[92vw] max-w-sm h-[520px] max-h-[70vh] aurora-border glass-panel-strong rounded-2xl flex flex-col overflow-hidden animate-fade-up shadow-2xl">
+        <div
+          dir={t.dir}
+          className={`fixed bottom-24 z-40 w-[92vw] max-w-sm h-[520px] max-h-[70vh] aurora-border glass-panel-strong rounded-2xl flex flex-col overflow-hidden animate-fade-up shadow-2xl ${
+            lang === "en" ? "right-5" : "left-5"
+          }`}
+        >
           <div className="p-4 border-b border-white/5">
             <p className="text-sm font-bold text-white flex items-center gap-2">
               <BookOpenCheck size={15} style={{ color: "var(--gold)" }} />
