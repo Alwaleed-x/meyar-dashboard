@@ -31,9 +31,11 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
+import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sklearn.ensemble import RandomForestClassifier
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -54,6 +56,78 @@ app.add_middleware(
 )
 
 RNG = random.Random(42)
+
+# ---------------------------------------------------------------------------
+# Risk-scoring model — a real, trained classifier (not a lookup table).
+#
+# Scope, honestly stated: no real historical bank data is available for a
+# hackathon project, so this model is trained on synthetically generated
+# feature/label pairs with a deliberately noisy relationship — realistic
+# enough to be a genuine learning problem, not a hardcoded rule in disguise.
+# The model outputs an actual probability (predict_proba), and that
+# probability — not a flat random roll — decides whether a Level-2
+# transaction is worth flagging for human review.
+#
+# Deliberate design boundary: this model is used ONLY to help surface
+# candidates for the interpretive Level-2 review queue. It is never used
+# for Level-1 decisions, which must stay purely rule-based and
+# deterministic (a limit is either exceeded or it isn't) — mixing a
+# probabilistic model into a "definitive rule" would break the entire
+# accountability argument this system is built on.
+# ---------------------------------------------------------------------------
+
+_RISK_FEATURE_NAMES = ["amount_norm", "hour_norm", "deviation", "freq_last_hour_norm", "is_first_time"]
+
+
+def _make_synthetic_training_data(n: int = 4000, seed: int = 42):
+    rng = np.random.default_rng(seed)
+    amount = rng.uniform(250, 480_000, n)
+    hour = rng.integers(0, 24, n)
+    deviation = rng.uniform(0, 1, n)
+    freq_last_hour = rng.integers(0, 8, n)
+    is_first_time = rng.integers(0, 2, n)
+
+    risk_score = (
+        0.35 * (amount / 480_000)
+        + 0.30 * deviation
+        + 0.20 * (freq_last_hour / 8)
+        + 0.15 * is_first_time
+        + rng.normal(0, 0.08, n)
+    )
+    label = (risk_score > 0.55).astype(int)
+
+    X = np.column_stack([amount / 480_000, hour / 24, deviation, freq_last_hour / 8, is_first_time])
+    return X, label
+
+
+def _train_risk_model() -> RandomForestClassifier:
+    X, y = _make_synthetic_training_data()
+    model = RandomForestClassifier(n_estimators=80, max_depth=6, random_state=42)
+    model.fit(X, y)
+    return model
+
+
+RISK_MODEL = _train_risk_model()
+RISK_MODEL_TRAINED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+RISK_FLAG_THRESHOLD = 0.55
+
+
+def _score_transaction_risk(amount: float, hour: int, deviation: float, freq_last_hour: int, is_first_time: int) -> dict:
+    """Runs the actual trained model on one transaction's features and
+    returns its probability plus which feature drove that probability most,
+    so the UI can show *why* the model flagged something instead of a
+    black-box number."""
+    features = np.array(
+        [[amount / 480_000, hour / 24, deviation, freq_last_hour / 8, is_first_time]]
+    )
+    prob = float(RISK_MODEL.predict_proba(features)[0][1])
+
+    contributions = RISK_MODEL.feature_importances_ * features[0]
+    dominant_idx = int(np.argmax(contributions))
+    dominant_feature = _RISK_FEATURE_NAMES[dominant_idx]
+
+    return {"probability": round(prob, 4), "dominant_feature": dominant_feature}
+
 
 # ---------------------------------------------------------------------------
 # Static reference data
@@ -89,30 +163,35 @@ LEVEL1_BLOCKED_RULES = [
     {
         "reason": "تجاوز حدود الرخصة الممنوحة - المادة ٤",
         "article": "المادة ٤",
+        "circular_number": None,
         "basis": "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد",
         "category": "تجاوز الحدود المسموحة",
     },
     {
         "reason": "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢",
         "article": "المادة ١٢",
+        "circular_number": "تعميم رقم ٤٩",
         "basis": "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد",
         "category": "جهة أو حساب غير موثوق",
     },
     {
         "reason": "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥",
         "article": "التعميم رقم ٥٥",
+        "circular_number": "تعميم رقم ٥٥",
         "basis": "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد",
         "category": "تجاوز الحدود المسموحة",
     },
     {
         "reason": "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية",
         "article": None,
+        "circular_number": None,
         "basis": "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد",
         "category": "جهة أو حساب غير موثوق",
     },
     {
         "reason": "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩",
         "article": "المادة ٩",
+        "circular_number": "تعميم رقم ١٠٢",
         "basis": "تحقق اكتمال حقول إلزامية — لا اجتهاد",
         "category": "نقص بيانات العميل (KYC)",
     },
@@ -122,44 +201,56 @@ LEVEL2_FLAGGED_RULES = [
     {
         "reason": "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة",
         "article": "المادة ٧",
+        "circular_number": "تعميم رقم ٧٧",
         "basis": "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً",
         "reviewer": "موظف الامتثال",
         "category": "اشتباه غسل أموال",
+        "feature_tag": "amount_norm",
     },
     {
         "reason": "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة",
         "article": None,
+        "circular_number": None,
         "basis": "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
+        "feature_tag": "deviation",
     },
     {
         "reason": "أول معاملة من هذا النوع لهذا الحساب",
         "article": None,
+        "circular_number": None,
         "basis": "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
+        "feature_tag": "is_first_time",
     },
     {
         "reason": "عملية قد تقع خارج نطاق النشاط التجاري المرخّص",
         "article": None,
+        "circular_number": None,
         "basis": "تصنيف اجتهادي لنوع النشاط — قابل للتفسير",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
+        "feature_tag": None,
     },
     {
         "reason": "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً",
         "article": None,
+        "circular_number": None,
         "basis": "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها",
         "reviewer": "الهيئة الشرعية",
         "category": "شبهة شرعية",
+        "feature_tag": None,
     },
     {
         "reason": "تكرار غير طبيعي للمعاملات خلال نافذة زمنية قصيرة",
         "article": None,
+        "circular_number": None,
         "basis": "نمط سلوكي مرجّح إحصائياً — ليس دليلاً قاطعاً",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
+        "feature_tag": "freq_last_hour_norm",
     },
 ]
 
@@ -179,15 +270,86 @@ VIOLATION_CATEGORIES = [
     "نمط سلوكي غير معتاد",
 ]
 
-CIRCULAR_TOPICS = [
-    ("تعميم رقم ١٠٢", "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة"),
-    ("تعميم رقم ٩٨", "تحديث السقوف اليومية لمعاملات الدفع الفوري"),
-    ("تعميم رقم ٨٥", "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية"),
-    ("تعميم رقم ٧٧", "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي"),
-    ("تعميم رقم ٦٤", "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)"),
-    ("تعميم رقم ٥٥", "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية"),
-    ("تعميم رقم ٤٩", "متطلبات ترخيص مزودي خدمات الدفع الصغرى"),
+CIRCULAR_REGISTRY = [
+    {
+        "number": "تعميم رقم ١٠٢",
+        "title": "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
+        "issued_date": "2024-03-17",
+        "summary_ar": "يشترط اكتمال بيانات هوية المستفيد الفعلي (KYC) قبل تنفيذ أي معاملة عبر واجهات الخدمات المصرفية المفتوحة.",
+        "summary_en": "Requires complete beneficial-owner (KYC) data before executing any transaction via Open Banking interfaces.",
+    },
+    {
+        "number": "تعميم رقم ٩٨",
+        "title": "تحديث السقوف اليومية لمعاملات الدفع الفوري",
+        "issued_date": "2023-11-02",
+        "summary_ar": "يحدّث السقوف اليومية المسموح بها لمعاملات الدفع الفوري عبر القنوات الرقمية.",
+        "summary_en": "Updates the daily limits permitted for instant payment transactions across digital channels.",
+    },
+    {
+        "number": "تعميم رقم ٨٥",
+        "title": "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية",
+        "issued_date": "2023-06-21",
+        "summary_ar": "يُلزم الحسابات التجارية بالإفصاح الكامل عن هوية المستفيد الفعلي منها.",
+        "summary_en": "Requires commercial accounts to fully disclose the identity of their beneficial owner.",
+    },
+    {
+        "number": "تعميم رقم ٧٧",
+        "title": "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
+        "issued_date": "2022-09-11",
+        "summary_ar": "ينظّم ضوابط مكافحة غسل الأموال المطبَّقة على خدمات التحويل المالي الرقمي.",
+        "summary_en": "Governs AML controls applied to digital money-transfer services.",
+    },
+    {
+        "number": "تعميم رقم ٦٤",
+        "title": "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)",
+        "issued_date": "2022-01-06",
+        "summary_ar": "ينظّم صلاحيات واجهات الخدمات المصرفية المفتوحة، ويحصرها في القراءة أو بدء العملية بموافقة العميل.",
+        "summary_en": "Regulates Open Banking API permissions, limited to read access or customer-consented initiation.",
+    },
+    {
+        "number": "تعميم رقم ٥٥",
+        "title": "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية",
+        "issued_date": "2021-08-19",
+        "summary_ar": "يحدد الحد الأقصى اليومي المسموح به لمعاملات المحافظ الرقمية الفردية.",
+        "summary_en": "Sets the daily maximum permitted for individual digital wallet transactions.",
+    },
+    {
+        "number": "تعميم رقم ٤٩",
+        "title": "متطلبات ترخيص مزودي خدمات الدفع الصغرى",
+        "issued_date": "2021-02-23",
+        "summary_ar": "يحدد شروط ومتطلبات ترخيص الجهات التي تقدّم خدمات الدفع الصغرى.",
+        "summary_en": "Sets licensing conditions and requirements for micro-payment service providers.",
+    },
+    {
+        "number": "تعميم رقم ١١٠",
+        "title": "حماية بيانات العملاء الشخصية في الخدمات المالية الرقمية",
+        "issued_date": "2024-07-02",
+        "summary_ar": "يمنع مشاركة بيانات معاملة العميل مع أي طرف ثالث دون موافقته الصريحة.",
+        "summary_en": "Prohibits sharing a customer's transaction data with any third party without explicit consent.",
+    },
+    {
+        "number": "تعميم رقم ٣٠",
+        "title": "معايير الأمان السيبراني لواجهات الخدمات المصرفية المفتوحة",
+        "issued_date": "2020-05-13",
+        "summary_ar": "يضع الحد الأدنى من معايير التشفير وسجلات الوصول لواجهات Open Banking.",
+        "summary_en": "Sets minimum encryption and access-logging standards for Open Banking interfaces.",
+    },
 ]
+
+CIRCULAR_DATA_DISCLAIMER_AR = (
+    "أرقام التعاميم وتواريخ إصدارها أدناه بيانات تجريبية لأغراض العرض، وليست مصدراً رسمياً حرفياً — "
+    "لعدم توفر واجهة مجانية رسمية لتعاميم ساما وقت بناء هذا النموذج. للمصدر الرسمي: sama.gov.sa"
+)
+CIRCULAR_DATA_DISCLAIMER_EN = (
+    "Circular numbers and issue dates below are demo data for presentation purposes, not a verbatim "
+    "official source — no free official SAMA circular feed was available while building this prototype. "
+    "Official source: sama.gov.sa"
+)
+
+# Backward-compatible flat list (kept because a few older lookups elsewhere use it)
+CIRCULAR_TOPICS = [(c["number"], c["title"]) for c in CIRCULAR_REGISTRY]
+
+_CIRCULAR_BY_NUMBER = {c["number"]: c for c in CIRCULAR_REGISTRY}
 
 # ---------------------------------------------------------------------------
 # Compliance-cost-saved % — documented methodology (fixes the "un-sourced
@@ -266,6 +428,8 @@ class Transaction(BaseModel):
     reviewer_required: Optional[str] = None
     article_reference: Optional[str] = None
     violation_category: Optional[str] = None
+    circular_number: Optional[str] = None
+    ai_risk_score: Optional[float] = None
     customer_ref: str
     channel: str
 
@@ -301,6 +465,7 @@ class RegulatoryUpdate(BaseModel):
     rules_generated: int
     affected_institutions: int
     summary_ar: str
+    summary_en: str
     code_rule_id: Optional[str] = None
 
 
@@ -308,6 +473,8 @@ class RegulatoryUpdatesResponse(BaseModel):
     items: List[RegulatoryUpdate]
     total_parsed: int
     total_in_progress: int
+    disclaimer_ar: str
+    disclaimer_en: str
 
 
 class ChatbotQuery(BaseModel):
@@ -365,12 +532,19 @@ def _generate_transaction(idx: int, base_time: datetime) -> Transaction:
             reviewer_required=None,
             article_reference=rule["article"],
             violation_category=rule["category"],
+            circular_number=rule["circular_number"],
+            ai_risk_score=None,  # Level 1 is deterministic — a model score has no role here
             customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
             channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
         )
 
-    if roll < 0.22:
-        rule = RNG.choice(LEVEL2_FLAGGED_RULES)
+    # A rare, independent Sharia-review branch: whether a transaction raises
+    # a Sharia concern is a categorical judgment about its nature (e.g. the
+    # underlying contract), not something the numeric risk features (amount,
+    # frequency, deviation...) can capture — so it's decided separately
+    # rather than forced through the statistical model.
+    if RNG.random() < 0.03:
+        rule = next(r for r in LEVEL2_FLAGGED_RULES if r["category"] == "شبهة شرعية")
         return Transaction(
             id=f"TXN-{100000 + idx}",
             timestamp=_iso(ts),
@@ -384,6 +558,41 @@ def _generate_transaction(idx: int, base_time: datetime) -> Transaction:
             reviewer_required=rule["reviewer"],
             article_reference=rule["article"],
             violation_category=rule["category"],
+            circular_number=rule["circular_number"],
+            ai_risk_score=None,
+            customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
+            channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
+        )
+
+    # Everything else is scored by the real trained model. These engineered
+    # features (deviation, recent frequency, first-time flag) are simulated
+    # here since no real customer transaction history exists in this demo —
+    # but the probability itself is a genuine model output, not a lookup.
+    hour = ts.hour
+    deviation = RNG.random()
+    freq_last_hour = RNG.randint(0, 7)
+    is_first_time = 1 if RNG.random() < 0.15 else 0
+
+    risk = _score_transaction_risk(amount, hour, deviation, freq_last_hour, is_first_time)
+
+    if risk["probability"] > RISK_FLAG_THRESHOLD:
+        candidates = [r for r in LEVEL2_FLAGGED_RULES if r["feature_tag"] == risk["dominant_feature"]]
+        rule = RNG.choice(candidates) if candidates else RNG.choice(LEVEL2_FLAGGED_RULES)
+        return Transaction(
+            id=f"TXN-{100000 + idx}",
+            timestamp=_iso(ts),
+            institution=RNG.choice(INSTITUTIONS),
+            amount_sar=amount,
+            status="flagged",
+            action_level="pending_review",
+            certainty="ai_assessed",
+            legal_reason=rule["reason"],
+            decision_basis=rule["basis"],
+            reviewer_required=rule["reviewer"],
+            article_reference=rule["article"],
+            violation_category=rule["category"],
+            circular_number=rule["circular_number"],
+            ai_risk_score=risk["probability"],
             customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
             channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
         )
@@ -401,6 +610,9 @@ def _generate_transaction(idx: int, base_time: datetime) -> Transaction:
         decision_basis="مطابقة قواعد صريحة معلنة",
         reviewer_required=None,
         article_reference=None,
+        violation_category=None,
+        circular_number=None,
+        ai_risk_score=risk["probability"],
         customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
         channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
     )
@@ -507,32 +719,37 @@ def compliance_trends():
 @app.get("/api/regulatory-updates", response_model=RegulatoryUpdatesResponse)
 def regulatory_updates():
     items: List[RegulatoryUpdate] = []
-    for i, (number, title) in enumerate(CIRCULAR_TOPICS):
+    for i, circ in enumerate(CIRCULAR_REGISTRY):
         status_roll = RNG.random()
-        if status_roll < 0.65:
+        if status_roll < 0.7:
             parsing_status: Literal["completed", "in_progress", "queued"] = "completed"
-        elif status_roll < 0.88:
+        elif status_roll < 0.9:
             parsing_status = "in_progress"
         else:
             parsing_status = "queued"
 
-        issued = _now() - timedelta(days=RNG.randint(3, 240))
         rules_generated = RNG.randint(4, 38) if parsing_status != "queued" else 0
 
         items.append(
             RegulatoryUpdate(
                 id=f"CIRC-{900 + i}",
-                circular_number=number,
-                title=title,
-                issued_date=_iso(issued),
+                circular_number=circ["number"],
+                title=circ["title"],
+                issued_date=circ["issued_date"],
                 parsing_status=parsing_status,
                 rules_generated=rules_generated,
                 affected_institutions=RNG.randint(6, len(INSTITUTIONS)),
                 summary_ar=(
-                    f"قام محرك الذكاء الاصطناعي بتحليل نص {number} وتحويل بنوده القانونية "
-                    f"إلى {rules_generated} قاعدة برمجية قابلة للتنفيذ اللحظي ضمن محرك الرقابة."
+                    f"{circ['summary_ar']} حوّل محرك الذكاء الاصطناعي هذا النص إلى {rules_generated} "
+                    f"قاعدة برمجية قابلة للتنفيذ اللحظي."
                     if parsing_status != "queued"
-                    else f"{number} في طابور المعالجة بانتظار استخلاص النص القانوني وتحويله إلى قواعد."
+                    else f"{circ['summary_ar']} — لا يزال في طابور المعالجة بانتظار التحويل إلى قواعد."
+                ),
+                summary_en=(
+                    f"{circ['summary_en']} The AI engine converted this text into {rules_generated} "
+                    f"executable rules."
+                    if parsing_status != "queued"
+                    else f"{circ['summary_en']} Still queued, awaiting conversion into rules."
                 ),
                 code_rule_id=f"RULE-SET-{700 + i}" if parsing_status == "completed" else None,
             )
@@ -542,6 +759,8 @@ def regulatory_updates():
         items=items,
         total_parsed=sum(1 for i in items if i.parsing_status == "completed"),
         total_in_progress=sum(1 for i in items if i.parsing_status == "in_progress"),
+        disclaimer_ar=CIRCULAR_DATA_DISCLAIMER_AR,
+        disclaimer_en=CIRCULAR_DATA_DISCLAIMER_EN,
     )
 
 
@@ -1023,6 +1242,7 @@ def _log_audit(transaction: dict, level: str, decision: str, actor: str, note: O
         "amount_sar": transaction["amount_sar"],
         "institution": transaction["institution"],
         "violation_category": transaction.get("violation_category"),
+        "circular_number": transaction.get("circular_number"),
         "actor": actor,
         "note": note,
     }
@@ -1079,6 +1299,7 @@ class AuditEntry(BaseModel):
     amount_sar: float
     institution: str
     violation_category: Optional[str] = None
+    circular_number: Optional[str] = None
     actor: str
     note: Optional[str] = None
 
