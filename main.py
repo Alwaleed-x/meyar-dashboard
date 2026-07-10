@@ -40,6 +40,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -114,6 +115,40 @@ def _train_risk_model() -> RandomForestClassifier:
 RISK_MODEL = _train_risk_model()
 RISK_MODEL_TRAINED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 RISK_FLAG_THRESHOLD = 0.55
+
+# ---------------------------------------------------------------------------
+# Model evaluation — REAL metrics computed from the actual trained model
+# against a held-out synthetic test set (different random seed than
+# training, so it's a genuine train/test split, not the same data twice).
+#
+# Honest scope: because no real historical bank data exists for this
+# hackathon project, "ground truth" here is the same synthetic risk formula
+# used to generate training data. This measures whether the model learned
+# that formula correctly — not real-world fraud detection accuracy. That
+# distinction is surfaced explicitly in the API response and the UI.
+# ---------------------------------------------------------------------------
+
+_TEST_X, _TEST_Y = _make_synthetic_training_data(n=1500, seed=999)
+
+
+def _evaluate_at_threshold(threshold: float) -> dict:
+    proba = RISK_MODEL.predict_proba(_TEST_X)[:, 1]
+    preds = (proba > threshold).astype(int)
+    tn, fp, fn, tp = confusion_matrix(_TEST_Y, preds, labels=[0, 1]).ravel()
+    precision = precision_score(_TEST_Y, preds, zero_division=0)
+    recall = recall_score(_TEST_Y, preds, zero_division=0)
+    f1 = f1_score(_TEST_Y, preds, zero_division=0)
+    return {
+        "threshold": round(threshold, 2),
+        "precision": round(float(precision) * 100, 1),
+        "recall": round(float(recall) * 100, 1),
+        "f1": round(float(f1) * 100, 1),
+        "true_positive": int(tp),
+        "false_positive": int(fp),
+        "true_negative": int(tn),
+        "false_negative": int(fn),
+    }
+
 
 
 def _score_transaction_risk(amount: float, hour: int, deviation: float, freq_last_hour: int, is_first_time: int) -> dict:
@@ -685,6 +720,29 @@ def realtime_transactions(
 @app.get("/api/violation-categories")
 def get_violation_categories():
     return {"items": VIOLATION_CATEGORIES}
+
+
+@app.get("/api/model-metrics")
+def get_model_metrics():
+    current = _evaluate_at_threshold(RISK_FLAG_THRESHOLD)
+    sweep = [_evaluate_at_threshold(t / 100) for t in range(30, 81, 5)]
+    return {
+        "current": current,
+        "threshold_sweep": sweep,
+        "test_set_size": len(_TEST_Y),
+        "model_type": "RandomForestClassifier (scikit-learn)",
+        "features": _RISK_FEATURE_NAMES,
+        "disclaimer_ar": (
+            "هذي مقاييس محسوبة فعلياً من الموديل المدرَّب، لكن على بيانات اختبار اصطناعية (مو بيانات بنكية "
+            "حقيقية، لعدم توفرها لمشروع هاكاثون). تقيس هذي الأرقام مدى نجاح الموديل في تعلّم نمط المخاطرة "
+            "الاصطناعي المصمَّم له، وليست دقة كشف احتيال حقيقي في العالم الفعلي."
+        ),
+        "disclaimer_en": (
+            "These are real metrics computed from the trained model, but on a synthetic test set (not real "
+            "bank data, unavailable for a hackathon project). They measure how well the model learned the "
+            "synthetic risk pattern it was designed for, not real-world fraud-detection accuracy."
+        ),
+    }
 
 
 @app.get("/api/compliance-trends", response_model=ComplianceTrendsResponse)
