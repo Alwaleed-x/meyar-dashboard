@@ -877,17 +877,33 @@ def _match_intent(question_tokens: set):
     return None
 
 
+_CIRCULAR_DIGITS_RE = re.compile(r"[\u0660-\u0669\d]+")
+
+
+def _circular_number_token(circular_number: Optional[str]) -> Optional[str]:
+    if not circular_number:
+        return None
+    m = _CIRCULAR_DIGITS_RE.search(circular_number)
+    return m.group(0) if m else None
+
+
 def _search_knowledge_base(question: str) -> List[tuple]:
     """Token-overlap retrieval — deliberately simple and fully inspectable
     rather than a black-box embedding search, so the matching logic itself
     can be explained to a committee if asked. Each matched keyword phrase
     counts as one point; longer, more specific phrases (e.g. 'حماية
     البيانات' vs. a single generic word) make accidental cross-topic
-    collisions rare."""
+    collisions rare. A bare mention of the circular's own number (e.g. a
+    user just asking "what is circular 102?") is treated as a strong,
+    unambiguous signal on its own, since a number match can't accidentally
+    collide across topics the way a generic word might."""
     q_tokens = _tokenize(question)
     scored = []
     for entry in SAMA_KNOWLEDGE_BASE:
         score = sum(1 for kw in entry["keywords"] if _keyword_matches(kw, q_tokens))
+        digits = _circular_number_token(entry.get("circular_number"))
+        if digits and digits in q_tokens:
+            score += 2
         if score > 0:
             scored.append((score, entry))
     scored.sort(key=lambda x: x[0], reverse=True)
