@@ -53,7 +53,10 @@ import {
   History,
   ThumbsUp,
   ThumbsDown,
+  Download,
+  Filter,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 // ---------------------------------------------------------------------------
 // API config
@@ -111,6 +114,7 @@ const STR = {
       no_action: "لا يتطلب إجراءً",
       reviewerPrefix: "الجهة المختصة بالمراجعة:",
       basisPrefix: "أساس القرار:",
+      riskScorePrefix: "درجة المخاطرة (الموديل):",
     },
     costTooltip: {
       label: "كيف نحسب هذه النسبة؟",
@@ -218,6 +222,8 @@ const STR = {
       loading: "جارٍ الاتصال بمحرك المراقبة...",
       empty: "لا توجد معاملات مطابقة لبحثك",
       filters: { all: "الكل", passed: "مطابقة", flagged: "قيد المراجعة", blocked: "محظورة" },
+      exportExcel: "تصدير Excel",
+      allCategories: "كل أنواع المخالفات",
     },
     analytics: {
       trendTitle: (pct) => `الاتجاه السنوي للالتزام مقابل خفض التكاليف التشغيلية بنسبة ${pct}%`,
@@ -241,6 +247,9 @@ const STR = {
       },
       summaryCompleted: (n, rules) => `تم تحليل نص ${n} وتحويل بنوده إلى ${rules} قاعدة برمجية قابلة للتنفيذ اللحظي.`,
       summaryQueued: (n) => `${n} في طابور المعالجة بانتظار استخلاص النص القانوني وتحويله إلى قواعد.`,
+      disclaimer:
+        "أرقام التعاميم وتواريخ إصدارها بيانات تجريبية لأغراض العرض، وليست مصدراً رسمياً حرفياً — لعدم توفر واجهة مجانية رسمية لتعاميم ساما وقت بناء هذا النموذج. للمصدر الرسمي: sama.gov.sa",
+      issuedOn: "تاريخ الإصدار:",
     },
     chart: {
       month: "الشهر",
@@ -291,6 +300,7 @@ const STR = {
       no_action: "No action required",
       reviewerPrefix: "Required reviewer:",
       basisPrefix: "Decision basis:",
+      riskScorePrefix: "AI risk score:",
     },
     costTooltip: {
       label: "How is this % calculated?",
@@ -397,6 +407,8 @@ const STR = {
       loading: "Connecting to the monitoring engine...",
       empty: "No transactions match your search",
       filters: { all: "All", passed: "Passed", flagged: "Under Review", blocked: "Blocked" },
+      exportExcel: "Export Excel",
+      allCategories: "All violation types",
     },
     analytics: {
       trendTitle: (pct) => `Annual Compliance Trend vs. ${pct}% Operational Cost Reduction`,
@@ -420,6 +432,9 @@ const STR = {
       },
       summaryCompleted: (n, rules) => `${n} was parsed and converted into ${rules} executable code rules running in real time.`,
       summaryQueued: (n) => `${n} is queued, awaiting legal-text extraction and rule conversion.`,
+      disclaimer:
+        "Circular numbers and issue dates are demo data for presentation purposes, not a verbatim official source — no free official SAMA circular feed was available while building this prototype. Official source: sama.gov.sa",
+      issuedOn: "Issued:",
     },
     chart: {
       month: "Month",
@@ -619,11 +634,27 @@ function timeAgo(isoString, lang) {
 }
 
 // ---------------------------------------------------------------------------
-// Status color/style tokens (Aurora & Royal mapping)
-//   passed  -> Lavender Blue (AI security / safe)
-//   flagged -> Champagne Gold (attention)
-//   blocked -> Vivid Coral/Rose (prevention)
+// Excel export — produces a formatted, ready-to-use workbook (translated
+// column headers, sensible column widths, a title row) rather than a dump
+// of raw field names, so the output is immediately usable by a compliance
+// team, not just machine-readable data.
 // ---------------------------------------------------------------------------
+
+function exportToExcel({ rows, columns, sheetTitle, fileName }) {
+  const headerRow = columns.map((c) => c.header);
+  const dataRows = rows.map((row) => columns.map((c) => c.value(row) ?? ""));
+
+  const worksheetData = [[sheetTitle], [], headerRow, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+  ws["!cols"] = columns.map((c) => ({ wch: c.width || 18 }));
+  ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: columns.length - 1 } }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Meyar");
+  XLSX.writeFile(wb, `${fileName}.xlsx`);
+}
+
 
 const STATUS_META = {
   passed: {
@@ -756,20 +787,62 @@ function makeFallbackTrends() {
 
 function makeFallbackRegulatory() {
   const circulars = [
-    ["تعميم رقم ١٠٢", "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة", "completed", 24],
-    ["تعميم رقم ٩٨", "تحديث السقوف اليومية لمعاملات الدفع الفوري", "completed", 18],
-    ["تعميم رقم ٨٥", "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية", "in_progress", 11],
-    ["تعميم رقم ٧٧", "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي", "completed", 31],
-    ["تعميم رقم ٦٤", "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة", "queued", 0],
+    {
+      number: "تعميم رقم ١٠٢",
+      title: "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
+      issued_date: "2024-03-17",
+      status: "completed",
+      rules: 24,
+      summary_ar: "يشترط اكتمال بيانات هوية المستفيد الفعلي (KYC) قبل تنفيذ أي معاملة عبر واجهات الخدمات المصرفية المفتوحة.",
+      summary_en: "Requires complete beneficial-owner (KYC) data before executing any transaction via Open Banking interfaces.",
+    },
+    {
+      number: "تعميم رقم ٩٨",
+      title: "تحديث السقوف اليومية لمعاملات الدفع الفوري",
+      issued_date: "2023-11-02",
+      status: "completed",
+      rules: 18,
+      summary_ar: "يحدّث السقوف اليومية المسموح بها لمعاملات الدفع الفوري عبر القنوات الرقمية.",
+      summary_en: "Updates the daily limits permitted for instant payment transactions across digital channels.",
+    },
+    {
+      number: "تعميم رقم ٨٥",
+      title: "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية",
+      issued_date: "2023-06-21",
+      status: "in_progress",
+      rules: 11,
+      summary_ar: "يُلزم الحسابات التجارية بالإفصاح الكامل عن هوية المستفيد الفعلي منها.",
+      summary_en: "Requires commercial accounts to fully disclose the identity of their beneficial owner.",
+    },
+    {
+      number: "تعميم رقم ٧٧",
+      title: "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
+      issued_date: "2022-09-11",
+      status: "completed",
+      rules: 31,
+      summary_ar: "ينظّم ضوابط مكافحة غسل الأموال المطبَّقة على خدمات التحويل المالي الرقمي.",
+      summary_en: "Governs AML controls applied to digital money-transfer services.",
+    },
+    {
+      number: "تعميم رقم ٦٤",
+      title: "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة",
+      issued_date: "2022-01-06",
+      status: "queued",
+      rules: 0,
+      summary_ar: "ينظّم صلاحيات واجهات الخدمات المصرفية المفتوحة، ويحصرها في القراءة أو بدء العملية بموافقة العميل.",
+      summary_en: "Regulates Open Banking API permissions, limited to read access or customer-consented initiation.",
+    },
   ];
-  return circulars.map(([number, title, status, rules], i) => ({
+  return circulars.map((c, i) => ({
     id: `CIRC-LOCAL-${i}`,
-    circular_number: number,
-    title,
-    issued_date: new Date(Date.now() - i * 20 * 86400000).toISOString(),
-    parsing_status: status,
-    rules_generated: rules,
+    circular_number: c.number,
+    title: c.title,
+    issued_date: c.issued_date,
+    parsing_status: c.status,
+    rules_generated: c.rules,
     affected_institutions: 6 + i,
+    summary_ar: c.summary_ar,
+    summary_en: c.summary_en,
   }));
 }
 
@@ -1063,15 +1136,28 @@ function TransactionRow({ tx, lang, t }) {
         </p>
         {tx.violation_category && (
           <span
-            className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+            className="inline-block mt-1 rtl:ml-1 ltr:mr-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
             style={{ color: "var(--orchid)", backgroundColor: "rgba(228,160,255,0.1)" }}
           >
             {localize(tx.violation_category, lang)}
           </span>
         )}
+        {tx.circular_number && (
+          <span
+            className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+            style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}
+          >
+            {tx.circular_number}
+          </span>
+        )}
         {tx.decision_basis && (
           <p className="text-[10px] text-white/30 mt-1 leading-relaxed">
             {t.level.basisPrefix} {localize(tx.decision_basis, lang)}
+          </p>
+        )}
+        {tx.ai_risk_score != null && (
+          <p className="text-[10px] text-white/30 mt-0.5">
+            {t.level.riskScorePrefix} <span className="font-bold text-white/50">{Math.round(tx.ai_risk_score * 100)}%</span>
           </p>
         )}
         {tx.reviewer_required && (
@@ -1280,10 +1366,11 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
   );
 }
 
-function MonitorTab({ transactions, filterStatus, setFilterStatus, searchQuery, setSearchQuery, loading, lang, t }) {
+function MonitorTab({ transactions, filterStatus, setFilterStatus, filterCategory, setFilterCategory, searchQuery, setSearchQuery, loading, lang, t }) {
   const filtered = useMemo(() => {
     let list = transactions;
     if (filterStatus !== "all") list = list.filter((tx) => tx.status === filterStatus);
+    if (filterCategory !== "all") list = list.filter((tx) => tx.violation_category === filterCategory);
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       list = list.filter(
@@ -1295,7 +1382,34 @@ function MonitorTab({ transactions, filterStatus, setFilterStatus, searchQuery, 
       );
     }
     return list;
-  }, [transactions, filterStatus, searchQuery, lang]);
+  }, [transactions, filterStatus, filterCategory, searchQuery, lang]);
+
+  const categoriesPresent = useMemo(() => {
+    const set = new Set(transactions.map((tx) => tx.violation_category).filter(Boolean));
+    return Array.from(set);
+  }, [transactions]);
+
+  const handleExport = () => {
+    exportToExcel({
+      rows: filtered,
+      sheetTitle: lang === "en" ? "Meyar — Live Monitor Export" : "معيار — تصدير المراقبة اللحظية",
+      fileName: `meyar-monitor-${new Date().toISOString().slice(0, 10)}`,
+      columns: [
+        { header: lang === "en" ? "Transaction ID" : "رقم المعاملة", value: (r) => r.id, width: 16 },
+        { header: lang === "en" ? "Timestamp" : "الوقت", value: (r) => r.timestamp, width: 22 },
+        { header: lang === "en" ? "Institution" : "المؤسسة", value: (r) => localize(r.institution, lang), width: 24 },
+        { header: lang === "en" ? "Amount (SAR)" : "المبلغ (ر.س)", value: (r) => r.amount_sar, width: 14 },
+        { header: lang === "en" ? "Status" : "الحالة", value: (r) => t.status[r.status], width: 14 },
+        { header: lang === "en" ? "Level" : "المستوى", value: (r) => (r.action_level ? t.level[r.action_level] : ""), width: 26 },
+        { header: lang === "en" ? "Violation Category" : "نوع المخالفة", value: (r) => (r.violation_category ? localize(r.violation_category, lang) : ""), width: 24 },
+        { header: lang === "en" ? "Reason" : "السبب", value: (r) => localize(r.legal_reason, lang), width: 46 },
+        { header: lang === "en" ? "Related Circular" : "التعميم المرتبط", value: (r) => r.circular_number || "", width: 16 },
+        { header: lang === "en" ? "AI Risk Score" : "درجة المخاطرة (الموديل)", value: (r) => (r.ai_risk_score != null ? r.ai_risk_score : ""), width: 16 },
+        { header: lang === "en" ? "Reviewer Required" : "المراجع المطلوب", value: (r) => (r.reviewer_required ? localize(r.reviewer_required, lang) : ""), width: 20 },
+        { header: lang === "en" ? "Customer Ref" : "مرجع العميل", value: (r) => r.customer_ref, width: 16 },
+      ],
+    });
+  };
 
   const counts = useMemo(
     () => ({
@@ -1332,15 +1446,25 @@ function MonitorTab({ transactions, filterStatus, setFilterStatus, searchQuery, 
           <p className="text-[11px] text-white/40 mt-1">{t.monitor.description}</p>
         </div>
 
-        <div className="relative w-full md:w-64">
-          <Search size={14} className="absolute rtl:right-3 ltr:left-3 top-1/2 -translate-y-1/2 text-white/35" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.monitor.searchPlaceholder}
-            className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2 rtl:pr-9 rtl:pl-3 ltr:pl-9 ltr:pr-3 text-xs text-white placeholder:text-white/30 outline-none transition-colors focus:border-[var(--orchid)]/40"
-          />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative w-full md:w-56">
+            <Search size={14} className="absolute rtl:right-3 ltr:left-3 top-1/2 -translate-y-1/2 text-white/35" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t.monitor.searchPlaceholder}
+              className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2 rtl:pr-9 rtl:pl-3 ltr:pl-9 ltr:pr-3 text-xs text-white placeholder:text-white/30 outline-none transition-colors focus:border-[var(--orchid)]/40"
+            />
+          </div>
+          <button
+            onClick={handleExport}
+            title={t.monitor.exportExcel}
+            className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border transition-colors"
+            style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
+          >
+            <Download size={15} />
+          </button>
         </div>
       </div>
 
@@ -1358,6 +1482,24 @@ function MonitorTab({ transactions, filterStatus, setFilterStatus, searchQuery, 
             </button>
           );
         })}
+
+        {categoriesPresent.length > 0 && (
+          <div className="relative flex items-center gap-1.5 rtl:mr-2 ltr:ml-2">
+            <Filter size={12} className="text-white/30" />
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="bg-white/[0.03] border border-white/10 rounded-lg text-[11px] font-bold text-white/70 px-2 py-1.5 outline-none focus:border-[var(--orchid)]/40 appearance-none cursor-pointer"
+            >
+              <option value="all" className="bg-[#150c22]">{t.monitor.allCategories}</option>
+              {categoriesPresent.map((cat) => (
+                <option key={cat} value={cat} className="bg-[#150c22]">
+                  {localize(cat, lang)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="p-4 space-y-2 max-h-[560px] overflow-y-auto">
@@ -1504,15 +1646,20 @@ function RegulatoryTab({ regulatory, lang, t }) {
         <p className="text-[11px] text-white/40">{t.regulatory.description}</p>
       </div>
 
+      <div
+        className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2 animate-fade-up"
+        style={{ backgroundColor: "rgba(232,196,104,0.06)", border: "1px solid rgba(232,196,104,0.2)", color: "rgba(255,255,255,0.55)" }}
+      >
+        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--gold)" }} />
+        {t.regulatory.disclaimer}
+      </div>
+
       <div className="space-y-3">
         {regulatory.map((item, i) => {
           const cfg = PARSING_META[item.parsing_status];
           const circularLabel = localize(item.circular_number, lang);
           const titleLabel = localize(item.title, lang);
-          const summary =
-            item.parsing_status === "queued"
-              ? t.regulatory.summaryQueued(circularLabel)
-              : t.regulatory.summaryCompleted(circularLabel, item.rules_generated);
+          const summary = lang === "en" ? item.summary_en || item.summary_ar : item.summary_ar;
 
           return (
             <div
@@ -1526,8 +1673,13 @@ function RegulatoryTab({ regulatory, lang, t }) {
                     <FileText size={17} style={{ color: "var(--orchid)" }} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">
+                    <p className="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
                       {circularLabel} <span className="text-white/40 font-medium">— {titleLabel}</span>
+                      {item.issued_date && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-white/40 bg-white/[0.04] border border-white/10">
+                          {t.regulatory.issuedOn} {item.issued_date}
+                        </span>
+                      )}
                     </p>
                     <p className="text-[11px] text-white/40 mt-1 leading-relaxed max-w-2xl">{summary}</p>
                   </div>
@@ -1579,14 +1731,42 @@ function MiniStat({ icon: Icon, label, value, color }) {
 }
 
 function ReviewQueueTab({ reviewQueue, stats, onDecide, lang, t }) {
+  const handleExport = () => {
+    exportToExcel({
+      rows: reviewQueue,
+      sheetTitle: lang === "en" ? "Meyar — Review Queue Export" : "معيار — تصدير قائمة المراجعة",
+      fileName: `meyar-review-queue-${new Date().toISOString().slice(0, 10)}`,
+      columns: [
+        { header: lang === "en" ? "Transaction ID" : "رقم المعاملة", value: (r) => r.id, width: 16 },
+        { header: lang === "en" ? "Institution" : "المؤسسة", value: (r) => localize(r.institution, lang), width: 24 },
+        { header: lang === "en" ? "Amount (SAR)" : "المبلغ (ر.س)", value: (r) => r.amount_sar, width: 14 },
+        { header: lang === "en" ? "Violation Category" : "نوع المخالفة", value: (r) => (r.violation_category ? localize(r.violation_category, lang) : ""), width: 24 },
+        { header: lang === "en" ? "Reason" : "السبب", value: (r) => localize(r.legal_reason, lang), width: 46 },
+        { header: lang === "en" ? "Related Circular" : "التعميم المرتبط", value: (r) => r.circular_number || "", width: 16 },
+        { header: lang === "en" ? "AI Risk Score" : "درجة المخاطرة", value: (r) => (r.ai_risk_score != null ? r.ai_risk_score : ""), width: 14 },
+        { header: lang === "en" ? "Required Reviewer" : "المراجع المطلوب", value: (r) => localize(r.reviewer_required, lang), width: 20 },
+      ],
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <ClipboardList size={16} style={{ color: "var(--gold)" }} />
-          {t.reviewQueue.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.reviewQueue.subtitle}</p>
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+            <ClipboardList size={16} style={{ color: "var(--gold)" }} />
+            {t.reviewQueue.title}
+          </h3>
+          <p className="text-[11px] text-white/40">{t.reviewQueue.subtitle}</p>
+        </div>
+        <button
+          onClick={handleExport}
+          title={t.monitor.exportExcel}
+          className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border transition-colors"
+          style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
+        >
+          <Download size={15} />
+        </button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1652,14 +1832,46 @@ const AUDIT_DECISION_META = {
 };
 
 function AuditTrailTab({ auditLog, lang, t }) {
+  const handleExport = () => {
+    exportToExcel({
+      rows: auditLog,
+      sheetTitle: lang === "en" ? "Meyar — Audit Trail Export" : "معيار — تصدير سجل التدقيق",
+      fileName: `meyar-audit-trail-${new Date().toISOString().slice(0, 10)}`,
+      columns: [
+        { header: lang === "en" ? "Audit ID" : "رقم السجل", value: (r) => r.id, width: 14 },
+        { header: lang === "en" ? "Timestamp" : "الوقت", value: (r) => r.timestamp, width: 22 },
+        { header: lang === "en" ? "Transaction ID" : "رقم المعاملة", value: (r) => r.transaction_id, width: 16 },
+        { header: lang === "en" ? "Level" : "المستوى", value: (r) => (r.level === "auto_block" ? t.auditTrail.autoLabel : t.auditTrail.humanLabel), width: 12 },
+        { header: lang === "en" ? "Decision" : "القرار", value: (r) => t.auditTrail.decisionLabels[r.decision] || r.decision, width: 16 },
+        { header: lang === "en" ? "Violation Category" : "نوع المخالفة", value: (r) => (r.violation_category ? localize(r.violation_category, lang) : ""), width: 24 },
+        { header: lang === "en" ? "Related Circular" : "التعميم المرتبط", value: (r) => r.circular_number || "", width: 16 },
+        { header: lang === "en" ? "Reason" : "السبب", value: (r) => localize(r.reason, lang), width: 46 },
+        { header: lang === "en" ? "Institution" : "المؤسسة", value: (r) => localize(r.institution, lang), width: 24 },
+        { header: lang === "en" ? "Amount (SAR)" : "المبلغ (ر.س)", value: (r) => r.amount_sar, width: 14 },
+        { header: lang === "en" ? "Actor" : "الجهة", value: (r) => localize(r.actor, lang), width: 20 },
+        { header: lang === "en" ? "Note" : "ملاحظة", value: (r) => r.note || "", width: 30 },
+      ],
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <History size={16} style={{ color: "var(--lavender)" }} />
-          {t.auditTrail.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.auditTrail.subtitle}</p>
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+            <History size={16} style={{ color: "var(--lavender)" }} />
+            {t.auditTrail.title}
+          </h3>
+          <p className="text-[11px] text-white/40">{t.auditTrail.subtitle}</p>
+        </div>
+        <button
+          onClick={handleExport}
+          title={t.monitor.exportExcel}
+          className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border transition-colors"
+          style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
+        >
+          <Download size={15} />
+        </button>
       </div>
 
       <div className="space-y-2">
@@ -1690,6 +1902,26 @@ function AuditTrailTab({ auditLog, lang, t }) {
                   </span>
                 </div>
                 <p className="text-xs text-white/60 leading-relaxed">{localize(e.reason, lang)}</p>
+                {(e.violation_category || e.circular_number) && (
+                  <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                    {e.violation_category && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                        style={{ color: "var(--orchid)", backgroundColor: "rgba(228,160,255,0.1)" }}
+                      >
+                        {localize(e.violation_category, lang)}
+                      </span>
+                    )}
+                    {e.circular_number && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                        style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}
+                      >
+                        {e.circular_number}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <p className="text-[10px] text-white/35 mt-1">
                   {localize(e.institution, lang)} · {currencyFmt(e.amount_sar, lang)} ·{" "}
                   <span className="text-white/50">{localize(e.actor, lang)}</span>
@@ -2340,6 +2572,7 @@ export default function MeyarDashboard() {
   const [online, setOnline] = useState(true);
 
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const txCounter = useRef(0);
@@ -2564,6 +2797,8 @@ export default function MeyarDashboard() {
               transactions={transactions}
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
+              filterCategory={filterCategory}
+              setFilterCategory={setFilterCategory}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               loading={loading}
