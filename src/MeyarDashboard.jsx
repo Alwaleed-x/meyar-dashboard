@@ -535,6 +535,14 @@ const AR_EN_DICTIONARY = {
   "نمط سلوكي مرجّح إحصائياً — ليس دليلاً قاطعاً": "Statistically likely behavioral pattern — not conclusive proof",
   "مطابقة قواعد صريحة معلنة": "Matches explicitly published rules",
 
+  // Violation categories
+  "تجاوز الحدود المسموحة": "Limit exceeded",
+  "جهة أو حساب غير موثوق": "Untrusted entity/account",
+  "نقص بيانات العميل (KYC)": "Missing KYC data",
+  "اشتباه غسل أموال": "AML suspicion",
+  "شبهة شرعية": "Sharia concern",
+  "نمط سلوكي غير معتاد": "Unusual behavioral pattern",
+
   // Reviewer roles
   "موظف الامتثال": "Compliance Officer",
   "الهيئة الشرعية": "Sharia Board",
@@ -667,19 +675,21 @@ const FALLBACK_INSTITUTIONS = [
 // consistent (same wording, same accountability model) whether the AI core
 // is reachable or the UI has fallen back to local generation.
 const FALLBACK_LEVEL1_RULES = [
-  { reason: "تجاوز حدود الرخصة الممنوحة - المادة ٤", basis: "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد" },
-  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد" },
-  { reason: "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد" },
-  { reason: "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية", basis: "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد" },
-  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد" },
+  { reason: "تجاوز حدود الرخصة الممنوحة - المادة ٤", basis: "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد", category: "تجاوز الحدود المسموحة" },
+  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد", category: "جهة أو حساب غير موثوق" },
+  { reason: "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد", category: "تجاوز الحدود المسموحة" },
+  { reason: "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية", basis: "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد", category: "جهة أو حساب غير موثوق" },
+  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد", category: "نقص بيانات العميل (KYC)" },
 ];
 
 const FALLBACK_LEVEL2_RULES = [
-  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال" },
-  { reason: "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة", basis: "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة", reviewer: "موظف الامتثال" },
-  { reason: "أول معاملة من هذا النوع لهذا الحساب", basis: "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً", reviewer: "موظف الامتثال" },
-  { reason: "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً", basis: "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها", reviewer: "الهيئة الشرعية" },
+  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال", category: "اشتباه غسل أموال" },
+  { reason: "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة", basis: "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد" },
+  { reason: "أول معاملة من هذا النوع لهذا الحساب", basis: "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد" },
+  { reason: "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً", basis: "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها", reviewer: "الهيئة الشرعية", category: "شبهة شرعية" },
 ];
+
+const VIOLATION_CATEGORIES = ["تجاوز الحدود المسموحة", "جهة أو حساب غير موثوق", "نقص بيانات العميل (KYC)", "اشتباه غسل أموال", "شبهة شرعية", "نمط سلوكي غير معتاد"];
 
 const FALLBACK_PASSED_REASONS = ["مطابقة كاملة لأنظمة مؤسسة النقد - لا مخالفات", "ضمن السقف المصرح به وفق ترخيص العميل"];
 
@@ -696,14 +706,14 @@ function makeFallbackTransaction(i) {
 
   if (roll < 0.08) {
     const rule = FALLBACK_LEVEL1_RULES[Math.floor(Math.random() * FALLBACK_LEVEL1_RULES.length)];
-    return { ...base, status: "blocked", action_level: "auto_block", certainty: "rule_based", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: null };
+    return { ...base, status: "blocked", action_level: "auto_block", certainty: "rule_based", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: null, violation_category: rule.category };
   }
   if (roll < 0.22) {
     const rule = FALLBACK_LEVEL2_RULES[Math.floor(Math.random() * FALLBACK_LEVEL2_RULES.length)];
-    return { ...base, status: "flagged", action_level: "pending_review", certainty: "ai_assessed", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: rule.reviewer };
+    return { ...base, status: "flagged", action_level: "pending_review", certainty: "ai_assessed", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: rule.reviewer, violation_category: rule.category };
   }
   const reason = FALLBACK_PASSED_REASONS[Math.floor(Math.random() * FALLBACK_PASSED_REASONS.length)];
-  return { ...base, status: "passed", action_level: "no_action", certainty: "rule_based", legal_reason: reason, decision_basis: "مطابقة قواعد صريحة معلنة", reviewer_required: null };
+  return { ...base, status: "passed", action_level: "no_action", certainty: "rule_based", legal_reason: reason, decision_basis: "مطابقة قواعد صريحة معلنة", reviewer_required: null, violation_category: null };
 }
 
 const FALLBACK_COST_METHODOLOGY_AR =
@@ -1051,6 +1061,14 @@ function TransactionRow({ tx, lang, t }) {
         >
           {localize(tx.legal_reason, lang)}
         </p>
+        {tx.violation_category && (
+          <span
+            className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+            style={{ color: "var(--orchid)", backgroundColor: "rgba(228,160,255,0.1)" }}
+          >
+            {localize(tx.violation_category, lang)}
+          </span>
+        )}
         {tx.decision_basis && (
           <p className="text-[10px] text-white/30 mt-1 leading-relaxed">
             {t.level.basisPrefix} {localize(tx.decision_basis, lang)}
@@ -2327,9 +2345,21 @@ export default function MeyarDashboard() {
   const txCounter = useRef(0);
 
   const fetchJSON = useCallback(async (path) => {
-    const res = await fetch(`${API_BASE}${path}`);
-    if (!res.ok) throw new Error(`Request failed: ${path}`);
-    return res.json();
+    // A free-tier backend (e.g. Render) can take 30-60s to wake from sleep.
+    // Without a timeout, the UI would wait indefinitely instead of falling
+    // back to local data — this directly contradicts the app's own design
+    // goal of never appearing stuck or broken. 8s is generous for a warm
+    // backend but short enough that a sleeping one triggers the fallback
+    // quickly; loadAll() retries automatically a few seconds later anyway.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`Request failed: ${path}`);
+      return await res.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }, []);
 
   const loadAll = useCallback(async () => {
