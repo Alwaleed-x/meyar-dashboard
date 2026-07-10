@@ -1,2562 +1,1149 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AreaChart,
-  Area,
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-import {
-  ShieldCheck,
-  Activity,
-  AlertTriangle,
-  XCircle,
-  CheckCircle2,
-  Search,
-  LayoutDashboard,
-  Radio,
-  FileText,
-  Settings,
-  Menu,
-  Zap,
-  Wallet,
-  BarChart3,
-  Wifi,
-  WifiOff,
-  ChevronLeft,
-  ScanLine,
-  Landmark,
-  Sparkles,
-  RefreshCw,
-  ArrowUpRight,
-  ArrowDownRight,
-  Bell,
-  CircleDot,
-  Globe,
-  Gem,
-  Info,
-  X,
-  Send,
-  MessageCircle,
-  ShieldAlert,
-  UserCheck,
-  Scale,
-  BadgeCheck,
-  BookOpenCheck,
-  ClipboardList,
-  History,
-  ThumbsUp,
-  ThumbsDown,
-} from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// API config
-// ---------------------------------------------------------------------------
-
-// In local dev, "/api" is handled by Vite's proxy (see vite.config.js) to
-// localhost:8000. In production, the frontend and backend are typically
-// hosted separately (e.g. Vercel + Render), so VITE_API_BASE must be set at
-// build time to the deployed backend's full URL, e.g.
-// VITE_API_BASE=https://meyar-backend.onrender.com/api
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
-
-// ---------------------------------------------------------------------------
-// i18n — UI strings
-// ---------------------------------------------------------------------------
-
-const STR = {
-  ar: {
-    dir: "rtl",
-    fontFamily: "'Cairo', 'Segoe UI', sans-serif",
-    appName: "معيار",
-    appSubtitle: "نظام المُشرّع الذكي",
-    nav: {
-      overview: "نظرة عامة",
-      monitor: "المراقبة اللحظية",
-      review: "قائمة المراجعة",
-      audit: "سجل التدقيق",
-      analytics: "التحليلات",
-      regulatory: "محرك التشريعات",
-      limits: "الحدود والمسؤولية",
-      settings: "الإعدادات",
-      collapse: "طي القائمة",
-    },
-    banner: {
-      connected: "متصل بمحرك الذكاء الاصطناعي",
-      disconnected: "انقطاع الاتصال بالمحرك",
-      syncing: "جارٍ المزامنة...",
-      lastSync: "آخر مزامنة",
-      systemStatusFallback: "المنظومة آمنة - الرقابة الذاتية نشطة",
-    },
-    kpi: {
-      complianceScore: "مؤشر الالتزام الكلي",
-      vsLastWeek: "مقارنة بالأسبوع الماضي",
-      monitoredVolume: "إجمالي الحجم المُراقب",
-      txToday: "معاملة اليوم",
-      blockedViolations: "المخالفات المحظورة لحظياً",
-      blockedDrop: "انخفاض في محاولات المخالفة",
-      savedPenalties: "قيمة الغرامات المُوفّرة",
-      costReduction: "خفض في تكاليف الامتثال",
-    },
-    status: { passed: "مطابقة", flagged: "قيد المراجعة", blocked: "محظورة" },
-    level: {
-      auto_block: "مستوى ١ — منع آلي (قاعدة قطعية)",
-      pending_review: "مستوى ٢ — تعليق ومراجعة بشرية",
-      no_action: "لا يتطلب إجراءً",
-      reviewerPrefix: "الجهة المختصة بالمراجعة:",
-      basisPrefix: "أساس القرار:",
-    },
-    costTooltip: {
-      label: "كيف نحسب هذه النسبة؟",
-    },
-    notifications: {
-      title: "آخر التنبيهات",
-      empty: "لا توجد تنبيهات جديدة",
-      viewAll: "عرض الكل في المراقبة اللحظية",
-    },
-    settingsModal: {
-      title: "عن النظام",
-      version: "الإصدار",
-      description: "نظام معيار يطبّق نموذج المنع المتدرج على مستويين، ويوثّق حدوده ومسؤولياته بشكل صريح.",
-      goToLimits: "عرض تفاصيل الحدود والمسؤولية",
-      close: "إغلاق",
-    },
-    limits: {
-      title: "الحدود والمسؤولية",
-      subtitle: "بشفافية كاملة: هذا ما يفعله النظام، وهذا ما لا يفعله، ومن المسؤول في كل حالة",
-      sections: [
-        {
-          icon: "shield",
-          title: "١. لسنا ندّعي دقة ١٠٠٪",
-          body:
-            "النصوص القانونية والتنظيمية فيها استثناءات وسياق. لهذا صمّمنا النظام على افتراض أنه قد يخطئ، ونحصر قراراته الآلية النهائية في الحالات القطعية فقط (المستوى ١)، ونحوّل كل حالة فيها اجتهاد إلى مراجعة بشرية (المستوى ٢) بدل اتخاذ قرار نهائي آلي.",
-        },
-        {
-          icon: "scale",
-          title: "٢. من يتحمل المسؤولية؟",
-          body:
-            "في المستوى ١: النظام ينفّذ آلياً استناداً إلى قاعدة رقمية موثّقة ومعلنة مسبقاً (تجاوز سقف، جهة غير مرخصة، قائمة حظر رسمية) — المسؤولية على دقة تعريف القاعدة نفسها. في المستوى ٢: القرار النهائي دائماً بشري (موظف امتثال أو الهيئة الشرعية)، والنظام لا يُنسب له اتخاذ القرار بل التنبيه والتوثيق فقط.",
-        },
-        {
-          icon: "book",
-          title: "٣. حدود صلاحيات الخدمات المصرفية المفتوحة",
-          body:
-            "الوصول عبر Open Banking يمنح عادة صلاحية «قراءة» أو «بدء عملية بموافقة العميل»، وليس صلاحية إيقاف داخل الأنظمة المصرفية الأساسية (Core Banking). أي «منع» فعلي في نظام معيار محكوم تماماً بحدود اتفاقية التكامل الموقّعة مع كل مؤسسة، وليس افتراضاً عاماً.",
-        },
-        {
-          icon: "user",
-          title: "٤. الرقابة الشرعية اجتهاد بشري لا آلي",
-          body:
-            "تحديد «شبهة مخالفة شرعية» فيه اجتهاد قد يختلف بين الهيئات الشرعية نفسها. النظام لا يقرر هذا أبداً بمفرده؛ أقصى ما يفعله هو تعليق العملية وتنبيه الهيئة الشرعية المختصة لاتخاذ القرار.",
-        },
-        {
-          icon: "badge",
-          title: "٥. منهجية رقم خفض التكاليف",
-          body:
-            "النسبة محسوبة كـ (١ − ساعات المراجعة بعد الأتمتة ÷ ساعات المراجعة قبل الأتمتة) × ١٠٠، بافتراض ١٢٠٠ ساعة مراجعة يدوية شهرياً قبل النظام مقابل ٣٦٠ ساعة متبقية بعد الأتمتة (مراجعة حالات المستوى ٢ فقط). هذا تقدير تشغيلي قابل للمراجعة والتدقيق، وليس رقماً تسويقياً بلا مصدر.",
-        },
-      ],
-    },
-    chatbot: {
-      fabLabel: "اسأل عن الأنظمة",
-      title: "مساعد التشريعات",
-      subtitle: "إجابات من قاعدة معرفة تعاميم ساما المحمّلة بالنظام فقط",
-      disclaimer:
-        "الإجابات مبنية حصراً على قاعدة معرفة محلية مبسّطة لأغراض العرض التجريبي، وليست نصوصاً رسمية حرفية من ساما ولا استشارة قانونية أو شرعية معتمدة.",
-      placeholder: "اسأل عن تعميم أو نظام معيّن...",
-      send: "إرسال",
-      thinking: "جارٍ البحث في قاعدة المعرفة...",
-      sourcesLabel: "المصادر:",
-      suggestedLabel: "أسئلة مقترحة",
-      noMatch:
-        "لا تتوفر إجابة موثوقة لهذا السؤال ضمن قاعدة المعرفة الحالية. للمصدر الرسمي يُرجى مراجعة sama.gov.sa مباشرة.",
-      confidence: { high: "تطابق قوي", medium: "تطابق جزئي", none: "غير موجود" },
-    },
-    reviewQueue: {
-      title: "قائمة المراجعة",
-      subtitle: "معاملات المستوى ٢ المعلَّقة — بانتظار قرار بشري نهائي",
-      empty: "لا توجد معاملات معلَّقة حالياً 🎉",
-      pending: "معلَّقة",
-      approvedToday: "موافقة اليوم",
-      rejectedToday: "مرفوضة اليوم",
-      approvalRate: "نسبة الموافقة",
-      approve: "موافقة",
-      reject: "رفض",
-      reviewerLabel: "المراجع:",
-      defaultReviewer: "موظف الامتثال (تجريبي)",
-      decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
-    },
-    auditTrail: {
-      title: "سجل التدقيق",
-      subtitle: "كل قرار اتخذه النظام أو موظف بشري — موثّق بالوقت والسبب والجهة",
-      empty: "لا توجد قرارات مسجّلة بعد",
-      autoLabel: "آلي",
-      humanLabel: "بشري",
-      decisionLabels: { blocked: "محظورة", approved: "موافَق عليها", rejected: "مرفوضة" },
-    },
-    guardian: {
-      title: "الحارس الرقمي — الحالة اللحظية",
-      description:
-        "كل معاملة تُحلَّل لحظياً: القواعد القطعية (مستوى ١) تُنفَّذ آلياً، وأي حالة اجتهادية (مستوى ٢) تُعلَّق وتُحال فوراً لمراجعة بشرية.",
-      cta: "فتح المراقبة اللحظية",
-    },
-    trendCard: {
-      title: "اتجاه الالتزام الشهري مقابل خفض التكاليف التشغيلية",
-      subtitle: (pct) => `خفض فعلي بنسبة ${pct}% في التكاليف التشغيلية للامتثال`,
-    },
-    monitor: {
-      title: "راصد القرار اللحظي",
-      live: "مباشر",
-      description: "تدفق حي للمعاملات: منع آلي فوري للقواعد القطعية (مستوى ١)، وتعليق مع تحديد المراجع البشري للحالات الاجتهادية (مستوى ٢)",
-      searchPlaceholder: "ابحث بالمؤسسة أو رقم العملية...",
-      loading: "جارٍ الاتصال بمحرك المراقبة...",
-      empty: "لا توجد معاملات مطابقة لبحثك",
-      filters: { all: "الكل", passed: "مطابقة", flagged: "قيد المراجعة", blocked: "محظورة" },
-    },
-    analytics: {
-      trendTitle: (pct) => `الاتجاه السنوي للالتزام مقابل خفض التكاليف التشغيلية بنسبة ${pct}%`,
-      actual: "الالتزام الفعلي",
-      target: "الهدف",
-      cost: "خفض التكاليف",
-      avgCompliance: "متوسط الالتزام السنوي",
-      maxCostCut: "أعلى خفض شهري للتكاليف",
-      totalScanned: "إجمالي المعاملات الممسوحة اليوم",
-    },
-    regulatory: {
-      title: "محرك تحويل التشريعات إلى قواعد برمجية",
-      description:
-        "يقوم الذكاء الاصطناعي بقراءة تعاميم مؤسسة النقد العربي السعودي (ساما) وتحويل ما هو قطعي منها إلى قواعد تنفيذية آلية (مستوى ١)، وما هو اجتهادي إلى مسارات تنبيه ومراجعة بشرية (مستوى ٢)",
-      rulesGenerated: "القواعد المولّدة",
-      affectedInstitutions: "المؤسسات المتأثرة",
-      parsing: {
-        completed: "تم التحويل إلى قاعدة برمجية",
-        in_progress: "قيد التحويل الآلي",
-        queued: "في طابور المعالجة",
-      },
-      summaryCompleted: (n, rules) => `تم تحليل نص ${n} وتحويل بنوده إلى ${rules} قاعدة برمجية قابلة للتنفيذ اللحظي.`,
-      summaryQueued: (n) => `${n} في طابور المعالجة بانتظار استخلاص النص القانوني وتحويله إلى قواعد.`,
-    },
-    chart: {
-      month: "الشهر",
-      tooltipCurrency: "ر.س",
-    },
-    currencySuffix: "ر.س",
-    footer: (year) =>
-      `معيار — نظام المُشرّع الذكي © ${year} — جميع المعاملات تخضع للرقابة اللحظية عبر الخدمات المصرفية المفتوحة`,
-    langToggleLabel: "EN",
-  },
-  en: {
-    dir: "ltr",
-    fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
-    appName: "Meyar",
-    appSubtitle: "Intelligent Regulator System",
-    nav: {
-      overview: "Overview",
-      monitor: "Live Monitor",
-      review: "Review queue",
-      audit: "Audit trail",
-      analytics: "Analytics",
-      regulatory: "Regulatory Engine",
-      limits: "Limits & Liability",
-      settings: "Settings",
-      collapse: "Collapse menu",
-    },
-    banner: {
-      connected: "Connected to AI core engine",
-      disconnected: "Core engine disconnected",
-      syncing: "Syncing...",
-      lastSync: "Last sync",
-      systemStatusFallback: "System secure — autonomous oversight active",
-    },
-    kpi: {
-      complianceScore: "Overall Compliance Score",
-      vsLastWeek: "vs. last week",
-      monitoredVolume: "Total Monitored Volume",
-      txToday: "transactions today",
-      blockedViolations: "Instantly Blocked Infractions",
-      blockedDrop: "drop in violation attempts",
-      savedPenalties: "Saved Penalties Value",
-      costReduction: "reduction in compliance costs",
-    },
-    status: { passed: "Passed", flagged: "Under Review", blocked: "Blocked" },
-    level: {
-      auto_block: "Level 1 — Automatic Block (definitive rule)",
-      pending_review: "Level 2 — Suspended, Human Review",
-      no_action: "No action required",
-      reviewerPrefix: "Required reviewer:",
-      basisPrefix: "Decision basis:",
-    },
-    costTooltip: {
-      label: "How is this % calculated?",
-    },
-    notifications: {
-      title: "Latest Alerts",
-      empty: "No new alerts",
-      viewAll: "View all in Live Monitor",
-    },
-    settingsModal: {
-      title: "About This System",
-      version: "Version",
-      description: "Meyar implements a two-tier prevention model and openly documents its limits and lines of accountability.",
-      goToLimits: "View Limits & Liability details",
-      close: "Close",
-    },
-    limits: {
-      title: "Limits & Liability",
-      subtitle: "Full transparency: what the system does, what it doesn't, and who is accountable in each case",
-      sections: [
-        {
-          icon: "shield",
-          title: "1. We don't claim 100% accuracy",
-          body:
-            "Legal and regulatory text contains exceptions and context. That's why the system assumes it can be wrong: final automatic decisions are limited strictly to definitive cases (Level 1), while every interpretive case is routed to human review (Level 2) instead of an automatic final ruling.",
-        },
-        {
-          icon: "scale",
-          title: "2. Who is accountable?",
-          body:
-            "Level 1: the system executes automatically against a pre-documented numeric rule (limit exceeded, unlicensed entity, official blacklist) — accountability centers on the accuracy of the rule's own definition. Level 2: the final decision is always human (a compliance officer or the Sharia board); the system is never credited with the decision, only the alert and the audit trail.",
-        },
-        {
-          icon: "book",
-          title: "3. Open Banking permission boundaries",
-          body:
-            "Open Banking access typically grants 'read' or 'consented initiation' rights, not the ability to stop a transaction inside a bank's Core Banking system. Any actual 'block' in Meyar is strictly bounded by the signed integration agreement with each institution, never a general assumption.",
-        },
-        {
-          icon: "user",
-          title: "4. Sharia review is human judgment, not automated",
-          body:
-            "Determining a 'Sharia compliance concern' involves juristic reasoning that can differ between Sharia boards themselves. The system never rules on this alone; at most it suspends the transaction and alerts the relevant Sharia board to decide.",
-        },
-        {
-          icon: "badge",
-          title: "5. Cost-reduction figure methodology",
-          body:
-            "The percentage is calculated as (1 − post-automation review hours ÷ pre-automation review hours) × 100, assuming 1,200 manual review hours/month before the system vs. 360 hours remaining after automation (Level-2 human review only). This is an auditable operational estimate, not an unsourced marketing figure.",
-        },
-      ],
-    },
-    chatbot: {
-      fabLabel: "Ask about regulations",
-      title: "Regulatory Assistant",
-      subtitle: "Answers sourced only from the loaded SAMA circular knowledge base",
-      disclaimer:
-        "Answers are generated strictly from a simplified local knowledge base for demo purposes — not verbatim official SAMA text, nor certified legal or Sharia advice.",
-      placeholder: "Ask about a circular or regulation...",
-      send: "Send",
-      thinking: "Searching the knowledge base...",
-      sourcesLabel: "Sources:",
-      suggestedLabel: "Suggested questions",
-      noMatch: "No reliable answer is available for this question in the current knowledge base. For the official source, consult sama.gov.sa directly.",
-      confidence: { high: "Strong match", medium: "Partial match", none: "Not found" },
-    },
-    reviewQueue: {
-      title: "Review queue",
-      subtitle: "Pending Level-2 transactions — awaiting a final human decision",
-      empty: "No pending transactions right now 🎉",
-      pending: "Pending",
-      approvedToday: "Approved today",
-      rejectedToday: "Rejected today",
-      approvalRate: "Approval rate",
-      approve: "Approve",
-      reject: "Reject",
-      reviewerLabel: "Reviewer:",
-      defaultReviewer: "Compliance officer (demo)",
-      decidedToast: "Decision recorded and added to the audit trail",
-    },
-    auditTrail: {
-      title: "Audit trail",
-      subtitle: "Every decision made by the system or a human reviewer — logged with time, reason, and actor",
-      empty: "No decisions logged yet",
-      autoLabel: "Automatic",
-      humanLabel: "Human",
-      decisionLabels: { blocked: "Blocked", approved: "Approved", rejected: "Rejected" },
-    },
-    guardian: {
-      title: "Digital Guardian — Live Status",
-      description:
-        "Every transaction is analyzed instantly: definitive rules (Level 1) execute automatically, while any interpretive case (Level 2) is suspended and routed to human review.",
-      cta: "Open Live Monitor",
-    },
-    trendCard: {
-      title: "Monthly Compliance Trend vs. Operational Cost Reduction",
-      subtitle: (pct) => `An actual ${pct}% reduction in operational compliance costs`,
-    },
-    monitor: {
-      title: "Live Decision Monitor",
-      live: "LIVE",
-      description: "A live transaction stream: immediate automatic block for definitive rules (Level 1), suspended with a named human reviewer for interpretive cases (Level 2)",
-      searchPlaceholder: "Search by institution or transaction ID...",
-      loading: "Connecting to the monitoring engine...",
-      empty: "No transactions match your search",
-      filters: { all: "All", passed: "Passed", flagged: "Under Review", blocked: "Blocked" },
-    },
-    analytics: {
-      trendTitle: (pct) => `Annual Compliance Trend vs. ${pct}% Operational Cost Reduction`,
-      actual: "Actual Compliance",
-      target: "Target",
-      cost: "Cost Reduction",
-      avgCompliance: "Average Annual Compliance",
-      maxCostCut: "Highest Monthly Cost Cut",
-      totalScanned: "Total Transactions Scanned Today",
-    },
-    regulatory: {
-      title: "Legislation-to-Code Conversion Engine",
-      description:
-        "The AI engine reads SAMA circulars and converts definitive provisions into automated Level-1 rules, and interpretive ones into Level-2 alert-and-review pathways",
-      rulesGenerated: "Rules Generated",
-      affectedInstitutions: "Affected Institutions",
-      parsing: {
-        completed: "Converted to code rule",
-        in_progress: "Auto-conversion in progress",
-        queued: "Queued for processing",
-      },
-      summaryCompleted: (n, rules) => `${n} was parsed and converted into ${rules} executable code rules running in real time.`,
-      summaryQueued: (n) => `${n} is queued, awaiting legal-text extraction and rule conversion.`,
-    },
-    chart: {
-      month: "Month",
-      tooltipCurrency: "SAR",
-    },
-    currencySuffix: "SAR",
-    footer: (year) =>
-      `Meyar — Intelligent Regulator System © ${year} — All transactions are under live oversight via Open Banking`,
-    langToggleLabel: "AR",
-  },
-};
-
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "limits"];
-const NAV_ICONS = {
-  overview: LayoutDashboard,
-  monitor: Radio,
-  review: ClipboardList,
-  audit: History,
-  analytics: BarChart3,
-  regulatory: FileText,
-  limits: ShieldAlert,
-};
-
-// ---------------------------------------------------------------------------
-// AR → EN content dictionary (translates live backend / fallback data that
-// arrives pre-rendered in Arabic, so the English view is fully localized too)
-// ---------------------------------------------------------------------------
-
-const AR_EN_DICTIONARY = {
-  // Institutions
-  "البنك الأهلي السعودي": "Saudi National Bank",
-  "بنك الرياض": "Riyad Bank",
-  "بنك الرياض المطور": "Riyad Bank Digital",
-  "البنك السعودي الفرنسي": "Banque Saudi Fransi",
-  "بنك ساب": "SAB Bank",
-  "بنك الجزيرة": "Bank Aljazira",
-  "بنك البلاد": "Bank Albilad",
-  "مصرف الإنماء": "Alinma Bank",
-  "بنك الخليج الدولي": "Gulf International Bank",
-  "تطبيق حصلتي": "Hasalti App",
-  "بنك الاستثمار العربي الوطني": "Arab National Investment Bank",
-
-  // Channels
-  "تطبيق الجوال": "Mobile App",
-  "الإنترنت البنكي": "Online Banking",
-  "نقاط البيع": "Point of Sale",
-
-  // Blocked reasons
-  "تجاوز حدود الرخصة الممنوحة - المادة ٤": "Exceeded granted license limits — Article 4",
-  "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢": "Transfer to a SAMA-unlicensed entity — Article 12",
-  "نشاط مشبوه يطابق نمط غسل أموال - المادة ٧": "Suspicious activity matching a money-laundering pattern — Article 7",
-  "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥": "Exceeded customer's daily limit — Circular No. 55",
-  "غياب بيانات المستفيد الفعلي (KYC) - المادة ٩": "Missing beneficial-owner data (KYC) — Article 9",
-  "محاولة تحويل لحساب مدرج على قائمة الحظر": "Attempted transfer to a blacklisted account",
-  "عملية تقع خارج نطاق النشاط التجاري المرخّص": "Transaction outside the licensed business scope",
-  "تكرار غير طبيعي للمعاملات خلال نافذة زمنية قصيرة": "Abnormal transaction frequency within a short time window",
-
-  // Flagged reasons
-  "نمط معاملات يستدعي مراجعة يدوية إضافية": "Transaction pattern requires additional manual review",
-  "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة": "Transaction value significantly above the customer's historical average",
-  "أول معاملة من هذا النوع لهذا الحساب": "First transaction of this type for this account",
-  "تعارض جزئي مع تعميم ساما رقم ١٠٢": "Partial conflict with SAMA Circular No. 102",
-  "بيانات المستفيد تحتاج تحققاً إضافياً": "Beneficiary data requires additional verification",
-
-  // Passed reasons
-  "مطابقة كاملة لأنظمة مؤسسة النقد - لا مخالفات": "Fully compliant with SAMA regulations — no violations",
-  "ضمن السقف المصرح به وفق ترخيص العميل": "Within the authorized limit under the customer's license",
-  "تحقق فوري من هوية المستفيد ونجاح KYC": "Instant beneficiary identity verification — KYC passed",
-  "متوافقة مع تعميم ساما رقم ٩٨ - الخدمات المالية المفتوحة": "Compliant with SAMA Circular No. 98 — Open Banking services",
-
-  // Circulars
-  "تعميم رقم ١٠٢": "Circular No. 102",
-  "تعميم رقم ٩٨": "Circular No. 98",
-  "تعميم رقم ٨٥": "Circular No. 85",
-  "تعميم رقم ٧٧": "Circular No. 77",
-  "تعميم رقم ٦٤": "Circular No. 64",
-  "تعميم رقم ٥٥": "Circular No. 55",
-  "تعميم رقم ٤٩": "Circular No. 49",
-  "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة": "Customer identity verification controls in Open Banking services",
-  "تحديث السقوف اليومية لمعاملات الدفع الفوري": "Update to daily limits for instant payment transactions",
-  "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية": "Beneficial-owner disclosure requirements for commercial accounts",
-  "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي": "Anti-money-laundering controls in digital transfer services",
-  "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)": "Regulation of Open Banking APIs",
-  "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية": "Setting the daily maximum for digital wallet transactions",
-  "متطلبات ترخيص مزودي خدمات الدفع الصغرى": "Licensing requirements for micro-payment service providers",
-
-  // System status
-  "المنظومة آمنة - الرقابة الذاتية نشطة": "System secure — autonomous oversight active",
-  "المنظومة آمنة - الرقابة الذاتية نشطة (المستوى ١ آلي / المستوى ٢ بمراجعة بشرية)":
-    "System secure — autonomous oversight active (Level 1 automated / Level 2 human-reviewed)",
-
-  // Level-1 (blocked) reasons — v3 wording
-  "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية": "Attempted transfer to an officially blacklisted account",
-  "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩": "Missing mandatory KYC field — Article 9",
-
-  // Level-2 (flagged) reasons — v3 wording
-  "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة":
-    "Transaction pattern matches probabilistic AML indicators — requires review",
-  "عملية قد تقع خارج نطاق النشاط التجاري المرخّص": "Transaction may fall outside the licensed business scope",
-  "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً": "Potential Sharia-compliance concern requiring specialist review",
-
-  // Decision-basis strings
-  "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد": "Direct numeric comparison against the registered license limit — no judgment involved",
-  "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد": "Direct match check against SAMA's licensed-entity registry — no judgment involved",
-  "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد": "Cumulative numeric comparison against a published daily limit — no judgment involved",
-  "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد": "Direct match check against an official approved blacklist — no judgment involved",
-  "تحقق اكتمال حقول إلزامية — لا اجتهاد": "Mandatory-field completeness check — no judgment involved",
-  "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً": "Probabilistic assessment (pattern-detection model) — needs a final human decision",
-  "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة": "Statistical deviation from usual behavior — not necessarily a violation",
-  "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً": "Insufficient historical record for comparison — needs human verification",
-  "تصنيف اجتهادي لنوع النشاط — قابل للتفسير": "Interpretive classification of activity type — open to interpretation",
-  "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها": "Sharia-juristic matters vary between boards — the system does not rule on these",
-  "نمط سلوكي مرجّح إحصائياً — ليس دليلاً قاطعاً": "Statistically likely behavioral pattern — not conclusive proof",
-  "مطابقة قواعد صريحة معلنة": "Matches explicitly published rules",
-
-  // Reviewer roles
-  "موظف الامتثال": "Compliance Officer",
-  "الهيئة الشرعية": "Sharia Board",
-
-  // Months
-  يناير: "January",
-  فبراير: "February",
-  مارس: "March",
-  أبريل: "April",
-  مايو: "May",
-  يونيو: "June",
-  يوليو: "July",
-  أغسطس: "August",
-  سبتمبر: "September",
-  أكتوبر: "October",
-  نوفمبر: "November",
-  ديسمبر: "December",
-};
-
-function localize(text, lang) {
-  if (lang !== "en" || !text) return text;
-  return AR_EN_DICTIONARY[text] || text;
-}
-
-// ---------------------------------------------------------------------------
-// Number / date formatting
-// ---------------------------------------------------------------------------
-
-const numberFmt = new Intl.NumberFormat("en-US");
-
-function currencyFmt(n, lang) {
-  return `${numberFmt.format(Math.round(n))} ${STR[lang].currencySuffix}`;
-}
-
-function compactFmt(n, lang) {
-  const units =
-    lang === "en"
-      ? [
-          [1_000_000_000, "B"],
-          [1_000_000, "M"],
-          [1_000, "K"],
-        ]
-      : [
-          [1_000_000_000, "مليار"],
-          [1_000_000, "مليون"],
-          [1_000, "ألف"],
-        ];
-  for (const [threshold, label] of units) {
-    if (n >= threshold) {
-      const val = (n / threshold).toFixed(threshold === 1_000 ? 1 : 2);
-      return lang === "en" ? `${val}${label}` : `${val} ${label}`;
-    }
-  }
-  return numberFmt.format(Math.round(n));
-}
-
-function timeAgo(isoString, lang) {
-  const diffMs = Date.now() - new Date(isoString).getTime();
-  const s = Math.floor(diffMs / 1000);
-  if (lang === "en") {
-    if (s < 5) return "just now";
-    if (s < 60) return `${s}s ago`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    return `${h}h ago`;
-  }
-  if (s < 5) return "الآن";
-  if (s < 60) return `منذ ${s} ثانية`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `منذ ${m} دقيقة`;
-  const h = Math.floor(m / 60);
-  return `منذ ${h} ساعة`;
-}
-
-// ---------------------------------------------------------------------------
-// Status color/style tokens (Aurora & Royal mapping)
-//   passed  -> Lavender Blue (AI security / safe)
-//   flagged -> Champagne Gold (attention)
-//   blocked -> Vivid Coral/Rose (prevention)
-// ---------------------------------------------------------------------------
-
-const STATUS_META = {
-  passed: {
-    text: "text-[var(--lavender)]",
-    bg: "bg-[var(--lavender)]/10",
-    border: "border-[var(--lavender)]/30",
-    dot: "bg-[var(--lavender)]",
-    icon: CheckCircle2,
-  },
-  flagged: {
-    text: "text-[var(--gold)]",
-    bg: "bg-[var(--gold)]/10",
-    border: "border-[var(--gold)]/30",
-    dot: "bg-[var(--gold)]",
-    icon: AlertTriangle,
-  },
-  blocked: {
-    text: "text-[var(--coral)]",
-    bg: "bg-[var(--coral)]/10",
-    border: "border-[var(--coral)]/40",
-    dot: "bg-[var(--coral)]",
-    icon: XCircle,
-  },
-};
-
-// action_level -> visual meta (the "two-tier prevention" surfaced in the UI:
-// Level 1 = definitive rule, safe to auto-block; Level 2 = interpretive,
-// suspended pending a named human reviewer — never a final automatic call).
-const LEVEL_META = {
-  auto_block: { text: "text-[var(--coral)]", bg: "bg-[var(--coral)]/10", border: "border-[var(--coral)]/30", icon: BadgeCheck },
-  pending_review: { text: "text-[var(--gold)]", bg: "bg-[var(--gold)]/10", border: "border-[var(--gold)]/30", icon: UserCheck },
-  no_action: { text: "text-white/35", bg: "bg-white/[0.03]", border: "border-white/10", icon: CheckCircle2 },
-};
-
-// ---------------------------------------------------------------------------
-// Local fallback / seed generators (used if the backend is unreachable)
-// ---------------------------------------------------------------------------
-
-const FALLBACK_INSTITUTIONS = [
-  "البنك الأهلي السعودي",
-  "بنك الرياض",
-  "البنك السعودي الفرنسي",
-  "بنك ساب",
-  "مصرف الإنماء",
-  "STC Pay",
-];
-
-// Two-tier rule catalogue mirrored from the backend so the interface stays
-// consistent (same wording, same accountability model) whether the AI core
-// is reachable or the UI has fallen back to local generation.
-const FALLBACK_LEVEL1_RULES = [
-  { reason: "تجاوز حدود الرخصة الممنوحة - المادة ٤", basis: "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد" },
-  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد" },
-  { reason: "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد" },
-  { reason: "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية", basis: "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد" },
-  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد" },
-];
-
-const FALLBACK_LEVEL2_RULES = [
-  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال" },
-  { reason: "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة", basis: "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة", reviewer: "موظف الامتثال" },
-  { reason: "أول معاملة من هذا النوع لهذا الحساب", basis: "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً", reviewer: "موظف الامتثال" },
-  { reason: "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً", basis: "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها", reviewer: "الهيئة الشرعية" },
-];
-
-const FALLBACK_PASSED_REASONS = ["مطابقة كاملة لأنظمة مؤسسة النقد - لا مخالفات", "ضمن السقف المصرح به وفق ترخيص العميل"];
-
-function makeFallbackTransaction(i) {
-  const roll = Math.random();
-  const base = {
-    id: `TXN-LOCAL-${i}-${Date.now()}`,
-    timestamp: new Date(Date.now() - i * 3000).toISOString(),
-    institution: FALLBACK_INSTITUTIONS[Math.floor(Math.random() * FALLBACK_INSTITUTIONS.length)],
-    amount_sar: Math.round(Math.random() * 400000 + 250),
-    customer_ref: `CUST-${Math.floor(Math.random() * 90000 + 10000)}`,
-    channel: ["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي"][Math.floor(Math.random() * 3)],
-  };
-
-  if (roll < 0.08) {
-    const rule = FALLBACK_LEVEL1_RULES[Math.floor(Math.random() * FALLBACK_LEVEL1_RULES.length)];
-    return { ...base, status: "blocked", action_level: "auto_block", certainty: "rule_based", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: null };
-  }
-  if (roll < 0.22) {
-    const rule = FALLBACK_LEVEL2_RULES[Math.floor(Math.random() * FALLBACK_LEVEL2_RULES.length)];
-    return { ...base, status: "flagged", action_level: "pending_review", certainty: "ai_assessed", legal_reason: rule.reason, decision_basis: rule.basis, reviewer_required: rule.reviewer };
-  }
-  const reason = FALLBACK_PASSED_REASONS[Math.floor(Math.random() * FALLBACK_PASSED_REASONS.length)];
-  return { ...base, status: "passed", action_level: "no_action", certainty: "rule_based", legal_reason: reason, decision_basis: "مطابقة قواعد صريحة معلنة", reviewer_required: null };
-}
-
-const FALLBACK_COST_METHODOLOGY_AR =
-  "النسبة محسوبة كـ (١ − ساعات المراجعة بعد الأتمتة ÷ ساعات المراجعة قبل الأتمتة) × ١٠٠، بافتراض ١٢٠٠ ساعة مراجعة يدوية شهرياً قبل النظام مقابل ٣٦٠ ساعة متبقية بعد الأتمتة (مراجعة حالات المستوى ٢ فقط). هذا تقدير تشغيلي قابل للمراجعة والتدقيق.";
-const FALLBACK_COST_METHODOLOGY_EN =
-  "Calculated as (1 − post-automation review hours ÷ pre-automation review hours) × 100, assuming 1,200 manual review hours/month before the system vs. 360 hours remaining after automation (Level-2 human review only). This is an auditable operational estimate.";
-
-function makeFallbackSummary() {
-  return {
-    compliance_score: 98.4,
-    compliance_score_delta: 0.6,
-    transactions_scanned_today: 198432,
-    transactions_scanned_delta_pct: 12.3,
-    compliance_cost_saved_pct: 70,
-    cost_methodology_ar: FALLBACK_COST_METHODOLOGY_AR,
-    cost_methodology_en: FALLBACK_COST_METHODOLOGY_EN,
-    total_monitored_volume_sar: 2350000000,
-    total_blocked_violations: 364,
-    total_blocked_delta_pct: -8.4,
-    saved_penalties_value_sar: 21400000,
-    system_status: "المنظومة آمنة - الرقابة الذاتية نشطة (المستوى ١ آلي / المستوى ٢ بمراجعة بشرية)",
-    ai_core_online: true,
-    last_sync: new Date().toISOString(),
-  };
-}
-
-function makeFallbackTrends() {
-  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  let cost = 42;
-  return months.map((month, i) => {
-    cost = Math.min(70, cost + Math.random() * 2 + 1);
-    return {
-      month,
-      target_compliance: 95 + i * 0.15,
-      actual_compliance: 95 + i * 0.15 - Math.random() * 1.5,
-      cost_reduction_pct: cost,
-    };
-  });
-}
-
-function makeFallbackRegulatory() {
-  const circulars = [
-    ["تعميم رقم ١٠٢", "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة", "completed", 24],
-    ["تعميم رقم ٩٨", "تحديث السقوف اليومية لمعاملات الدفع الفوري", "completed", 18],
-    ["تعميم رقم ٨٥", "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية", "in_progress", 11],
-    ["تعميم رقم ٧٧", "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي", "completed", 31],
-    ["تعميم رقم ٦٤", "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة", "queued", 0],
-  ];
-  return circulars.map(([number, title, status, rules], i) => ({
-    id: `CIRC-LOCAL-${i}`,
-    circular_number: number,
-    title,
-    issued_date: new Date(Date.now() - i * 20 * 86400000).toISOString(),
-    parsing_status: status,
-    rules_generated: rules,
-    affected_institutions: 6 + i,
-  }));
-}
-
-function makeFallbackReviewQueue() {
-  const items = [];
-  let attempts = 0;
-  while (items.length < 8 && attempts < 60) {
-    const tx = makeFallbackTransaction(9000 + attempts);
-    if (tx.status === "flagged") items.push(tx);
-    attempts += 1;
-  }
-  return items;
-}
-
-function makeFallbackAuditEntry(tx, level, decision, actor, note = null) {
-  return {
-    id: `AUD-LOCAL-${tx.id}-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    transaction_id: tx.id,
-    level,
-    decision,
-    reason: tx.legal_reason,
-    amount_sar: tx.amount_sar,
-    institution: tx.institution,
-    actor,
-    note,
-  };
-}
-
-function makeFallbackAuditLog() {
-  const entries = [];
-  for (let i = 0; i < 6; i++) {
-    const tx = makeFallbackTransaction(9500 + i);
-    if (tx.status === "blocked") {
-      entries.push(makeFallbackAuditEntry(tx, "auto_block", "blocked", "النظام (قاعدة آلية)"));
-    } else if (tx.status === "flagged") {
-      const decision = Math.random() > 0.5 ? "approved" : "rejected";
-      entries.push(makeFallbackAuditEntry(tx, "human_review", decision, tx.reviewer_required || "موظف الامتثال"));
-    }
-  }
-  return entries;
-}
-
-function computeReviewStats(reviewQueue, auditLog) {
-  const today = new Date().toDateString();
-  const isToday = (ts) => new Date(ts).toDateString() === today;
-  const approvedToday = auditLog.filter((e) => e.decision === "approved" && isToday(e.timestamp)).length;
-  const rejectedToday = auditLog.filter((e) => e.decision === "rejected" && isToday(e.timestamp)).length;
-  const total = approvedToday + rejectedToday;
-  return {
-    pending: reviewQueue.length,
-    approved_today: approvedToday,
-    rejected_today: rejectedToday,
-    approval_rate_pct: total ? Math.round((approvedToday / total) * 1000) / 10 : 0,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Meyar Core logo — geometric shield + interconnected "M" network glyph
-// ---------------------------------------------------------------------------
-
-function MeyarLogo({ size = 40 }) {
-  return (
-    <div className="animate-logo-glow shrink-0" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 64 64" width={size} height={size} xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="meyarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#e4a0ff" />
-            <stop offset="50%" stopColor="#9d4edd" />
-            <stop offset="100%" stopColor="#e8c468" />
-          </linearGradient>
-          <linearGradient id="meyarGradSoft" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#e4a0ff" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#9d4edd" stopOpacity="0.06" />
-          </linearGradient>
-        </defs>
-
-        {/* Shield outline — compliance */}
-        <path
-          d="M32 3.5 L57.5 12.5 V29.5 C57.5 45.5 47 55.8 32 60.5 C17 55.8 6.5 45.5 6.5 29.5 V12.5 Z"
-          fill="url(#meyarGradSoft)"
-          stroke="url(#meyarGrad)"
-          strokeWidth="2.4"
-          strokeLinejoin="round"
-        />
-
-        {/* Interconnected "M" — Open Banking / AI network nodes */}
-        <path
-          d="M18 41 V23 L32 37 L46 23 V41"
-          fill="none"
-          stroke="url(#meyarGrad)"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <line x1="18" y1="23" x2="32" y2="37" stroke="url(#meyarGrad)" strokeWidth="0.6" opacity="0.5" />
-        <line x1="46" y1="23" x2="32" y2="37" stroke="url(#meyarGrad)" strokeWidth="0.6" opacity="0.5" />
-
-        <circle cx="18" cy="23" r="2.8" fill="#e4a0ff" />
-        <circle cx="46" cy="23" r="2.8" fill="#a6acff" />
-        <circle cx="32" cy="37" r="3" fill="#e8c468" />
-        <circle cx="18" cy="41" r="2.3" fill="#9d4edd" />
-        <circle cx="46" cy="41" r="2.3" fill="#9d4edd" />
-      </svg>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Ambient aurora background blobs
-// ---------------------------------------------------------------------------
-
-function AuroraAtmosphere() {
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-      <div
-        className="aurora-blob animate-aurora-a"
-        style={{ width: 480, height: 480, top: -120, left: -100, background: "var(--orchid-2)" }}
-      />
-      <div
-        className="aurora-blob animate-aurora-b"
-        style={{ width: 420, height: 420, top: 40, right: -140, background: "var(--lavender-2)" }}
-      />
-      <div
-        className="aurora-blob animate-aurora-c"
-        style={{ width: 380, height: 380, bottom: -140, left: "38%", background: "var(--gold-2)" }}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Small presentational pieces
-// ---------------------------------------------------------------------------
-
-function Sparkline({ data, color }) {
-  return (
-    <ResponsiveContainer width="100%" height={44}>
-      <AreaChart data={data}>
-        <defs>
-          <linearGradient id={`spark-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.55} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area
-          type="monotone"
-          dataKey="v"
-          stroke={color}
-          strokeWidth={2}
-          fill={`url(#spark-${color.replace("#", "")})`}
-          isAnimationActive={true}
-          animationDuration={900}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
-function KPICard({ icon: Icon, label, value, suffix, delta, deltaLabel, glowVar, sparkColor, sparkData, isPositiveGood = true }) {
-  const isPositive = delta >= 0;
-  const goodDirection = isPositiveGood ? isPositive : !isPositive;
-
-  return (
-    <div
-      className="aurora-border glass-panel rounded-2xl p-5 transition-all duration-500 animate-fade-up hover:-translate-y-0.5"
-      style={{ boxShadow: `0 0 26px -6px ${glowVar}55` }}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${glowVar}1a`, color: glowVar }}
-        >
-          <Icon size={20} strokeWidth={2.2} />
-        </div>
-        <div
-          className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full"
-          style={
-            goodDirection
-              ? { color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.12)" }
-              : { color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.12)" }
-          }
-        >
-          {isPositive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-          {Math.abs(delta)}%
-        </div>
-      </div>
-
-      <p className="text-white/45 text-[13px] font-medium mb-1">{label}</p>
-      <p className="font-display text-2xl md:text-[26px] font-black text-white tracking-tight tabular-nums-ar">
-        {value}
-        {suffix && <span className="text-sm font-medium text-white/40 mx-1">{suffix}</span>}
-      </p>
-      <p className="text-[11px] text-white/35 mt-1">{deltaLabel}</p>
-
-      <div className="mt-3 -mx-1">
-        <Sparkline data={sparkData} color={sparkColor} />
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status, t }) {
-  const cfg = STATUS_META[status];
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${cfg.text} ${cfg.bg} ${cfg.border}`}>
-      <Icon size={12} strokeWidth={2.5} />
-      {t.status[status]}
-    </span>
-  );
-}
-
-function InfoTooltip({ label, text }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        aria-label={label}
-        className="w-4 h-4 rounded-full flex items-center justify-center text-white/40 hover:text-white/80 border border-white/15 hover:border-white/30 transition-colors"
-      >
-        <Info size={10} />
-      </button>
-      {open && (
-        <div
-          className="absolute z-30 top-6 rtl:right-0 ltr:left-0 w-64 p-3 rounded-xl text-[11px] leading-relaxed text-white/70 glass-panel-strong border border-white/10 shadow-2xl animate-fade-up"
-          style={{ animationDuration: "180ms" }}
-        >
-          {text}
-        </div>
-      )}
-    </span>
-  );
-}
-
-function TransactionRow({ tx, lang, t }) {
-  const isBlocked = tx.status === "blocked";
-  const isFlagged = tx.status === "flagged";
-  const levelCfg = LEVEL_META[tx.action_level] || LEVEL_META.no_action;
-  const LevelIcon = levelCfg.icon;
-  return (
-    <div
-      className={`animate-slide-in-row grid grid-cols-12 items-start gap-3 px-4 py-3 rounded-xl border transition-colors ${
-        isBlocked
-          ? "bg-[var(--coral)]/[0.07] border-[var(--coral)]/30 animate-pulse-coral"
-          : isFlagged
-          ? "bg-[var(--gold)]/[0.05] border-[var(--gold)]/15"
-          : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04]"
-      }`}
-    >
-      <div className="col-span-2 flex items-center gap-2">
-        <div className={`w-1.5 h-1.5 rounded-full mt-1 ${STATUS_META[tx.status].dot}`} />
-        <div>
-          <p className="text-xs font-bold text-white">{tx.id}</p>
-          <p className="text-[10px] text-white/35">{timeAgo(tx.timestamp, lang)}</p>
-        </div>
-      </div>
-
-      <div className="col-span-2 flex items-center gap-1.5 text-xs text-white/45 truncate">
-        <Landmark size={12} className="shrink-0" />
-        <span className="truncate">{localize(tx.institution, lang)}</span>
-      </div>
-
-      <div className="col-span-2">
-        <p className="text-sm font-bold text-white tabular-nums-ar">{currencyFmt(tx.amount_sar, lang)}</p>
-        <p className="text-[10px] text-white/35">{tx.customer_ref}</p>
-      </div>
-
-      <div className="col-span-2">
-        <StatusBadge status={tx.status} t={t} />
-        {tx.action_level && tx.action_level !== "no_action" && (
-          <span
-            className={`mt-1.5 flex items-center gap-1 w-fit px-1.5 py-0.5 rounded-md text-[9px] font-bold border ${levelCfg.text} ${levelCfg.bg} ${levelCfg.border}`}
-          >
-            <LevelIcon size={9} />
-            {t.level[tx.action_level]}
-          </span>
-        )}
-      </div>
-
-      <div className="col-span-4">
-        <p
-          className={`text-xs leading-relaxed ${
-            isBlocked ? "text-[var(--coral)] font-semibold" : isFlagged ? "text-[var(--gold)]" : "text-white/40"
-          }`}
-        >
-          {localize(tx.legal_reason, lang)}
-        </p>
-        {tx.decision_basis && (
-          <p className="text-[10px] text-white/30 mt-1 leading-relaxed">
-            {t.level.basisPrefix} {localize(tx.decision_basis, lang)}
-          </p>
-        )}
-        {tx.reviewer_required && (
-          <p className="text-[10px] mt-0.5 font-semibold flex items-center gap-1" style={{ color: "var(--gold)" }}>
-            <UserCheck size={10} />
-            {t.level.reviewerPrefix} {localize(tx.reviewer_required, lang)}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function LangToggle({ lang, setLang }) {
-  const isAr = lang === "ar";
-  return (
-    <button
-      onClick={() => setLang(isAr ? "en" : "ar")}
-      className="aurora-border relative flex items-center gap-2 rounded-full px-3 py-2 glass-panel hover:bg-white/[0.06] transition-colors"
-      aria-label="Toggle language"
-    >
-      <Globe size={14} style={{ color: "var(--orchid)" }} />
-      <span className="text-[11px] font-bold text-white/80">{STR[lang].langToggleLabel}</span>
-    </button>
-  );
-}
-
-function TopBanner({ summary, lang, setLang, t, transactions, onGoToMonitor }) {
-  // The banner intentionally always shows the healthy/connected state.
-  // The app is designed to fall back to local data seamlessly when the
-  // backend is unreachable (see loadAll()'s catch block), so surfacing a
-  // "disconnected" warning here would contradict that goal and make a
-  // fully working demo look broken to a viewer.
-  const [notifOpen, setNotifOpen] = useState(false);
-  return (
-    <div className="aurora-border glass-panel-strong rounded-2xl px-5 py-3.5 flex items-center justify-between gap-3 animate-fade-up">
-      <div className="flex items-center gap-3 min-w-0">
-        <div
-          className="relative w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ backgroundColor: "rgba(166,172,255,0.12)" }}
-        >
-          <Wifi size={17} style={{ color: "var(--lavender)" }} />
-          <span
-            className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full animate-pulse-lavender"
-            style={{ backgroundColor: "var(--lavender)" }}
-          />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[13px] font-bold text-white flex items-center gap-1.5 truncate">
-            {t.banner.connected}
-            <Sparkles size={13} style={{ color: "var(--gold)" }} />
-          </p>
-          <p className="text-[11px] text-white/40 truncate">
-            {summary ? localize(summary.system_status, lang) : t.banner.syncing}
-          </p>
-        </div>
-      </div>
-
-      <div className="hidden md:flex items-center gap-2 text-[11px] text-white/35 shrink-0">
-        <RefreshCw size={12} className="animate-spin [animation-duration:3s]" />
-        {t.banner.lastSync}: {summary ? timeAgo(summary.last_sync, lang) : "..."}
-      </div>
-
-      <div className="relative flex items-center gap-2 shrink-0">
-        <LangToggle lang={lang} setLang={setLang} />
-        <button
-          onClick={() => setNotifOpen((o) => !o)}
-          className="relative w-9 h-9 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-center hover:bg-white/[0.06] transition-colors"
-          aria-label={t.notifications.title}
-        >
-          <Bell size={16} className="text-white/40" />
-          <span className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--coral)" }} />
-        </button>
-        {notifOpen && (
-          <NotificationsPanel
-            transactions={transactions || []}
-            onViewAll={() => {
-              setNotifOpen(false);
-              onGoToMonitor && onGoToMonitor();
-            }}
-            onClose={() => setNotifOpen(false)}
-            t={t}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab views
-// ---------------------------------------------------------------------------
-
-function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
-  if (!summary) return null;
-
-  const kpis = [
+"""
+Meyar (معيار) — نظام المُشرّع الذكي
+Backend API — FastAPI
+
+منظومة معيار للرقابة المالية اللحظية.
+
+هذا الإصدار يطبّق نموذج "المنع المتدرج" على مستويين:
+
+  المستوى ١ — قواعد صريحة وقطعية وقابلة للتحقق آلياً (سقوف رقمية، قوائم
+  حظر رسمية، تراخيص). هذه فقط هي التي يُسمح للنظام بمنعها آلياً وفورياً
+  (blocked / auto_block)، لأنها لا تحتمل اجتهاداً بشرياً.
+
+  المستوى ٢ — أي حالة فيها اجتهاد أو غموض (نمط سلوكي، شبهة شرعية، شبهة
+  غسل أموال احتمالية) لا تُمنع آلياً أبداً، بل تُعلَّق وتُحال لمراجعة
+  بشرية (flagged / pending_review) مع تحديد الجهة المختصة بالمراجعة.
+
+هذا التصميم يعالج صراحة ثلاث نقاط ضعف شائعة في أنظمة الرقابة الآلية:
+  1) خطأ الفهم القانوني (Hallucination) — لا قرار نهائي آلي في الحالات الاجتهادية.
+  2) المسؤولية القانونية (Liability) — يوجد دائماً طرف بشري مسؤول عن أي قرار اجتهادي.
+  3) حدود صلاحيات الخدمات المصرفية المفتوحة — النظام "يوقف" فقط ما تسمح
+     قواعد صريحة موثّقة بإيقافه؛ الباقي توصية للمراجعة لا تنفيذ مباشر.
+
+Run:
+    uvicorn main:app --reload --port 8000
+"""
+
+from __future__ import annotations
+
+import random
+import re
+from datetime import datetime, timedelta, timezone
+from typing import List, Literal, Optional
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
+
+app = FastAPI(
+    title="Meyar Compliance API",
+    description="واجهة برمجية لمنظومة معيار للرقابة المالية اللحظية",
+    version="3.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+RNG = random.Random(42)
+
+# ---------------------------------------------------------------------------
+# Static reference data
+# ---------------------------------------------------------------------------
+
+INSTITUTIONS = [
+    "البنك الأهلي السعودي",
+    "بنك الرياض",
+    "بنك الرياض المطور",
+    "البنك السعودي الفرنسي",
+    "بنك ساب",
+    "بنك الجزيرة",
+    "بنك البلاد",
+    "مصرف الإنماء",
+    "بنك الخليج الدولي",
+    "STC Pay",
+    "تطبيق حصلتي",
+    "بنك الاستثمار العربي الوطني",
+]
+
+# ---------------------------------------------------------------------------
+# Two-tier rule catalogue
+#
+# LEVEL 1 — definitive / machine-checkable → automatic block is defensible
+#           because it requires no interpretation (a number vs. a limit,
+#           a lookup against an official list).
+# LEVEL 2 — interpretive / probabilistic → the system may never issue a
+#           final block on its own; it flags + names the required human
+#           reviewer instead.
+# ---------------------------------------------------------------------------
+
+LEVEL1_BLOCKED_RULES = [
     {
-      icon: ShieldCheck,
-      label: t.kpi.complianceScore,
-      value: summary.compliance_score.toFixed(1),
-      suffix: "%",
-      delta: summary.compliance_score_delta,
-      deltaLabel: t.kpi.vsLastWeek,
-      glowVar: "var(--gold)",
-      sparkColor: "#e8c468",
-      sparkData: sparkSeeds.compliance,
+        "reason": "تجاوز حدود الرخصة الممنوحة - المادة ٤",
+        "article": "المادة ٤",
+        "basis": "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد",
+        "category": "تجاوز الحدود المسموحة",
     },
     {
-      icon: Wallet,
-      label: t.kpi.monitoredVolume,
-      value: compactFmt(summary.total_monitored_volume_sar, lang),
-      suffix: t.currencySuffix,
-      delta: summary.transactions_scanned_delta_pct,
-      deltaLabel: `${numberFmt.format(summary.transactions_scanned_today)} ${t.kpi.txToday}`,
-      glowVar: "var(--lavender)",
-      sparkColor: "#a6acff",
-      sparkData: sparkSeeds.volume,
+        "reason": "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢",
+        "article": "المادة ١٢",
+        "basis": "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد",
+        "category": "جهة أو حساب غير موثوق",
     },
     {
-      icon: XCircle,
-      label: t.kpi.blockedViolations,
-      value: numberFmt.format(summary.total_blocked_violations),
-      suffix: "",
-      delta: summary.total_blocked_delta_pct,
-      deltaLabel: t.kpi.blockedDrop,
-      glowVar: "var(--coral)",
-      isPositiveGood: false,
-      sparkColor: "#ff6b81",
-      sparkData: sparkSeeds.blocked,
+        "reason": "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥",
+        "article": "التعميم رقم ٥٥",
+        "basis": "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد",
+        "category": "تجاوز الحدود المسموحة",
     },
     {
-      icon: Gem,
-      label: t.kpi.savedPenalties,
-      value: compactFmt(summary.saved_penalties_value_sar, lang),
-      suffix: t.currencySuffix,
-      delta: summary.compliance_cost_saved_pct,
-      deltaLabel: t.kpi.costReduction,
-      glowVar: "var(--orchid)",
-      sparkColor: "#e4a0ff",
-      sparkData: sparkSeeds.savings,
+        "reason": "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية",
+        "article": None,
+        "basis": "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد",
+        "category": "جهة أو حساب غير موثوق",
     },
-  ];
+    {
+        "reason": "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩",
+        "article": "المادة ٩",
+        "basis": "تحقق اكتمال حقول إلزامية — لا اجتهاد",
+        "category": "نقص بيانات العميل (KYC)",
+    },
+]
 
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {kpis.map((k, i) => (
-          <div key={k.label} style={{ animationDelay: `${i * 80}ms` }}>
-            <KPICard {...k} />
-          </div>
-        ))}
-      </div>
+LEVEL2_FLAGGED_RULES = [
+    {
+        "reason": "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة",
+        "article": "المادة ٧",
+        "basis": "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً",
+        "reviewer": "موظف الامتثال",
+        "category": "اشتباه غسل أموال",
+    },
+    {
+        "reason": "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة",
+        "article": None,
+        "basis": "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة",
+        "reviewer": "موظف الامتثال",
+        "category": "نمط سلوكي غير معتاد",
+    },
+    {
+        "reason": "أول معاملة من هذا النوع لهذا الحساب",
+        "article": None,
+        "basis": "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً",
+        "reviewer": "موظف الامتثال",
+        "category": "نمط سلوكي غير معتاد",
+    },
+    {
+        "reason": "عملية قد تقع خارج نطاق النشاط التجاري المرخّص",
+        "article": None,
+        "basis": "تصنيف اجتهادي لنوع النشاط — قابل للتفسير",
+        "reviewer": "موظف الامتثال",
+        "category": "نمط سلوكي غير معتاد",
+    },
+    {
+        "reason": "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً",
+        "article": None,
+        "basis": "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها",
+        "reviewer": "الهيئة الشرعية",
+        "category": "شبهة شرعية",
+    },
+    {
+        "reason": "تكرار غير طبيعي للمعاملات خلال نافذة زمنية قصيرة",
+        "article": None,
+        "basis": "نمط سلوكي مرجّح إحصائياً — ليس دليلاً قاطعاً",
+        "reviewer": "موظف الامتثال",
+        "category": "نمط سلوكي غير معتاد",
+    },
+]
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-        <div className="xl:col-span-3 aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-white font-bold text-sm flex items-center gap-2">
-                <BarChart3 size={16} style={{ color: "var(--gold)" }} />
-                {t.trendCard.title}
-              </h3>
-              <p className="text-[11px] text-white/40 mt-1 flex items-center gap-1.5">
-                {t.trendCard.subtitle(summary.compliance_cost_saved_pct)}
-                <InfoTooltip
-                  label={t.costTooltip.label}
-                  text={lang === "en" ? summary.cost_methodology_en : summary.cost_methodology_ar}
-                />
-              </p>
-            </div>
-          </div>
-          <TrendChart data={trends} height={230} lang={lang} t={t} />
-        </div>
+LEVEL_PASSED_RULES = [
+    "مطابقة كاملة لأنظمة مؤسسة النقد - لا مخالفات",
+    "ضمن السقف المصرح به وفق ترخيص العميل",
+    "تحقق فوري من هوية المستفيد ونجاح KYC",
+    "متوافقة مع تعميم ساما رقم ٩٨ - الخدمات المالية المفتوحة",
+]
 
-        <div className="xl:col-span-2 aurora-border glass-panel rounded-2xl p-5 animate-fade-up flex flex-col">
-          <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-4">
-            <ScanLine size={16} style={{ color: "var(--lavender)" }} />
-            {t.guardian.title}
-          </h3>
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-4">
-            <div
-              className="relative w-28 h-28 rounded-full border-2 flex items-center justify-center animate-pulse-lavender"
-              style={{ borderColor: "rgba(166,172,255,0.35)" }}
-            >
-              <div className="absolute inset-2 rounded-full border" style={{ borderColor: "rgba(228,160,255,0.2)" }} />
-              <ShieldCheck size={44} style={{ color: "var(--lavender)" }} strokeWidth={1.8} />
-            </div>
-            <p className="text-white font-bold text-sm text-center">{localize(summary.system_status, lang)}</p>
-            <p className="text-[11px] text-white/40 text-center leading-relaxed max-w-[220px]">{t.guardian.description}</p>
-          </div>
-          <button
-            onClick={onGoToMonitor}
-            className="w-full mt-2 py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-            style={{
-              backgroundColor: "rgba(166,172,255,0.1)",
-              borderColor: "rgba(166,172,255,0.3)",
-              color: "var(--lavender)",
-            }}
-          >
-            <Activity size={14} />
-            {t.guardian.cta}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+VIOLATION_CATEGORIES = [
+    "تجاوز الحدود المسموحة",
+    "جهة أو حساب غير موثوق",
+    "نقص بيانات العميل (KYC)",
+    "اشتباه غسل أموال",
+    "شبهة شرعية",
+    "نمط سلوكي غير معتاد",
+]
+
+CIRCULAR_TOPICS = [
+    ("تعميم رقم ١٠٢", "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة"),
+    ("تعميم رقم ٩٨", "تحديث السقوف اليومية لمعاملات الدفع الفوري"),
+    ("تعميم رقم ٨٥", "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية"),
+    ("تعميم رقم ٧٧", "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي"),
+    ("تعميم رقم ٦٤", "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)"),
+    ("تعميم رقم ٥٥", "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية"),
+    ("تعميم رقم ٤٩", "متطلبات ترخيص مزودي خدمات الدفع الصغرى"),
+]
+
+# ---------------------------------------------------------------------------
+# Compliance-cost-saved % — documented methodology (fixes the "un-sourced
+# 70%" gap: the figure is now *derived* from disclosed, editable assumptions
+# instead of being a hardcoded marketing number).
+# ---------------------------------------------------------------------------
+
+COST_METHODOLOGY = {
+    "baseline_manual_hours_per_month": 1200,
+    "baseline_note_ar": "تقدير: ساعات المراجعة اليدوية الشهرية لفريق امتثال من ٨ موظفين قبل الأتمتة",
+    "automated_review_hours_per_month": 360,
+    "automated_note_ar": (
+        "ساعات المراجعة البشرية المتبقية بعد الأتمتة — تقتصر على حالات "
+        "«المستوى ٢» الاجتهادية فقط، لأن المستوى ١ يُنفَّذ آلياً بالكامل"
+    ),
 }
 
-function MonitorTab({ transactions, filterStatus, setFilterStatus, searchQuery, setSearchQuery, loading, lang, t }) {
-  const filtered = useMemo(() => {
-    let list = transactions;
-    if (filterStatus !== "all") list = list.filter((tx) => tx.status === filterStatus);
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      list = list.filter(
-        (tx) =>
-          localize(tx.institution, lang).toLowerCase().includes(q) ||
-          tx.id.toLowerCase().includes(q) ||
-          tx.customer_ref.toLowerCase().includes(q) ||
-          localize(tx.legal_reason, lang).toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [transactions, filterStatus, searchQuery, lang]);
 
-  const counts = useMemo(
-    () => ({
-      all: transactions.length,
-      passed: transactions.filter((tx) => tx.status === "passed").length,
-      flagged: transactions.filter((tx) => tx.status === "flagged").length,
-      blocked: transactions.filter((tx) => tx.status === "blocked").length,
-    }),
-    [transactions]
-  );
+def _compliance_cost_saved_pct() -> float:
+    baseline = COST_METHODOLOGY["baseline_manual_hours_per_month"]
+    automated = COST_METHODOLOGY["automated_review_hours_per_month"]
+    return round((1 - automated / baseline) * 100, 1)
 
-  const filterBtns = [
-    { id: "all", label: t.monitor.filters.all, activeStyle: { color: "var(--orchid)", backgroundColor: "rgba(228,160,255,0.1)", borderColor: "rgba(228,160,255,0.4)" } },
-    { id: "passed", label: t.monitor.filters.passed, activeStyle: { color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.4)" } },
-    { id: "flagged", label: t.monitor.filters.flagged, activeStyle: { color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)", borderColor: "rgba(232,196,104,0.4)" } },
-    { id: "blocked", label: t.monitor.filters.blocked, activeStyle: { color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.4)" } },
-  ];
 
-  return (
-    <div className="aurora-border glass-panel rounded-2xl animate-fade-up overflow-hidden">
-      <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h3 className="text-white font-bold text-sm flex items-center gap-2">
-            <Radio size={16} style={{ color: "var(--coral)" }} />
-            {t.monitor.title}
-            <span
-              className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border"
-              style={{ color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)" }}
-            >
-              <CircleDot size={9} className="animate-pulse" />
-              {t.monitor.live}
-            </span>
-          </h3>
-          <p className="text-[11px] text-white/40 mt-1">{t.monitor.description}</p>
-        </div>
+COST_METHODOLOGY_TEXT_AR = (
+    f"النسبة محسوبة كـ (١ − ساعات المراجعة بعد الأتمتة ÷ ساعات المراجعة قبل الأتمتة) × ١٠٠. "
+    f"الافتراض الأساسي: {COST_METHODOLOGY['baseline_manual_hours_per_month']} ساعة مراجعة يدوية شهرياً قبل النظام، "
+    f"مقابل {COST_METHODOLOGY['automated_review_hours_per_month']} ساعة متبقية بعد الأتمتة (مراجعة حالات المستوى ٢ فقط). "
+    f"هذا تقدير تشغيلي قابل للمراجعة، وليس رقماً مدققاً مالياً."
+)
 
-        <div className="relative w-full md:w-64">
-          <Search size={14} className="absolute rtl:right-3 ltr:left-3 top-1/2 -translate-y-1/2 text-white/35" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.monitor.searchPlaceholder}
-            className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2 rtl:pr-9 rtl:pl-3 ltr:pl-9 ltr:pr-3 text-xs text-white placeholder:text-white/30 outline-none transition-colors focus:border-[var(--orchid)]/40"
-          />
-        </div>
-      </div>
+COST_METHODOLOGY_TEXT_EN = (
+    "Calculated as (1 − post-automation review hours ÷ pre-automation review hours) × 100. "
+    f"Baseline assumption: {COST_METHODOLOGY['baseline_manual_hours_per_month']} manual review hours/month "
+    f"before the system, vs. {COST_METHODOLOGY['automated_review_hours_per_month']} hours remaining after "
+    "automation (Level-2 human review only). This is an operational estimate, not an audited figure."
+)
 
-      <div className="px-5 py-3 flex items-center gap-2 flex-wrap border-b border-white/5">
-        {filterBtns.map((b) => {
-          const active = filterStatus === b.id;
-          return (
-            <button
-              key={b.id}
-              onClick={() => setFilterStatus(b.id)}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-              style={active ? b.activeStyle : { color: "rgba(255,255,255,0.4)", borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              {b.label} <span className="opacity-60">({counts[b.id]})</span>
-            </button>
-          );
-        })}
-      </div>
+# ---------------------------------------------------------------------------
+# Pydantic response models
+# ---------------------------------------------------------------------------
 
-      <div className="p-4 space-y-2 max-h-[560px] overflow-y-auto">
-        {loading && transactions.length === 0 && <p className="text-center text-white/35 text-xs py-10">{t.monitor.loading}</p>}
-        {!loading && filtered.length === 0 && <p className="text-center text-white/35 text-xs py-10">{t.monitor.empty}</p>}
-        {filtered.map((tx) => (
-          <TransactionRow key={tx.id} tx={tx} lang={lang} t={t} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function TrendChart({ data, height = 300, lang, t }) {
-  const localizedData = useMemo(() => data.map((p) => ({ ...p, monthLabel: localize(p.month, lang) })), [data, lang]);
+class ComplianceSummary(BaseModel):
+    compliance_score: float
+    compliance_score_delta: float
+    transactions_scanned_today: int
+    transactions_scanned_delta_pct: float
+    compliance_cost_saved_pct: float
+    cost_methodology_ar: str
+    cost_methodology_en: str
+    total_monitored_volume_sar: float
+    total_blocked_violations: int
+    total_blocked_delta_pct: float
+    saved_penalties_value_sar: float
+    system_status: str
+    ai_core_online: bool
+    last_sync: str
 
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={localizedData} margin={{ top: 5, right: 5, left: -18, bottom: 0 }}>
-        <defs>
-          <linearGradient id="actualFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a6acff" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#a6acff" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-        <XAxis dataKey="monthLabel" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} reversed={lang === "ar"} />
-        <YAxis yAxisId="left" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} domain={[90, 100]} orientation={lang === "ar" ? "right" : "left"} />
-        <YAxis yAxisId="right" orientation={lang === "ar" ? "left" : "right"} tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: "rgba(17,10,28,0.95)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 12,
-            fontSize: 12,
-            direction: t.dir,
-          }}
-          labelStyle={{ color: "#fff", fontWeight: 700, marginBottom: 4 }}
-        />
-        <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }} />
-        <Area
-          yAxisId="left"
-          type="monotone"
-          dataKey="actual_compliance"
-          name={`${t.analytics.actual} %`}
-          stroke="#a6acff"
-          strokeWidth={2.5}
-          fill="url(#actualFill)"
-          animationDuration={1200}
-        />
-        <Line
-          yAxisId="left"
-          type="monotone"
-          dataKey="target_compliance"
-          name={`${t.analytics.target} %`}
-          stroke="#e4a0ff"
-          strokeWidth={2}
-          strokeDasharray="5 4"
-          dot={false}
-          animationDuration={1200}
-        />
-        <Bar
-          yAxisId="right"
-          dataKey="cost_reduction_pct"
-          name={`${t.analytics.cost} %`}
-          fill="#e8c468"
-          fillOpacity={0.4}
-          radius={[6, 6, 0, 0]}
-          animationDuration={1200}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
-  );
-}
 
-function AnalyticsTab({ trends, summary, lang, t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <h3 className="text-white font-bold text-sm flex items-center gap-2">
-            <BarChart3 size={16} style={{ color: "var(--lavender)" }} />
-            {t.analytics.trendTitle(summary?.compliance_cost_saved_pct ?? 70)}
-            {summary && (
-              <InfoTooltip
-                label={t.costTooltip.label}
-                text={lang === "en" ? summary.cost_methodology_en : summary.cost_methodology_ar}
-              />
-            )}
-          </h3>
-          <div className="flex items-center gap-3 text-[11px] text-white/40">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--lavender)" }} /> {t.analytics.actual}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--orchid)" }} /> {t.analytics.target}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--gold)" }} /> {t.analytics.cost}
-            </span>
-          </div>
-        </div>
-        <TrendChart data={trends} height={360} lang={lang} t={t} />
-      </div>
+TxStatus = Literal["passed", "flagged", "blocked"]
+ActionLevel = Literal["auto_block", "pending_review", "no_action"]
+Certainty = Literal["rule_based", "ai_assessed"]
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-          <p className="text-[11px] text-white/40 mb-1">{t.analytics.avgCompliance}</p>
-          <p className="text-2xl font-black" style={{ color: "var(--lavender)" }}>
-            {trends.length ? (trends.reduce((a, b) => a + b.actual_compliance, 0) / trends.length).toFixed(2) : "—"}%
-          </p>
-        </div>
-        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-          <p className="text-[11px] text-white/40 mb-1">{t.analytics.maxCostCut}</p>
-          <p className="text-2xl font-black" style={{ color: "var(--gold)" }}>
-            {trends.length ? Math.max(...trends.map((p) => p.cost_reduction_pct)).toFixed(1) : "—"}%
-          </p>
-        </div>
-        <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-          <p className="text-[11px] text-white/40 mb-1">{t.analytics.totalScanned}</p>
-          <p className="text-2xl font-black tabular-nums-ar" style={{ color: "var(--orchid)" }}>
-            {summary ? numberFmt.format(summary.transactions_scanned_today) : "—"}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-const PARSING_META = {
-  completed: { text: "text-[var(--lavender)]", bg: "bg-[var(--lavender)]/10", border: "border-[var(--lavender)]/30" },
-  in_progress: { text: "text-[var(--gold)]", bg: "bg-[var(--gold)]/10", border: "border-[var(--gold)]/30" },
-  queued: { text: "text-white/40", bg: "bg-white/[0.04]", border: "border-white/10" },
-};
+class Transaction(BaseModel):
+    id: str
+    timestamp: str
+    institution: str
+    amount_sar: float
+    status: TxStatus
+    action_level: ActionLevel
+    certainty: Certainty
+    legal_reason: str
+    decision_basis: Optional[str] = None
+    reviewer_required: Optional[str] = None
+    article_reference: Optional[str] = None
+    violation_category: Optional[str] = None
+    customer_ref: str
+    channel: str
 
-function RegulatoryTab({ regulatory, lang, t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <Zap size={16} style={{ color: "var(--gold)" }} />
-          {t.regulatory.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.regulatory.description}</p>
-      </div>
 
-      <div className="space-y-3">
-        {regulatory.map((item, i) => {
-          const cfg = PARSING_META[item.parsing_status];
-          const circularLabel = localize(item.circular_number, lang);
-          const titleLabel = localize(item.title, lang);
-          const summary =
-            item.parsing_status === "queued"
-              ? t.regulatory.summaryQueued(circularLabel)
-              : t.regulatory.summaryCompleted(circularLabel, item.rules_generated);
+class TransactionsResponse(BaseModel):
+    items: List[Transaction]
+    total: int
+    passed_count: int
+    flagged_count: int
+    blocked_count: int
 
-          return (
-            <div
-              key={item.id}
-              style={{ animationDelay: `${i * 60}ms` }}
-              className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up hover:bg-white/[0.02] transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center shrink-0">
-                    <FileText size={17} style={{ color: "var(--orchid)" }} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white">
-                      {circularLabel} <span className="text-white/40 font-medium">— {titleLabel}</span>
-                    </p>
-                    <p className="text-[11px] text-white/40 mt-1 leading-relaxed max-w-2xl">{summary}</p>
-                  </div>
-                </div>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border shrink-0 ${cfg.text} ${cfg.bg} ${cfg.border}`}>
-                  {t.regulatory.parsing[item.parsing_status]}
-                </span>
-              </div>
 
-              <div className="flex items-center gap-5 mt-4 pt-3 border-t border-white/5 text-[11px] text-white/40 flex-wrap">
-                <span>
-                  {t.regulatory.rulesGenerated}: <b className="text-white">{item.rules_generated}</b>
-                </span>
-                <span>
-                  {t.regulatory.affectedInstitutions}: <b className="text-white">{item.affected_institutions}</b>
-                </span>
-                {item.code_rule_id && <span className="font-mono" style={{ color: "var(--lavender)" }}>{item.code_rule_id}</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+class TrendPoint(BaseModel):
+    month: str
+    target_compliance: float
+    actual_compliance: float
+    operational_cost_index: float
+    cost_reduction_pct: float
 
-// ---------------------------------------------------------------------------
-// Review Queue + Audit Trail
-//
-// This is what makes "flagged transactions go to human review" a real,
-// clickable workflow instead of a sentence in the pitch: a compliance
-// officer can approve or reject each Level-2 transaction here, and every
-// decision — human or automatic — is permanently written to the audit
-// trail with who/when/why.
-// ---------------------------------------------------------------------------
 
-function MiniStat({ icon: Icon, label, value, color }) {
-  return (
-    <div className="aurora-border glass-panel rounded-2xl p-4 flex items-center gap-3 animate-fade-up">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}1a`, color }}>
-        <Icon size={16} strokeWidth={2.2} />
-      </div>
-      <div className="min-w-0">
-        <p className="font-display text-lg font-black text-white tabular-nums-ar leading-none">{value}</p>
-        <p className="text-[11px] text-white/40 mt-1 truncate">{label}</p>
-      </div>
-    </div>
-  );
-}
+class ComplianceTrendsResponse(BaseModel):
+    points: List[TrendPoint]
+    average_compliance: float
+    average_cost_reduction_pct: float
 
-function ReviewQueueTab({ reviewQueue, stats, onDecide, lang, t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <ClipboardList size={16} style={{ color: "var(--gold)" }} />
-          {t.reviewQueue.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.reviewQueue.subtitle}</p>
-      </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MiniStat icon={ClipboardList} label={t.reviewQueue.pending} value={numberFmt.format(stats.pending)} color="var(--gold)" />
-        <MiniStat icon={ThumbsUp} label={t.reviewQueue.approvedToday} value={numberFmt.format(stats.approved_today)} color="var(--lavender)" />
-        <MiniStat icon={ThumbsDown} label={t.reviewQueue.rejectedToday} value={numberFmt.format(stats.rejected_today)} color="var(--coral)" />
-        <MiniStat icon={BadgeCheck} label={t.reviewQueue.approvalRate} value={`${stats.approval_rate_pct}%`} color="var(--orchid)" />
-      </div>
+class RegulatoryUpdate(BaseModel):
+    id: str
+    circular_number: str
+    title: str
+    issued_date: str
+    parsing_status: Literal["completed", "in_progress", "queued"]
+    rules_generated: int
+    affected_institutions: int
+    summary_ar: str
+    code_rule_id: Optional[str] = None
 
-      <div className="space-y-2.5">
-        {reviewQueue.length === 0 && (
-          <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
-        )}
-        {reviewQueue.map((tx, i) => (
-          <div
-            key={tx.id}
-            style={{ animationDelay: `${i * 40}ms` }}
-            className="animate-slide-in-row aurora-border glass-panel rounded-2xl p-4 flex flex-col md:flex-row md:items-center gap-3"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <p className="text-xs font-bold text-white">{tx.id}</p>
-                <span className="text-[10px] text-white/35">{timeAgo(tx.timestamp, lang)}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }}>
-                  {t.level.pending_review}
-                </span>
-              </div>
-              <p className="text-xs text-white/70 leading-relaxed">{localize(tx.legal_reason, lang)}</p>
-              <p className="text-[10px] text-white/35 mt-1">
-                {localize(tx.institution, lang)} · {currencyFmt(tx.amount_sar, lang)} ·{" "}
-                <span style={{ color: "var(--gold)" }}>{t.level.reviewerPrefix} {localize(tx.reviewer_required, lang)}</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => onDecide(tx.id, "approve")}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
-                style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
-              >
-                <ThumbsUp size={13} />
-                {t.reviewQueue.approve}
-              </button>
-              <button
-                onClick={() => onDecide(tx.id, "reject")}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
-                style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
-              >
-                <ThumbsDown size={13} />
-                {t.reviewQueue.reject}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-const AUDIT_DECISION_META = {
-  blocked: { color: "var(--coral)", dot: "bg-[var(--coral)]" },
-  approved: { color: "var(--lavender)", dot: "bg-[var(--lavender)]" },
-  rejected: { color: "var(--coral)", dot: "bg-[var(--coral)]" },
-};
+class RegulatoryUpdatesResponse(BaseModel):
+    items: List[RegulatoryUpdate]
+    total_parsed: int
+    total_in_progress: int
 
-function AuditTrailTab({ auditLog, lang, t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <History size={16} style={{ color: "var(--lavender)" }} />
-          {t.auditTrail.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.auditTrail.subtitle}</p>
-      </div>
 
-      <div className="space-y-2">
-        {auditLog.length === 0 && (
-          <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.auditTrail.empty}</div>
-        )}
-        {auditLog.map((e, i) => {
-          const meta = AUDIT_DECISION_META[e.decision] || AUDIT_DECISION_META.approved;
-          return (
-            <div
-              key={e.id}
-              style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
-              className="animate-fade-up aurora-border glass-panel rounded-2xl p-4 flex items-start gap-3"
-            >
-              <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${meta.dot}`} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <p className="text-xs font-bold text-white">{e.transaction_id}</p>
-                  <span className="text-[10px] text-white/35">{timeAgo(e.timestamp, lang)}</span>
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                    style={{ color: meta.color, backgroundColor: `${meta.color}1a` }}
-                  >
-                    {t.auditTrail.decisionLabels[e.decision] || e.decision}
-                  </span>
-                  <span className="text-[9px] text-white/30">
-                    {e.level === "auto_block" ? t.auditTrail.autoLabel : t.auditTrail.humanLabel}
-                  </span>
-                </div>
-                <p className="text-xs text-white/60 leading-relaxed">{localize(e.reason, lang)}</p>
-                <p className="text-[10px] text-white/35 mt-1">
-                  {localize(e.institution, lang)} · {currencyFmt(e.amount_sar, lang)} ·{" "}
-                  <span className="text-white/50">{localize(e.actor, lang)}</span>
-                  {e.note && <span> — {e.note}</span>}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+class ChatbotQuery(BaseModel):
+    question: str
+    lang: Literal["ar", "en"] = "ar"
 
-const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
 
-function LimitsTab({ t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <ShieldAlert size={16} style={{ color: "var(--coral)" }} />
-          {t.limits.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.limits.subtitle}</p>
-      </div>
+class ChatbotSource(BaseModel):
+    circular_number: str
+    title: str
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {t.limits.sections.map((s, i) => {
-          const Icon = LIMITS_ICONS[s.icon] || ShieldAlert;
-          return (
-            <div
-              key={s.title}
-              style={{ animationDelay: `${i * 60}ms` }}
-              className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center shrink-0">
-                  <Icon size={16} style={{ color: "var(--orchid)" }} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white mb-1.5">{s.title}</p>
-                  <p className="text-[12px] text-white/50 leading-relaxed">{s.body}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Chatbot — regulatory assistant scoped strictly to the local SAMA
-// knowledge base (mirrors the backend's retrieval so it also works when
-// the AI core is unreachable, consistent with the rest of the dashboard).
-// ---------------------------------------------------------------------------
+class ChatbotAnswer(BaseModel):
+    answer: str
+    confidence: Literal["high", "medium", "none"]
+    sources: List[ChatbotSource]
+    disclaimer: str
 
-// Mirrors the backend's two-layer chatbot design for offline fallback:
-// Layer A (greetings/thanks/identity) gets a natural uncited reply; Layer B
-// (regulatory questions) retrieves from a bounded KB and always cites a
-// source, or says plainly that it doesn't know.
 
-const CHATBOT_INTENTS = [
-  {
-    id: "greeting",
-    keywords: ["اهلا", "أهلا", "هلا", "مرحبا", "السلام عليكم", "صباح الخير", "مساء الخير", "hi", "hello", "hey"],
-    ar: "أهلاً! أنا مساعد التشريعات في معيار. أقدر أجاوبك عن تعاميم ساما المحمّلة بالنظام، أو نموذج المستويين، أو المسؤولية والحدود. جرّب تسألني 🙂",
-    en: "Hi! I'm Meyar's regulatory assistant. Ask me about the loaded SAMA circulars, the two-tier model, or accountability and limits.",
-  },
-  {
-    id: "thanks",
-    keywords: ["شكرا", "شكراً", "يعطيك العافيه", "تسلم", "thanks", "thank you"],
-    ar: "العفو! تحت أمرك لأي سؤال ثاني.",
-    en: "You're welcome! Happy to help with more questions.",
-  },
-  {
-    id: "farewell",
-    keywords: ["مع السلامه", "وداعا", "الى اللقاء", "باي", "bye", "goodbye"],
-    ar: "إلى اللقاء! ارجع لي أي وقت تحتاج تتأكد من شي متعلق بالأنظمة.",
-    en: "Goodbye! Come back anytime.",
-  },
-  {
-    id: "identity",
-    keywords: ["مين انت", "من انت", "ايش انت", "who are you", "what are you"],
-    ar: "أنا مساعد تشريعات مبني داخل نظام معيار، أجاوب فقط من قاعدة معرفة محلية محدودة — ما أخمّن، ولو السؤال خارج قاعدتي بقولك صراحة.",
-    en: "I'm Meyar's built-in regulatory assistant. I answer strictly from a bounded local knowledge base — I don't guess.",
-  },
-  {
-    id: "capabilities",
-    keywords: ["وش تقدر تسوي", "ساعدني", "what can you do", "help me"],
-    ar: "أقدر أشرح تعاميم ساما المحمّلة، ونموذج المستويين، ومن المسؤول في كل حالة، ومنهجية أي رقم بالداشبورد.",
-    en: "I can explain the loaded SAMA circulars, the two-tier model, accountability, and the methodology behind dashboard numbers.",
-  },
-  {
-    id: "wellbeing",
-    keywords: ["كيف الحال", "كيفك", "كيف حالك", "شلونك", "how are you"],
-    ar: "تمام الحمد لله! جاهز أساعدك بأي سؤال عن تعاميم ساما أو نظام معيار — جرّب اسألني عن شي محدد.",
-    en: "Doing well, thanks for asking! Ready to help with any question about SAMA circulars or the Meyar system.",
-  },
-];
+class SuggestedQuestions(BaseModel):
+    questions_ar: List[str]
+    questions_en: List[str]
 
-const CHATBOT_KB = [
-  {
-    id: "KB-102",
-    circular_number: "تعميم رقم ١٠٢",
-    title: "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
-    keywords: ["هوية العميل", "تحقق من الهوية", "كي واي سي", "kyc", "المستفيد الفعلي", "بيانات العميل"],
-    ar: "تعميم رقم ١٠٢ يحدد ضوابط التحقق من هوية العميل (KYC). غياب أي حقل KYC إلزامي هو قاعدة قطعية (مستوى ١) تُفعّل منعاً آلياً فورياً.",
-    en: "Circular No. 102 sets KYC controls. A missing mandatory KYC field is a Level-1 rule that triggers an immediate automatic block.",
-  },
-  {
-    id: "KB-98",
-    circular_number: "تعميم رقم ٩٨",
-    title: "تحديث السقوف اليومية لمعاملات الدفع الفوري",
-    keywords: ["سقف يومي", "الحد الاقصى اليومي", "دفع فوري"],
-    ar: "تعميم رقم ٩٨ يحدّث السقوف اليومية للدفع الفوري. تجاوزه رقم قابل للمقارنة المباشرة، فيُصنَّف قاعدة مستوى ١ (منع آلي فوري).",
-    en: "Circular No. 98 updates daily instant-payment limits. Exceeding it is a direct numeric comparison — a Level-1 rule (immediate automatic block).",
-  },
-  {
-    id: "KB-77",
-    circular_number: "تعميم رقم ٧٧",
-    title: "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
-    keywords: ["غسل اموال", "غسيل اموال", "aml", "نشاط مشبوه", "مؤشرات غسل"],
-    ar: "مطابقة نمط معاملة لمؤشر غسل أموال تقييم احتمالي دائماً، وليست دليلاً قاطعاً — لذلك النظام لا يمنعها آلياً أبداً، بل يعلّقها ويحيلها لموظف الامتثال (مستوى ٢).",
-    en: "Matching an AML indicator is always probabilistic, never conclusive — the system never auto-blocks on this alone; it flags and routes to a compliance officer (Level 2).",
-  },
-  {
-    id: "KB-64",
-    circular_number: "تعميم رقم ٦٤",
-    title: "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة",
-    keywords: ["open banking", "مصرفية مفتوحة", "api", "core banking", "صلاحيات القراءة"],
-    ar: "الخدمات المصرفية المفتوحة تمنح عادة صلاحية «قراءة» أو «بدء عملية بموافقة» فقط، وليس إيقافاً داخل الأنظمة المصرفية الأساسية (Core Banking). أي «إيقاف» في معيار محكوم بحدود اتفاقية التكامل الموقّعة.",
-    en: "Open Banking access typically grants only 'read' or 'consented initiation' rights, not the ability to stop transactions inside Core Banking. Any 'block' in Meyar is strictly bounded by the signed integration agreement.",
-  },
-  {
-    id: "KB-110",
-    circular_number: "تعميم رقم ١١٠",
-    title: "حماية بيانات العملاء الشخصية في الخدمات المالية الرقمية",
-    keywords: ["حماية البيانات", "خصوصية العميل", "بيانات شخصية"],
-    ar: "تعميم رقم ١١٠ يضع ضوابط حماية بيانات العملاء الشخصية، ويشترط موافقة صريحة قبل مشاركة بيانات المعاملة مع أي طرف ثالث. أي استخدام خارج النطاق قاعدة مستوى ١.",
-    en: "Circular No. 110 sets customer data-protection controls, requiring explicit consent before sharing transaction data with third parties. Any out-of-scope use is a Level-1 rule.",
-  },
-  {
-    id: "KB-SHARIA",
-    circular_number: "إطار الحوكمة الشرعية",
-    title: "دور الهيئة الشرعية في تقييم الشبهات",
-    keywords: ["شبهة شرعية", "هيئة شرعية", "اجتهاد شرعي"],
-    ar: "الشبهة الشرعية اجتهاد بشري قد يختلف بين الهيئات. النظام لا يقرر فيها؛ أقصى ما يفعله تعليق العملية وتنبيه الهيئة الشرعية المختصة (مستوى ٢).",
-    en: "Sharia concerns involve human juristic reasoning that can differ between boards. The system never rules on these; at most it suspends the transaction and alerts the relevant Sharia board (Level 2).",
-  },
-  {
-    id: "KB-LIABILITY",
-    circular_number: "سياسة المسؤولية الداخلية",
-    title: "من المسؤول عن قرار المنع أو المراجعة؟",
-    keywords: ["من المسؤول", "المسؤولية القانونية", "liability", "من يتحمل"],
-    ar: "مستوى ١: النظام ينفّذ آلياً استناداً لقاعدة موثّقة مسبقاً — المسؤولية على دقة القاعدة. مستوى ٢: القرار النهائي دائماً بشري، والنظام لا يُنسب له اتخاذ القرار بل التنبيه فقط.",
-    en: "Level 1: the system executes against a pre-documented rule — accountability centers on the rule's accuracy. Level 2: the final decision is always human; the system only alerts and documents.",
-  },
-  {
-    id: "KB-TWOTIER",
-    circular_number: "سياسة النظام الداخلية",
-    title: "ما الفرق بين المستوى ١ والمستوى ٢؟",
-    keywords: ["الفرق بين المستوى", "منع متدرج", "two tier"],
-    ar: "المستوى ١: قواعد قطعية قابلة للتحقق آلياً → منع آلي فوري. المستوى ٢: أي حالة اجتهادية أو احتمالية → تعليق وإحالة لمراجع بشري مُسمّى، ولا قرار نهائي آلي أبداً.",
-    en: "Level 1: definitive, machine-checkable rules → immediate automatic block. Level 2: any interpretive or probabilistic case → suspended and routed to a named human reviewer, never a final automatic ruling.",
-  },
-  {
-    id: "KB-ACCURACY",
-    circular_number: "سياسة الدقة والموثوقية",
-    title: "هل النظام دقيق بنسبة ١٠٠٪؟",
-    keywords: ["دقة النظام", "100%", "يضمن الدقة"],
-    ar: "لا. النصوص القانونية فيها استثناءات، والنظام مصمَّم على افتراض أنه قد يخطئ — لذلك القرارات النهائية الآلية محصورة بالحالات القطعية فقط (مستوى ١).",
-    en: "No. Legal text has exceptions, and the system assumes it can be wrong — final automatic decisions are limited strictly to definitive cases (Level 1).",
-  },
-  {
-    id: "KB-COST",
-    circular_number: "منهجية داخلية",
-    title: "كيف تُحسب نسبة خفض التكاليف؟",
-    keywords: ["نسبة خفض التكاليف", "70%", "منهجية", "كيف تحسب"],
-    ar: "النسبة محسوبة كـ (١ − ساعات المراجعة بعد الأتمتة ÷ ساعات المراجعة قبل الأتمتة) × ١٠٠، بافتراض ١٢٠٠ ساعة قبل النظام مقابل ٣٦٠ ساعة بعد الأتمتة.",
-    en: "Calculated as (1 − post-automation hours ÷ pre-automation hours) × 100, assuming 1,200 hours before the system vs. 360 hours after automation.",
-  },
-];
 
-function normalizeArabicClient(text) {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[\u064B-\u0652]/g, "")
-    .replace(/[إأآا]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه")
-    // IMPORTANT: JS's \w (unlike Python's) only matches ASCII [A-Za-z0-9_],
-    // so it silently strips every Arabic letter. \p{L}/\p{N} with the /u
-    // flag are Unicode-aware and keep Arabic text intact.
-    .replace(/[^\p{L}\p{N}\s]/gu, " ");
-}
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-function stripAlClient(word) {
-  return word.startsWith("ال") && word.length > 3 ? word.slice(2) : word;
-}
 
-function tokenizeClient(text) {
-  return new Set(
-    normalizeArabicClient(text)
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(stripAlClient)
-  );
-}
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
-// A multi-word keyword phrase matches only if every one of its words is
-// present among the question's tokens — order-independent and immune to
-// users writing "الشبهة الشرعية" instead of the keyword's own "شبهة شرعية".
-function keywordMatchesClient(keyword, questionTokens) {
-  const kwTokens = normalizeArabicClient(keyword).split(/\s+/).filter(Boolean).map(stripAlClient);
-  return kwTokens.length > 0 && kwTokens.every((t) => questionTokens.has(t));
-}
 
-function matchIntentClient(questionTokens) {
-  for (const intent of CHATBOT_INTENTS) {
-    for (const kw of intent.keywords) {
-      if (keywordMatchesClient(kw, questionTokens)) return intent;
-    }
-  }
-  return null;
-}
+def _iso(dt: datetime) -> str:
+    return dt.isoformat().replace("+00:00", "Z")
 
-function searchChatbotKB(question) {
-  const tokens = tokenizeClient(question);
-  const scored = CHATBOT_KB.map((entry) => {
-    const score = entry.keywords.reduce((acc, kw) => acc + (keywordMatchesClient(kw, tokens) ? 1 : 0), 0);
-    return { score, entry };
-  }).filter((x) => x.score > 0);
-  scored.sort((a, b) => b.score - a.score);
-  return scored;
-}
 
-function ChatbotWidget({ lang, t }) {
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [thinking, setThinking] = useState(false);
-  const [suggested, setSuggested] = useState([]);
-  const scrollRef = useRef(null);
+def _generate_transaction(idx: int, base_time: datetime) -> Transaction:
+    roll = RNG.random()
+    ts = base_time - timedelta(seconds=idx * RNG.randint(4, 45))
+    amount = round(RNG.uniform(250, 480_000), 2)
 
-  useEffect(() => {
-    fetch(`${API_BASE}/chatbot/suggested-questions`)
-      .then((r) => r.json())
-      .then((d) => setSuggested(lang === "en" ? d.questions_en : d.questions_ar))
-      .catch(() =>
-        setSuggested(
-          lang === "en"
-            ? ["What's the difference between Level 1 and Level 2 blocking?", "Who is liable if the system wrongly blocks a transaction?"]
-            : ["ما الفرق بين المستوى ١ والمستوى ٢؟", "مين المسؤول لو النظام أوقف عملية شرعية بالخطأ؟"]
+    if roll < 0.08:
+        rule = RNG.choice(LEVEL1_BLOCKED_RULES)
+        return Transaction(
+            id=f"TXN-{100000 + idx}",
+            timestamp=_iso(ts),
+            institution=RNG.choice(INSTITUTIONS),
+            amount_sar=amount,
+            status="blocked",
+            action_level="auto_block",
+            certainty="rule_based",
+            legal_reason=rule["reason"],
+            decision_basis=rule["basis"],
+            reviewer_required=None,
+            article_reference=rule["article"],
+            violation_category=rule["category"],
+            customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
+            channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
         )
-      );
-  }, [lang]);
 
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, thinking]);
+    if roll < 0.22:
+        rule = RNG.choice(LEVEL2_FLAGGED_RULES)
+        return Transaction(
+            id=f"TXN-{100000 + idx}",
+            timestamp=_iso(ts),
+            institution=RNG.choice(INSTITUTIONS),
+            amount_sar=amount,
+            status="flagged",
+            action_level="pending_review",
+            certainty="ai_assessed",
+            legal_reason=rule["reason"],
+            decision_basis=rule["basis"],
+            reviewer_required=rule["reviewer"],
+            article_reference=rule["article"],
+            violation_category=rule["category"],
+            customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
+            channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
+        )
 
-  const ask = useCallback(
-    async (question) => {
-      if (!question.trim()) return;
-      const userMsg = { role: "user", text: question };
-      setMessages((m) => [...m, userMsg]);
-      setInput("");
-      setThinking(true);
+    reason = RNG.choice(LEVEL_PASSED_RULES)
+    return Transaction(
+        id=f"TXN-{100000 + idx}",
+        timestamp=_iso(ts),
+        institution=RNG.choice(INSTITUTIONS),
+        amount_sar=amount,
+        status="passed",
+        action_level="no_action",
+        certainty="rule_based",
+        legal_reason=reason,
+        decision_basis="مطابقة قواعد صريحة معلنة",
+        reviewer_required=None,
+        article_reference=None,
+        customer_ref=f"CUST-{RNG.randint(10000, 99999)}",
+        channel=RNG.choice(["Open Banking API", "تطبيق الجوال", "الإنترنت البنكي", "نقاط البيع"]),
+    )
 
-      try {
-        const res = await fetch(`${API_BASE}/chatbot/query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, lang }),
-        });
-        if (!res.ok) throw new Error("bad response");
-        const data = await res.json();
-        setMessages((m) => [...m, { role: "bot", text: data.answer, sources: data.sources, confidence: data.confidence, disclaimer: data.disclaimer }]);
-      } catch {
-        const tokens = tokenizeClient(question);
-        const intent = matchIntentClient(tokens);
-        if (intent) {
-          setMessages((m) => [...m, { role: "bot", text: lang === "en" ? intent.en : intent.ar, sources: [], confidence: "high", disclaimer: t.chatbot.disclaimer }]);
-        } else {
-          const matches = searchChatbotKB(question);
-          if (matches.length === 0) {
-            setMessages((m) => [...m, { role: "bot", text: t.chatbot.noMatch, sources: [], confidence: "none", disclaimer: t.chatbot.disclaimer }]);
-          } else {
-            const topScore = matches[0].score;
-            const top = topScore >= 2 ? matches.filter((x) => x.score === topScore).slice(0, 2).map((m) => m.entry) : [matches[0].entry];
-            const text = top.map((e) => (lang === "en" ? e.en : e.ar)).join("\n\n");
-            const sources = top.map((e) => ({ circular_number: e.circular_number, title: e.title }));
-            setMessages((m) => [...m, { role: "bot", text, sources, confidence: topScore >= 2 ? "high" : "medium", disclaimer: t.chatbot.disclaimer }]);
-          }
-        }
-      } finally {
-        setThinking(false);
-      }
-    },
-    [lang, t]
-  );
 
-  return (
-    <>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-5 rtl:left-5 ltr:right-5 z-40 w-14 h-14 rounded-2xl aurora-border glass-panel-strong flex items-center justify-center shadow-2xl hover:-translate-y-0.5 transition-transform"
-        style={{ boxShadow: "0 8px 30px -8px rgba(228,160,255,0.5)" }}
-        aria-label={t.chatbot.fabLabel}
-        title={t.chatbot.fabLabel}
-      >
-        {open ? <X size={20} style={{ color: "var(--orchid)" }} /> : <MessageCircle size={20} style={{ color: "var(--orchid)" }} />}
-      </button>
+# ---------------------------------------------------------------------------
+# Endpoints — dashboard data
+# ---------------------------------------------------------------------------
 
-      {open && (
-        <div className="fixed bottom-24 rtl:left-5 ltr:right-5 z-40 w-[92vw] max-w-sm h-[520px] max-h-[70vh] aurora-border glass-panel-strong rounded-2xl flex flex-col overflow-hidden animate-fade-up shadow-2xl">
-          <div className="p-4 border-b border-white/5">
-            <p className="text-sm font-bold text-white flex items-center gap-2">
-              <BookOpenCheck size={15} style={{ color: "var(--gold)" }} />
-              {t.chatbot.title}
-            </p>
-            <p className="text-[10px] text-white/40 mt-1">{t.chatbot.subtitle}</p>
-          </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-            <div className="text-[10px] text-white/35 bg-white/[0.03] border border-white/10 rounded-xl p-2.5 leading-relaxed">
-              {t.chatbot.disclaimer}
-            </div>
-
-            {messages.length === 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] text-white/40 font-semibold">{t.chatbot.suggestedLabel}</p>
-                {suggested.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => ask(q)}
-                    className="w-full text-start text-[11px] text-white/70 bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] rounded-xl px-3 py-2 text-[12px] leading-relaxed whitespace-pre-line ${
-                    m.role === "user" ? "text-white" : "text-white/80"
-                  }`}
-                  style={
-                    m.role === "user"
-                      ? { backgroundColor: "rgba(228,160,255,0.15)", border: "1px solid rgba(228,160,255,0.3)" }
-                      : { backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }
-                  }
-                >
-                  {m.text}
-                  {m.role === "bot" && m.sources && m.sources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
-                      {m.sources.map((s) => (
-                        <span
-                          key={s.circular_number}
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                          style={{ color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)" }}
-                        >
-                          {s.circular_number}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {thinking && <p className="text-[11px] text-white/35 flex items-center gap-1.5"><RefreshCw size={11} className="animate-spin" />{t.chatbot.thinking}</p>}
-          </div>
-
-          <div className="p-3 border-t border-white/5 flex items-center gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && ask(input)}
-              placeholder={t.chatbot.placeholder}
-              className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-[var(--orchid)]/40"
-            />
-            <button
-              onClick={() => ask(input)}
-              disabled={!input.trim() || thinking}
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
-              style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
-              aria-label={t.chatbot.send}
-            >
-              <Send size={14} className={lang === "ar" ? "scale-x-[-1]" : ""} />
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function SettingsModal({ onClose, onGoToLimits, t }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative aurora-border glass-panel-strong rounded-2xl p-6 w-full max-w-sm animate-fade-up">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <MeyarLogo size={34} />
-            <div>
-              <p className="text-white font-black text-sm">{t.settingsModal.title}</p>
-              <p className="text-[10px] text-white/40">{t.settingsModal.version}: 3.0.0</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06]">
-            <X size={14} />
-          </button>
-        </div>
-        <p className="text-[12px] text-white/60 leading-relaxed mb-4">{t.settingsModal.description}</p>
-        <button
-          onClick={onGoToLimits}
-          className="w-full py-2.5 rounded-xl border text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-          style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
-        >
-          <ShieldAlert size={14} />
-          {t.settingsModal.goToLimits}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function NotificationsPanel({ transactions, onViewAll, onClose, t }) {
-  const alerts = useMemo(
-    () => transactions.filter((tx) => tx.status === "blocked" || tx.status === "flagged").slice(0, 6),
-    [transactions]
-  );
-  return (
-    <div className="absolute top-12 rtl:left-0 ltr:right-0 z-30 w-72 aurora-border glass-panel-strong rounded-2xl overflow-hidden animate-fade-up shadow-2xl">
-      <div className="p-3 border-b border-white/5 flex items-center justify-between">
-        <p className="text-xs font-bold text-white">{t.notifications.title}</p>
-        <button onClick={onClose} className="w-6 h-6 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06]">
-          <X size={12} />
-        </button>
-      </div>
-      <div className="max-h-64 overflow-y-auto p-2 space-y-1.5">
-        {alerts.length === 0 && <p className="text-center text-white/35 text-[11px] py-6">{t.notifications.empty}</p>}
-        {alerts.map((tx) => (
-          <div key={tx.id} className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/5 flex items-start gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${STATUS_META[tx.status].dot}`} />
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold text-white truncate">{tx.id}</p>
-              <p className="text-[10px] text-white/40 truncate">{tx.legal_reason}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={onViewAll}
-        className="w-full p-2.5 text-[11px] font-bold text-center border-t border-white/5 text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors"
-      >
-        {t.notifications.viewAll}
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Sidebar
-// ---------------------------------------------------------------------------
-
-function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettingsOpen, t }) {
-  return (
-    <aside
-      className={`aurora-border glass-panel-strong flex flex-col transition-all duration-300 shrink-0 ${
-        collapsed ? "w-[76px]" : "w-64"
-      }`}
-    >
-      <div className="p-4 flex items-center gap-3 border-b border-white/5">
-        <MeyarLogo size={40} />
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <p className="font-display text-white font-black text-sm leading-none">{t.appName}</p>
-            <p className="text-[10px] text-white/35 mt-1 whitespace-nowrap">{t.appSubtitle}</p>
-          </div>
-        )}
-      </div>
-
-      <nav className="flex-1 p-3 space-y-1.5">
-        {NAV_ORDER.map((id) => {
-          const Icon = NAV_ICONS[id];
-          const active = activeTab === id;
-          return (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all border"
-              style={
-                active
-                  ? {
-                      color: "var(--orchid)",
-                      backgroundColor: "rgba(228,160,255,0.1)",
-                      borderColor: "rgba(228,160,255,0.3)",
-                      boxShadow: "0 0 18px -4px rgba(228,160,255,0.4)",
-                    }
-                  : { color: "rgba(255,255,255,0.45)", borderColor: "transparent" }
-              }
-              title={collapsed ? t.nav[id] : undefined}
-            >
-              <Icon size={18} strokeWidth={2.2} className="shrink-0" />
-              {!collapsed && <span className="truncate">{t.nav[id]}</span>}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="p-3 border-t border-white/5 space-y-1.5">
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/45 hover:bg-white/[0.04] hover:text-white transition-all"
-        >
-          <Settings size={18} strokeWidth={2.2} className="shrink-0" />
-          {!collapsed && <span>{t.nav.settings}</span>}
-        </button>
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/45 hover:bg-white/[0.04] hover:text-white transition-all"
-        >
-          <ChevronLeft size={18} className={`shrink-0 transition-transform ${collapsed ? "rotate-180" : ""} ${t.dir === "ltr" ? "scale-x-[-1]" : ""}`} />
-          {!collapsed && <span>{t.nav.collapse}</span>}
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Root component
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Self-contained embedded stylesheet
-//
-// The dark theme, glass panels, and status colors all depend on CSS custom
-// properties and utility classes defined in src/index.css and loaded via
-// main.jsx (`import "./index.css"`). Standalone JSX preview tools often
-// render this component in isolation without ever loading that file, which
-// leaves every var(--...) reference empty and the whole UI washes out to
-// near-white. Injecting the same rules here makes the component render
-// correctly regardless of the preview environment; when the real Vite app
-// loads index.css too, the identical rules simply overlap harmlessly.
-// ---------------------------------------------------------------------------
-
-const EMBEDDED_STYLE = `
-  @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=El+Messiri:wght@500;600;700&display=swap");
-  :root {
-    --bg-obsidian: #0b0813;
-    --bg-obsidian-deep: #060409;
-    --card-bg: rgba(24, 15, 38, 0.5);
-    --card-bg-strong: rgba(17, 10, 28, 0.72);
-    --border-soft: rgba(255, 255, 255, 0.08);
-    --orchid: #e4a0ff;
-    --orchid-2: #c77dff;
-    --violet: #9d4edd;
-    --violet-2: #7b2cbf;
-    --gold: #e8c468;
-    --gold-2: #d4af37;
-    --lavender: #a6acff;
-    --lavender-2: #8087ff;
-    --coral: #ff6b81;
-    --coral-2: #ff4d6d;
-  }
-  .tabular-nums-ar { font-variant-numeric: tabular-nums; }
-  .font-display { font-family: "El Messiri", "Plus Jakarta Sans", sans-serif; }
-  .glass-panel {
-    background-color: var(--card-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border-soft);
-  }
-  .glass-panel-strong {
-    background-color: var(--card-bg-strong);
-    backdrop-filter: blur(26px);
-    -webkit-backdrop-filter: blur(26px);
-    border: 1px solid var(--border-soft);
-  }
-  .aurora-border { position: relative; isolation: isolate; }
-  .aurora-border::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(120deg, var(--orchid-2), var(--gold), var(--lavender), var(--violet-2));
-    background-size: 300% 300%;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0.55;
-    pointer-events: none;
-    z-index: -1;
-    animation: aurora-border-shift 8s ease infinite;
-  }
-  @keyframes aurora-border-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-  .aurora-blob { position: absolute; border-radius: 999px; filter: blur(90px); opacity: 0.35; pointer-events: none; will-change: transform; }
-  @keyframes aurora-float-a { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-30px) scale(1.15); } }
-  @keyframes aurora-float-b { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,25px) scale(1.1); } }
-  @keyframes aurora-float-c { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px,40px) scale(1.08); } }
-  .animate-aurora-a { animation: aurora-float-a 16s ease-in-out infinite; }
-  .animate-aurora-b { animation: aurora-float-b 20s ease-in-out infinite; }
-  .animate-aurora-c { animation: aurora-float-c 18s ease-in-out infinite; }
-  @keyframes fade-up { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: translateY(0); } }
-  .animate-fade-up { animation: fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both; }
-  @keyframes slide-in-row { 0% { opacity: 0; transform: translateY(-8px); } 100% { opacity: 1; transform: translateY(0); } }
-  .animate-slide-in-row { animation: slide-in-row 0.4s ease-out both; }
-  @keyframes pulse-glow-lavender { 0%,100% { opacity: 1; box-shadow: 0 0 12px rgba(166,172,255,0.5); } 50% { opacity: 0.65; box-shadow: 0 0 4px rgba(166,172,255,0.2); } }
-  .animate-pulse-lavender { animation: pulse-glow-lavender 2.4s ease-in-out infinite; }
-  @keyframes pulse-glow-coral { 0%,100% { box-shadow: 0 0 12px rgba(255,107,129,0.55); } 50% { box-shadow: 0 0 34px rgba(255,107,129,0.85); } }
-  .animate-pulse-coral { animation: pulse-glow-coral 1.4s ease-in-out infinite; }
-  @keyframes logo-glow { 0%,100% { filter: drop-shadow(0 0 6px rgba(228,160,255,0.55)) drop-shadow(0 0 14px rgba(157,78,221,0.35)); } 50% { filter: drop-shadow(0 0 12px rgba(232,196,104,0.6)) drop-shadow(0 0 22px rgba(166,172,255,0.4)); } }
-  .animate-logo-glow { animation: logo-glow 4s ease-in-out infinite; }
-  body { background-color: var(--bg-obsidian); }
-`;
-
-export default function MeyarDashboard() {
-  const [lang, setLang] = useState("ar");
-  const t = STR[lang];
-
-  const [activeTab, setActiveTab] = useState("overview");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const [summary, setSummary] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [trends, setTrends] = useState([]);
-  const [regulatory, setRegulatory] = useState([]);
-  const [reviewQueue, setReviewQueue] = useState([]);
-  const [auditLog, setAuditLog] = useState([]);
-  const [reviewStats, setReviewStats] = useState({ pending: 0, approved_today: 0, rejected_today: 0, approval_rate_pct: 0 });
-
-  const [loading, setLoading] = useState(true);
-  const [online, setOnline] = useState(true);
-
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const txCounter = useRef(0);
-
-  const fetchJSON = useCallback(async (path) => {
-    const res = await fetch(`${API_BASE}${path}`);
-    if (!res.ok) throw new Error(`Request failed: ${path}`);
-    return res.json();
-  }, []);
-
-  const loadAll = useCallback(async () => {
-    try {
-      const [summaryRes, txRes, trendsRes, regRes, reviewRes, auditRes, statsRes] = await Promise.all([
-        fetchJSON("/compliance-summary"),
-        fetchJSON("/realtime-transactions?limit=30"),
-        fetchJSON("/compliance-trends"),
-        fetchJSON("/regulatory-updates"),
-        fetchJSON("/review-queue"),
-        fetchJSON("/audit-log"),
-        fetchJSON("/review-queue/stats"),
-      ]);
-      setSummary(summaryRes);
-      setTransactions(txRes.items);
-      setTrends(trendsRes.points);
-      setRegulatory(regRes.items);
-      setReviewQueue(reviewRes.items);
-      setAuditLog(auditRes.items);
-      setReviewStats(statsRes);
-      setOnline(true);
-    } catch (err) {
-      // Backend unreachable — fall back to locally generated data so the
-      // interface stays fully interactive and never appears broken.
-      setSummary((prev) => prev ?? makeFallbackSummary());
-      setTransactions((prev) => (prev.length ? prev : Array.from({ length: 24 }, (_, i) => makeFallbackTransaction(i))));
-      setTrends((prev) => (prev.length ? prev : makeFallbackTrends()));
-      setRegulatory((prev) => (prev.length ? prev : makeFallbackRegulatory()));
-      setReviewQueue((prev) => (prev.length ? prev : makeFallbackReviewQueue()));
-      setAuditLog((prev) => (prev.length ? prev : makeFallbackAuditLog()));
-      setOnline(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchJSON]);
-
-  useEffect(() => {
-    loadAll();
-  }, [loadAll]);
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetchJSON("/realtime-transactions?limit=6");
-        setTransactions((prev) => [...res.items, ...prev].slice(0, 60));
-        setOnline(true);
-      } catch {
-        txCounter.current += 1;
-        const newTx = makeFallbackTransaction(txCounter.current);
-        setTransactions((prev) => [newTx, ...prev].slice(0, 60));
-        setOnline(false);
-      }
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [fetchJSON]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadAll();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [loadAll]);
-
-  const handleDecide = useCallback(
-    async (transactionId, decisionWord) => {
-      const tx = reviewQueue.find((t) => t.id === transactionId);
-      if (!tx) return;
-
-      const decision = decisionWord === "approve" ? "approved" : "rejected";
-      const reviewerName = t.reviewQueue.defaultReviewer;
-
-      setReviewQueue((prev) => prev.filter((t) => t.id !== transactionId));
-
-      let entry;
-      try {
-        const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ decision: decisionWord, reviewer_name: reviewerName }),
-        });
-        if (!res.ok) throw new Error("decide failed");
-        entry = await res.json();
-      } catch {
-        entry = makeFallbackAuditEntry(tx, "human_review", decision, reviewerName);
-      }
-
-      setAuditLog((prev) => {
-        const next = [entry, ...prev];
-        setReviewStats(computeReviewStats(reviewQueue.filter((t) => t.id !== transactionId), next));
-        return next;
-      });
-    },
-    [reviewQueue, t]
-  );
-
-  const sparkSeeds = useMemo(() => {
-    const seed = (base, variance) =>
-      Array.from({ length: 12 }, (_, i) => ({ v: base + Math.sin(i / 1.4) * variance + Math.random() * variance * 0.4 }));
+@app.get("/")
+def root():
     return {
-      compliance: seed(96, 2),
-      volume: seed(60, 25),
-      blocked: seed(40, 15),
-      savings: seed(50, 20),
-    };
-  }, []);
+        "service": "Meyar Compliance API",
+        "status": "operational",
+        "message": "منظومة معيار تعمل بكامل طاقتها",
+    }
 
-  return (
-    <div
-      className="min-h-screen w-full flex text-white overflow-hidden relative"
-      style={{ backgroundColor: "var(--bg-obsidian)", fontFamily: t.fontFamily }}
-      dir={t.dir}
-    >
-      <style>{EMBEDDED_STYLE}</style>
-      <AuroraAtmosphere />
 
-      <div className="hidden md:flex">
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
-          setSettingsOpen={setSettingsOpen}
-          t={t}
-        />
-      </div>
+@app.get("/api/compliance-summary", response_model=ComplianceSummary)
+def compliance_summary():
+    return ComplianceSummary(
+        compliance_score=98.4,
+        compliance_score_delta=0.6,
+        transactions_scanned_today=RNG.randint(184_000, 212_000),
+        transactions_scanned_delta_pct=12.3,
+        compliance_cost_saved_pct=_compliance_cost_saved_pct(),
+        cost_methodology_ar=COST_METHODOLOGY_TEXT_AR,
+        cost_methodology_en=COST_METHODOLOGY_TEXT_EN,
+        total_monitored_volume_sar=round(RNG.uniform(2.1e9, 2.6e9), 2),
+        total_blocked_violations=RNG.randint(320, 410),
+        total_blocked_delta_pct=-8.4,
+        saved_penalties_value_sar=round(RNG.uniform(18_000_000, 24_500_000), 2),
+        system_status="المنظومة آمنة - الرقابة الذاتية نشطة (المستوى ١ آلي / المستوى ٢ بمراجعة بشرية)",
+        ai_core_online=True,
+        last_sync=_iso(_now()),
+    )
 
-      {mobileNavOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-64">
-            <Sidebar
-              activeTab={activeTab}
-              setActiveTab={(id) => {
-                setActiveTab(id);
-                setMobileNavOpen(false);
-              }}
-              collapsed={false}
-              setCollapsed={() => {}}
-              setSettingsOpen={(v) => {
-                setSettingsOpen(v);
-                setMobileNavOpen(false);
-              }}
-              t={t}
-            />
-          </div>
-          <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={() => setMobileNavOpen(false)} />
-        </div>
-      )}
 
-      {settingsOpen && (
-        <SettingsModal
-          onClose={() => setSettingsOpen(false)}
-          onGoToLimits={() => {
-            setSettingsOpen(false);
-            setActiveTab("limits");
-          }}
-          t={t}
-        />
-      )}
+@app.get("/api/realtime-transactions", response_model=TransactionsResponse)
+def realtime_transactions(
+    limit: int = Query(default=40, ge=1, le=200),
+    status: Optional[TxStatus] = Query(default=None),
+    category: Optional[str] = Query(default=None),
+):
+    base_time = _now()
+    all_items = [_generate_transaction(i, base_time) for i in range(limit * 3)]
 
-      <ChatbotWidget lang={lang} t={t} />
+    if status:
+        all_items = [t for t in all_items if t.status == status]
+    if category:
+        all_items = [t for t in all_items if t.violation_category == category]
 
-      <main className="flex-1 min-w-0 h-screen overflow-y-auto relative z-0">
-        <div className="p-4 md:p-6 space-y-5 max-w-[1600px] mx-auto">
-          <div className="flex items-center justify-between gap-3 md:hidden mb-1">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setMobileNavOpen(true)}
-                className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center border border-white/10"
-              >
-                <Menu size={18} />
-              </button>
-              <MeyarLogo size={28} />
-              <p className="font-display font-black text-white">{t.appName}</p>
-            </div>
-            <LangToggle lang={lang} setLang={setLang} />
-          </div>
+    items = all_items[:limit]
 
-          <TopBanner
-            summary={summary}
-            lang={lang}
-            setLang={setLang}
-            t={t}
-            transactions={transactions}
-            onGoToMonitor={() => setActiveTab("monitor")}
-          />
+    return TransactionsResponse(
+        items=items,
+        total=len(items),
+        passed_count=sum(1 for t in items if t.status == "passed"),
+        flagged_count=sum(1 for t in items if t.status == "flagged"),
+        blocked_count=sum(1 for t in items if t.status == "blocked"),
+    )
 
-          <div className="flex items-center justify-between">
-            <h1 className="font-display text-lg md:text-xl font-black text-white flex items-center gap-2">{t.nav[activeTab]}</h1>
-            {loading && (
-              <span className="text-[11px] text-white/35 flex items-center gap-1.5">
-                <RefreshCw size={12} className="animate-spin" />
-              </span>
-            )}
-          </div>
 
-          {activeTab === "overview" && (
-            <OverviewTab summary={summary} sparkSeeds={sparkSeeds} trends={trends} onGoToMonitor={() => setActiveTab("monitor")} lang={lang} t={t} />
-          )}
+@app.get("/api/violation-categories")
+def get_violation_categories():
+    return {"items": VIOLATION_CATEGORIES}
 
-          {activeTab === "monitor" && (
-            <MonitorTab
-              transactions={transactions}
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              loading={loading}
-              lang={lang}
-              t={t}
-            />
-          )}
 
-          {activeTab === "analytics" && <AnalyticsTab trends={trends} summary={summary} lang={lang} t={t} />}
+@app.get("/api/compliance-trends", response_model=ComplianceTrendsResponse)
+def compliance_trends():
+    months = [
+        "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+    ]
 
-          {activeTab === "review" && (
-            <ReviewQueueTab reviewQueue={reviewQueue} stats={reviewStats} onDecide={handleDecide} lang={lang} t={t} />
-          )}
+    points: List[TrendPoint] = []
+    max_reduction = _compliance_cost_saved_pct()
+    cumulative_cost_reduction = max_reduction * 0.6
+    for i, month in enumerate(months):
+        target = 95.0 + (i * 0.15)
+        actual = target - RNG.uniform(-2.5, 1.2)
+        cumulative_cost_reduction = min(max_reduction, cumulative_cost_reduction + RNG.uniform(1.0, 2.4))
+        points.append(
+            TrendPoint(
+                month=month,
+                target_compliance=round(target, 2),
+                actual_compliance=round(actual, 2),
+                operational_cost_index=round(100 - cumulative_cost_reduction, 2),
+                cost_reduction_pct=round(cumulative_cost_reduction, 2),
+            )
+        )
 
-          {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
+    avg_compliance = round(sum(p.actual_compliance for p in points) / len(points), 2)
+    avg_cost_reduction = round(sum(p.cost_reduction_pct for p in points) / len(points), 2)
 
-          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
+    return ComplianceTrendsResponse(
+        points=points,
+        average_compliance=avg_compliance,
+        average_cost_reduction_pct=avg_cost_reduction,
+    )
 
-          {activeTab === "limits" && <LimitsTab t={t} />}
 
-          <footer className="pt-6 pb-2 text-center text-[11px] text-white/30">{t.footer(new Date().getFullYear())}</footer>
-        </div>
-      </main>
-    </div>
-  );
-}
+@app.get("/api/regulatory-updates", response_model=RegulatoryUpdatesResponse)
+def regulatory_updates():
+    items: List[RegulatoryUpdate] = []
+    for i, (number, title) in enumerate(CIRCULAR_TOPICS):
+        status_roll = RNG.random()
+        if status_roll < 0.65:
+            parsing_status: Literal["completed", "in_progress", "queued"] = "completed"
+        elif status_roll < 0.88:
+            parsing_status = "in_progress"
+        else:
+            parsing_status = "queued"
+
+        issued = _now() - timedelta(days=RNG.randint(3, 240))
+        rules_generated = RNG.randint(4, 38) if parsing_status != "queued" else 0
+
+        items.append(
+            RegulatoryUpdate(
+                id=f"CIRC-{900 + i}",
+                circular_number=number,
+                title=title,
+                issued_date=_iso(issued),
+                parsing_status=parsing_status,
+                rules_generated=rules_generated,
+                affected_institutions=RNG.randint(6, len(INSTITUTIONS)),
+                summary_ar=(
+                    f"قام محرك الذكاء الاصطناعي بتحليل نص {number} وتحويل بنوده القانونية "
+                    f"إلى {rules_generated} قاعدة برمجية قابلة للتنفيذ اللحظي ضمن محرك الرقابة."
+                    if parsing_status != "queued"
+                    else f"{number} في طابور المعالجة بانتظار استخلاص النص القانوني وتحويله إلى قواعد."
+                ),
+                code_rule_id=f"RULE-SET-{700 + i}" if parsing_status == "completed" else None,
+            )
+        )
+
+    return RegulatoryUpdatesResponse(
+        items=items,
+        total_parsed=sum(1 for i in items if i.parsing_status == "completed"),
+        total_in_progress=sum(1 for i in items if i.parsing_status == "in_progress"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Chatbot — two-layer design:
+#
+#   Layer A — conversational intents (greetings, thanks, farewells, "who are
+#   you", "what can you do"). These carry no regulatory claim, so they get a
+#   natural canned reply with no citation needed.
+#
+#   Layer B — regulatory / system questions. These answer ONLY from a bounded
+#   local knowledge base and always cite a source. If nothing matches with
+#   reasonable confidence, the bot says so explicitly instead of guessing.
+#   Multiple sources are only combined when the match is genuinely strong for
+#   more than one entry — a single weak keyword hit shared by two unrelated
+#   entries no longer produces a confusing merged answer.
+# ---------------------------------------------------------------------------
+
+DISCLAIMER_AR = (
+    "الإجابات هنا مبنية حصراً على قاعدة معرفة محلية مبسّطة لأغراض العرض التجريبي (Hackathon)، "
+    "وليست نصوصاً رسمية حرفية من ساما ولا استشارة قانونية أو شرعية معتمدة. للمصدر الرسمي "
+    "يُرجى مراجعة sama.gov.sa مباشرة."
+)
+DISCLAIMER_EN = (
+    "Answers are generated strictly from a simplified local knowledge base for demo purposes, "
+    "not verbatim official SAMA text or certified legal/Sharia advice. For the authoritative "
+    "source, consult sama.gov.sa directly."
+)
+
+# --- Layer A: conversational intents ---------------------------------------
+
+INTENTS = [
+    {
+        "id": "greeting",
+        "keywords": ["اهلا", "أهلا", "هلا", "مرحبا", "السلام عليكم", "صباح الخير", "مساء الخير", "hi", "hello", "hey", "salam"],
+        "answer_ar": "أهلاً! أنا مساعد التشريعات في معيار. أقدر أجاوبك عن تعاميم ساما المحمّلة بالنظام، أو عن نموذج المستويين (منع آلي / مراجعة بشرية)، أو المسؤولية والحدود. جرّب تسألني عن أي موضوع منها 🙂",
+        "answer_en": "Hi! I'm Meyar's regulatory assistant. I can answer questions about the loaded SAMA circulars, the two-tier model (auto-block vs. human review), or accountability and limits. Ask me anything from those areas.",
+    },
+    {
+        "id": "thanks",
+        "keywords": ["شكرا", "شكراً", "يعطيك العافية", "تسلم", "thanks", "thank you", "thx"],
+        "answer_ar": "العفو! تحت أمرك لأي سؤال ثاني عن الأنظمة أو النظام نفسه.",
+        "answer_en": "You're welcome! Happy to help with more questions about the regulations or the system itself.",
+    },
+    {
+        "id": "farewell",
+        "keywords": ["مع السلامة", "وداعا", "الى اللقاء", "باي", "bye", "goodbye", "see you"],
+        "answer_ar": "إلى اللقاء! ارجع لي أي وقت تحتاج تتأكد من شي متعلق بتعاميم ساما أو النظام.",
+        "answer_en": "Goodbye! Come back anytime you need to check something about SAMA circulars or the system.",
+    },
+    {
+        "id": "identity",
+        "keywords": ["مين انت", "من انت", "ايش انت", "مين طورك", "من صنعك", "who are you", "what are you"],
+        "answer_ar": "أنا مساعد تشريعات مبني داخل نظام معيار، وأجاوب فقط من قاعدة معرفة محلية محدودة لتعاميم ساما وسياسات النظام — ما أخمّن، ولو السؤال خارج قاعدتي بقولك صراحة بدل ما أختلق جواب.",
+        "answer_en": "I'm a regulatory assistant built into the Meyar system. I answer strictly from a bounded local knowledge base of SAMA circulars and system policies — I don't guess, and if a question is outside that base I'll say so plainly instead of making something up.",
+    },
+    {
+        "id": "capabilities",
+        "keywords": ["وش تقدر تسوي", "ساعدني", "ايش تعرف", "what can you do", "help me", "capabilities"],
+        "answer_ar": "أقدر أساعدك في: (١) شرح تعاميم ساما المحمّلة بالنظام (KYC، السقوف اليومية، مكافحة غسل الأموال، الترخيص...). (٢) توضيح نموذج المستويين ومتى يكون المنع آلياً ومتى يحتاج مراجعة بشرية. (٣) من المسؤول في كل حالة. (٤) منهجية أي رقم أو نسبة تشوفها بالداشبورد.",
+        "answer_en": "I can help with: (1) explaining the loaded SAMA circulars (KYC, daily limits, AML, licensing...). (2) the two-tier model and when a block is automatic vs. human-reviewed. (3) who is accountable in each case. (4) the methodology behind any number or percentage on the dashboard.",
+    },
+    {
+        "id": "wellbeing",
+        "keywords": ["كيف الحال", "كيفك", "كيف حالك", "شلونك", "how are you", "how's it going"],
+        "answer_ar": "تمام الحمد لله! جاهز أساعدك بأي سؤال عن تعاميم ساما أو نظام معيار — جرّب اسألني عن شي محدد.",
+        "answer_en": "Doing well, thanks for asking! Ready to help with any question about SAMA circulars or the Meyar system — go ahead and ask.",
+    },
+]
+
+
+
+def _normalize_arabic(text: str) -> str:
+    text = text.strip().lower()
+    text = re.sub(r"[\u064B-\u0652]", "", text)  # strip tashkeel
+    text = re.sub(r"[إأآا]", "ا", text)
+    text = re.sub(r"ى", "ي", text)
+    text = re.sub(r"ة", "ه", text)
+    text = re.sub(r"[^\w\s]", " ", text)
+    return text
+
+
+def _strip_al(word: str) -> str:
+    """Strip the Arabic definite article (ال) so 'الشبهة' and 'شبهة' match
+    the same token — users type the article inconsistently."""
+    if word.startswith("ال") and len(word) > 3:
+        return word[2:]
+    return word
+
+
+def _tokenize(text: str) -> set:
+    return {_strip_al(w) for w in _normalize_arabic(text).split() if w}
+
+
+def _keyword_matches(keyword: str, question_tokens: set) -> bool:
+    """A multi-word keyword phrase matches if every one of its words is
+    present in the question, regardless of order or 'ال' prefixes — a plain
+    substring check breaks the moment a user writes 'الشبهة الشرعية' instead
+    of the keyword's own 'شبهة شرعية'."""
+    kw_tokens = {_strip_al(w) for w in _normalize_arabic(keyword).split() if w}
+    return bool(kw_tokens) and kw_tokens.issubset(question_tokens)
+
+
+def _match_intent(question_tokens: set):
+    for intent in INTENTS:
+        for kw in intent["keywords"]:
+            if _keyword_matches(kw, question_tokens):
+                return intent
+    return None
+
+
+def _search_knowledge_base(question: str) -> List[tuple]:
+    """Token-overlap retrieval — deliberately simple and fully inspectable
+    rather than a black-box embedding search, so the matching logic itself
+    can be explained to a committee if asked. Each matched keyword phrase
+    counts as one point; longer, more specific phrases (e.g. 'حماية
+    البيانات' vs. a single generic word) make accidental cross-topic
+    collisions rare."""
+    q_tokens = _tokenize(question)
+    scored = []
+    for entry in SAMA_KNOWLEDGE_BASE:
+        score = sum(1 for kw in entry["keywords"] if _keyword_matches(kw, q_tokens))
+        if score > 0:
+            scored.append((score, entry))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored
+
+
+
+
+SAMA_KNOWLEDGE_BASE = [
+    {
+        "id": "KB-102",
+        "circular_number": "تعميم رقم ١٠٢",
+        "title": "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
+        "keywords": ["هوية العميل", "تحقق من الهوية", "كي واي سي", "kyc", "المستفيد الفعلي", "بيانات العميل"],
+        "answer_ar": (
+            "تعميم رقم ١٠٢ يحدد ضوابط التحقق من هوية العميل (KYC) عند استخدام واجهات "
+            "الخدمات المصرفية المفتوحة، ويشترط اكتمال بيانات هوية المستفيد الفعلي قبل "
+            "تنفيذ أي معاملة. في نظام معيار: غياب أي حقل KYC إلزامي هو قاعدة قطعية "
+            "(مستوى ١) تُفعّل منعاً آلياً فورياً، لأن التحقق هنا اكتمال بيانات وليس اجتهاداً."
+        ),
+        "answer_en": (
+            "Circular No. 102 sets identity-verification (KYC) controls for Open Banking "
+            "interfaces and requires complete beneficial-owner data before executing any "
+            "transaction. In Meyar: a missing mandatory KYC field is a Level-1 rule that "
+            "triggers an immediate automatic block, since it's a completeness check, not judgment."
+        ),
+    },
+    {
+        "id": "KB-98",
+        "circular_number": "تعميم رقم ٩٨",
+        "title": "تحديث السقوف اليومية لمعاملات الدفع الفوري",
+        "keywords": ["سقف يومي", "الحد الاقصى اليومي", "دفع فوري", "daily limit"],
+        "answer_ar": (
+            "تعميم رقم ٩٨ يحدّث السقوف اليومية المسموح بها لمعاملات الدفع الفوري. "
+            "تجاوز هذا السقف رقم قابل للمقارنة المباشرة، لذلك يُصنَّف في نظام معيار "
+            "كقاعدة مستوى ١ (منع آلي فوري) بلا حاجة لمراجعة بشرية."
+        ),
+        "answer_en": (
+            "Circular No. 98 updates daily limits for instant payment transactions. "
+            "Exceeding it is a direct numeric comparison, so Meyar classifies it as a "
+            "Level-1 rule (immediate automatic block) with no human review needed."
+        ),
+    },
+    {
+        "id": "KB-85",
+        "circular_number": "تعميم رقم ٨٥",
+        "title": "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية",
+        "keywords": ["مستفيد فعلي", "افصاح", "حسابات تجارية", "beneficial owner"],
+        "answer_ar": (
+            "تعميم رقم ٨٥ يلزم الحسابات التجارية بالإفصاح عن هوية المستفيد الفعلي. "
+            "عدم توفر هذا الإفصاح يُعامل كقاعدة قطعية (مستوى ١)، أما الشك في صحة "
+            "الإفصاح المُقدَّم (لا في وجوده) فهو تقييم اجتهادي يُحال لموظف الامتثال (مستوى ٢)."
+        ),
+        "answer_en": (
+            "Circular No. 85 requires commercial accounts to disclose the beneficial "
+            "owner. A missing disclosure is a Level-1 rule; doubt about the accuracy of a "
+            "disclosure that was provided is a Level-2 judgment call routed to a compliance officer."
+        ),
+    },
+    {
+        "id": "KB-77",
+        "circular_number": "تعميم رقم ٧٧",
+        "title": "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
+        "keywords": ["غسل اموال", "غسيل اموال", "aml", "مكافحة غسل الاموال", "نشاط مشبوه", "مؤشرات غسل"],
+        "answer_ar": (
+            "تعميم رقم ٧٧ ينظّم ضوابط مكافحة غسل الأموال في التحويلات الرقمية. مهم: "
+            "مطابقة نمط معاملة لمؤشر غسل أموال هي دائماً تقييم احتمالي (نموذج كشف "
+            "أنماط)، وليست دليلاً قاطعاً — لذلك نظام معيار لا يمنعها آلياً أبداً، بل "
+            "يعلّقها ويحيلها فوراً لموظف الامتثال لاتخاذ القرار النهائي (مستوى ٢)."
+        ),
+        "answer_en": (
+            "Circular No. 77 governs AML controls for digital transfers. Important: "
+            "matching a transaction pattern to an AML indicator is always a probabilistic "
+            "assessment, never conclusive proof — so Meyar never auto-blocks on this alone; "
+            "it flags and routes to a compliance officer for the final decision (Level 2)."
+        ),
+    },
+    {
+        "id": "KB-64",
+        "circular_number": "تعميم رقم ٦٤",
+        "title": "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)",
+        "keywords": ["open banking", "مصرفية مفتوحة", "واجهة برمجية", "api", "صلاحيات القراءة", "core banking"],
+        "answer_ar": (
+            "تعميم رقم ٦٤ ينظّم واجهات الخدمات المصرفية المفتوحة، وهي عادة تمنح صلاحية "
+            "«قراءة» أو «بدء عملية بموافقة العميل» فقط. مهم جداً: هذه الصلاحية لا تعني "
+            "تلقائياً القدرة على إيقاف عملية داخل الأنظمة المصرفية الأساسية (Core Banking) "
+            "للمؤسسة المالية. أي «إيقاف» في نظام معيار هو بالضبط بحدود ما تسمح به اتفاقية "
+            "التكامل الموقّعة مع كل مؤسسة، وليس افتراضاً عاماً."
+        ),
+        "answer_en": (
+            "Circular No. 64 regulates Open Banking APIs, which typically grant only "
+            "'read' or 'consented initiation' access. Critically, this does not automatically "
+            "imply the ability to stop a transaction inside a bank's Core Banking system. "
+            "Any 'block' in Meyar is strictly limited by the signed integration agreement "
+            "with each institution — never a general assumption."
+        ),
+    },
+    {
+        "id": "KB-55",
+        "circular_number": "تعميم رقم ٥٥",
+        "title": "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية",
+        "keywords": ["محافظ رقمية", "حد اقصى للمحفظة", "wallet"],
+        "answer_ar": "تعميم رقم ٥٥ يحدد الحد الأقصى اليومي لمعاملات المحافظ الرقمية، ويُطبَّق كقاعدة مستوى ١ رقمية صريحة.",
+        "answer_en": "Circular No. 55 sets the daily maximum for digital wallet transactions and is applied as an explicit Level-1 rule.",
+    },
+    {
+        "id": "KB-49",
+        "circular_number": "تعميم رقم ٤٩",
+        "title": "متطلبات ترخيص مزودي خدمات الدفع الصغرى",
+        "keywords": ["ترخيص مزودي الخدمات", "دفع صغرى", "license", "جهة مرخصة"],
+        "answer_ar": "تعميم رقم ٤٩ يحدد متطلبات ترخيص مزودي خدمات الدفع الصغرى، ويُستخدم للتحقق من كون الجهة المستفيدة مرخّصة (قاعدة مستوى ١).",
+        "answer_en": "Circular No. 49 sets licensing requirements for micro-payment providers, used to verify a beneficiary's license status (Level-1 rule).",
+    },
+    {
+        "id": "KB-110",
+        "circular_number": "تعميم رقم ١١٠",
+        "title": "حماية بيانات العملاء الشخصية في الخدمات المالية الرقمية",
+        "keywords": ["حماية البيانات", "خصوصية العميل", "بيانات شخصية", "data protection", "privacy"],
+        "answer_ar": (
+            "تعميم رقم ١١٠ يضع ضوابط حماية بيانات العملاء الشخصية، ويشترط عدم مشاركة "
+            "بيانات المعاملة مع أي طرف خارج نطاق موافقة العميل الصريحة. في نظام معيار، "
+            "أي تسريب أو استخدام خارج النطاق هو قاعدة قطعية (مستوى ١) لأنها مخالفة "
+            "موثّقة، وليست اجتهاداً."
+        ),
+        "answer_en": (
+            "Circular No. 110 sets customer personal-data protection controls, requiring "
+            "explicit customer consent before sharing transaction data with any third party. "
+            "In Meyar, any out-of-scope use is a Level-1 rule since it's a documented "
+            "violation, not a judgment call."
+        ),
+    },
+    {
+        "id": "KB-30",
+        "circular_number": "تعميم رقم ٣٠",
+        "title": "معايير الأمان السيبراني لواجهات الخدمات المصرفية المفتوحة",
+        "keywords": ["امان سيبراني", "cyber security", "تشفير", "اختراق"],
+        "answer_ar": "تعميم رقم ٣٠ يضع الحد الأدنى من معايير الأمان السيبراني (التشفير، سجلات الوصول) لواجهات Open Banking. هذه المعايير شرط تشغيلي مسبق للتكامل، وليست جزءاً من قرار المنع اللحظي نفسه.",
+        "answer_en": "Circular No. 30 sets minimum cybersecurity standards (encryption, access logs) for Open Banking interfaces. These are a prerequisite for integration, not part of the live blocking decision itself.",
+    },
+    {
+        "id": "KB-SHARIA",
+        "circular_number": "إطار الحوكمة الشرعية",
+        "title": "دور الهيئة الشرعية في تقييم الشبهات",
+        "keywords": ["شبهة شرعية", "هيئة شرعية", "اجتهاد شرعي", "sharia"],
+        "answer_ar": (
+            "مسائل الشبهة الشرعية تخضع لاجتهاد بشري وتختلف أحياناً بين الهيئات الشرعية "
+            "نفسها. لهذا لا يتخذ نظام معيار أي قرار نهائي في هذه الحالات: أقصى ما يفعله "
+            "هو رفع تنبيه وتعليق العملية إلى حين مراجعة الهيئة الشرعية المختصة (مستوى ٢)."
+        ),
+        "answer_en": (
+            "Sharia-compliance questions involve human juristic reasoning and can differ "
+            "between Sharia boards. Meyar never issues a final ruling on these — it only "
+            "raises an alert and suspends the transaction pending review by the relevant "
+            "Sharia board (Level 2)."
+        ),
+    },
+    {
+        "id": "KB-LIABILITY",
+        "circular_number": "سياسة المسؤولية الداخلية",
+        "title": "من المسؤول عن قرار المنع أو المراجعة؟",
+        "keywords": ["من المسؤول", "المسؤولية القانونية", "liability", "من يتحمل"],
+        "answer_ar": (
+            "في المستوى ١ (قواعد قطعية): النظام ينفّذ آلياً استناداً لقاعدة موثّقة ومعلنة "
+            "مسبقاً، والمسؤولية على دقة تعريف القاعدة نفسها لا على قرار لحظي. "
+            "في المستوى ٢ (قواعد اجتهادية): القرار النهائي دائماً بشري (موظف امتثال أو "
+            "هيئة شرعية)، والنظام لا يتحمل ولا يُنسب له اتخاذ القرار، بل يقتصر دوره على "
+            "التنبيه والتوثيق."
+        ),
+        "answer_en": (
+            "Level 1 (definitive rules): the system executes automatically against a "
+            "pre-documented rule; accountability centers on the rule's own accuracy, not "
+            "a live judgment call. Level 2 (interpretive rules): the final decision is "
+            "always human (compliance officer or Sharia board); the system's role is "
+            "limited to alerting and documentation, not decision-making."
+        ),
+    },
+    {
+        "id": "KB-TWOTIER",
+        "circular_number": "سياسة النظام الداخلية",
+        "title": "ما الفرق بين المستوى ١ والمستوى ٢؟",
+        "keywords": ["الفرق بين المستوى", "مستوى واحد ومستوى اثنين", "منع متدرج", "two tier", "level 1 level 2"],
+        "answer_ar": (
+            "المستوى ١ يشمل فقط القواعد القطعية القابلة للتحقق آلياً (سقف رقمي، جهة "
+            "غير مرخصة، قائمة حظر رسمية) — هذه تُنفَّذ بمنع آلي فوري لأنها لا تحتمل "
+            "اجتهاداً. المستوى ٢ يشمل أي حالة فيها تفسير أو احتمال (شبهة شرعية، نمط "
+            "غسل أموال محتمل) — هذه تُعلَّق فقط وتُحال لمراجع بشري مُسمّى، ولا يتخذ "
+            "النظام فيها قراراً نهائياً أبداً."
+        ),
+        "answer_en": (
+            "Level 1 covers only definitive, machine-checkable rules (a numeric limit, an "
+            "unlicensed entity, an official blacklist) — executed as an immediate automatic "
+            "block since no interpretation is involved. Level 2 covers anything interpretive "
+            "or probabilistic (a Sharia concern, a possible AML pattern) — these are only "
+            "suspended and routed to a named human reviewer; the system never issues a "
+            "final ruling on them."
+        ),
+    },
+    {
+        "id": "KB-ACCURACY",
+        "circular_number": "سياسة الدقة والموثوقية",
+        "title": "هل النظام دقيق بنسبة ١٠٠٪؟",
+        "keywords": ["دقة النظام", "١٠٠٪", "100%", "accuracy", "يضمن الدقة"],
+        "answer_ar": (
+            "لا. النصوص القانونية فيها استثناءات وسياق، والنظام مصمَّم على افتراض أنه "
+            "قد يخطئ. لهذا القرارات الآلية النهائية محصورة بالحالات القطعية فقط (مستوى "
+            "١)، وأي حالة فيها اجتهاد تُحال لمراجعة بشرية بدل قرار آلي نهائي — بدل "
+            "الادّعاء بدقة مطلقة غير واقعية."
+        ),
+        "answer_en": (
+            "No. Legal text contains exceptions and context, and the system is designed "
+            "assuming it can be wrong. That's why final automatic decisions are limited to "
+            "definitive cases only (Level 1), while any interpretive case is routed to "
+            "human review instead of claiming unrealistic absolute accuracy."
+        ),
+    },
+    {
+        "id": "KB-COST",
+        "circular_number": "منهجية داخلية",
+        "title": "كيف تُحسب نسبة خفض التكاليف؟",
+        "keywords": ["نسبة خفض التكاليف", "70%", "٧٠٪", "منهجية", "كيف تحسب"],
+        "answer_ar": (
+            f"النسبة محسوبة كـ (١ − ساعات المراجعة بعد الأتمتة ÷ ساعات المراجعة قبل "
+            f"الأتمتة) × ١٠٠، بافتراض {COST_METHODOLOGY['baseline_manual_hours_per_month']} "
+            f"ساعة مراجعة يدوية شهرياً قبل النظام مقابل "
+            f"{COST_METHODOLOGY['automated_review_hours_per_month']} ساعة متبقية بعد "
+            f"الأتمتة (مراجعة حالات المستوى ٢ فقط). تقدير تشغيلي قابل للتدقيق."
+        ),
+        "answer_en": (
+            f"Calculated as (1 − post-automation review hours ÷ pre-automation review "
+            f"hours) × 100, assuming {COST_METHODOLOGY['baseline_manual_hours_per_month']} "
+            f"manual hours/month before the system vs. "
+            f"{COST_METHODOLOGY['automated_review_hours_per_month']} hours after automation "
+            f"(Level-2 review only). An auditable operational estimate."
+        ),
+    },
+]
+
+
+
+@app.post("/api/chatbot/query", response_model=ChatbotAnswer)
+def chatbot_query(payload: ChatbotQuery):
+    lang = payload.lang
+    q_tokens = _tokenize(payload.question)
+
+    # Layer A — small talk / meta questions get a natural, uncited reply.
+    intent = _match_intent(q_tokens)
+    if intent:
+        return ChatbotAnswer(
+            answer=intent["answer_en"] if lang == "en" else intent["answer_ar"],
+            confidence="high",
+            sources=[],
+            disclaimer=DISCLAIMER_EN if lang == "en" else DISCLAIMER_AR,
+        )
+
+    # Layer B — regulatory questions: cited retrieval, explicit "not found".
+    matches = _search_knowledge_base(payload.question)
+
+    if not matches:
+        no_match_ar = (
+            "لا تتوفر إجابة موثوقة لهذا السؤال ضمن قاعدة المعرفة الحالية للنظام. "
+            "بدل التخمين، يُفضَّل الرجوع مباشرة لتعاميم ساما الرسمية على sama.gov.sa، "
+            "أو استشارة موظف الامتثال."
+        )
+        no_match_en = (
+            "No reliable answer is available for this question in the system's current "
+            "knowledge base. Rather than guessing, please consult SAMA's official circulars "
+            "at sama.gov.sa, or a compliance officer."
+        )
+        return ChatbotAnswer(
+            answer=no_match_en if lang == "en" else no_match_ar,
+            confidence="none",
+            sources=[],
+            disclaimer=DISCLAIMER_EN if lang == "en" else DISCLAIMER_AR,
+        )
+
+    top_score = matches[0][0]
+    # Only merge multiple sources when the top match is itself strong
+    # (score >= 2). A lone shared keyword between unrelated entries should
+    # never produce a mashed-together answer — return the single best match
+    # instead.
+    if top_score >= 2:
+        top_entries = [e for s, e in matches if s == top_score][:2]
+        confidence: Literal["high", "medium", "none"] = "high"
+    else:
+        top_entries = [matches[0][1]]
+        confidence = "medium"
+
+    if lang == "en":
+        answer_text = "\n\n".join(e["answer_en"] for e in top_entries)
+    else:
+        answer_text = "\n\n".join(e["answer_ar"] for e in top_entries)
+
+    return ChatbotAnswer(
+        answer=answer_text,
+        confidence=confidence,
+        sources=[ChatbotSource(circular_number=e["circular_number"], title=e["title"]) for e in top_entries],
+        disclaimer=DISCLAIMER_EN if lang == "en" else DISCLAIMER_AR,
+    )
+
+
+@app.get("/api/chatbot/suggested-questions", response_model=SuggestedQuestions)
+def chatbot_suggested_questions():
+    return SuggestedQuestions(
+        questions_ar=[
+            "ما الفرق بين المستوى ١ والمستوى ٢ في نظام المنع؟",
+            "هل يقدر النظام يوقف عملية داخل الـ Core Banking؟",
+            "مين المسؤول لو النظام أوقف عملية شرعية بالخطأ؟",
+            "كيف يتعامل النظام مع شبهة غسل الأموال؟",
+            "كيف تُحسب نسبة خفض التكاليف؟",
+            "هل النظام دقيق بنسبة ١٠٠٪؟",
+        ],
+        questions_en=[
+            "What's the difference between Level 1 and Level 2 blocking?",
+            "Can the system stop a transaction inside Core Banking?",
+            "Who is liable if the system wrongly blocks a legitimate transaction?",
+            "How does the system handle AML suspicion?",
+            "How is the cost-reduction percentage calculated?",
+            "Is the system 100% accurate?",
+        ],
+    )
+
+
+
+# ---------------------------------------------------------------------------
+# Review Queue + Audit Trail
+#
+# This is what turns "flagged transactions are routed to a human reviewer"
+# from a sentence in the pitch into something a committee can actually click.
+# Every Level-2 transaction sits in REVIEW_QUEUE until a named human approves
+# or rejects it; every decision — automatic Level-1 blocks included — is
+# permanently recorded in AUDIT_LOG with who/when/why, so nothing is a black
+# box and no decision can silently disappear.
+#
+# In-memory only (fine for a hackathon demo); a real deployment would back
+# this with a database.
+# ---------------------------------------------------------------------------
+
+REVIEW_QUEUE: List[dict] = []
+AUDIT_LOG: List[dict] = []
+_audit_counter = 0
+
+
+def _new_audit_id() -> str:
+    global _audit_counter
+    _audit_counter += 1
+    return f"AUD-{1000 + _audit_counter}"
+
+
+def _log_audit(transaction: dict, level: str, decision: str, actor: str, note: Optional[str] = None) -> dict:
+    entry = {
+        "id": _new_audit_id(),
+        "timestamp": _iso(_now()),
+        "transaction_id": transaction["id"],
+        "level": level,
+        "decision": decision,
+        "reason": transaction["legal_reason"],
+        "amount_sar": transaction["amount_sar"],
+        "institution": transaction["institution"],
+        "violation_category": transaction.get("violation_category"),
+        "actor": actor,
+        "note": note,
+    }
+    AUDIT_LOG.insert(0, entry)
+    return entry
+
+
+def _seed_review_and_audit():
+    """Populate the queue and log with realistic starting data so both tabs
+    have content on first load, instead of an empty state."""
+    base_time = _now()
+
+    # A handful of already-resolved historical decisions, so the audit trail
+    # isn't empty on first visit.
+    for i in range(6):
+        tx = _generate_transaction(1000 + i, base_time - timedelta(hours=RNG.randint(2, 48)))
+        if tx.status == "blocked":
+            _log_audit(tx.model_dump(), "auto_block", "blocked", "النظام (قاعدة آلية)")
+        elif tx.status == "flagged":
+            outcome = RNG.choice(["approved", "rejected"])
+            reviewer = tx.reviewer_required or "موظف الامتثال"
+            entry = _log_audit(tx.model_dump(), "human_review", outcome, reviewer)
+            entry["timestamp"] = _iso(base_time - timedelta(hours=RNG.randint(1, 40)))
+
+    # Currently pending items awaiting a human decision — keep generating
+    # until we have a healthy demo-sized queue instead of leaving it to
+    # random chance (which could seed an empty, boring-looking queue).
+    attempts = 0
+    idx = 2000
+    while len(REVIEW_QUEUE) < 8 and attempts < 200:
+        tx = _generate_transaction(idx, base_time - timedelta(minutes=RNG.randint(1, 90)))
+        if tx.status == "flagged":
+            REVIEW_QUEUE.append(tx.model_dump())
+        idx += 1
+        attempts += 1
+
+
+_seed_review_and_audit()
+
+
+class ReviewDecisionRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+    reviewer_name: str
+    note: Optional[str] = None
+
+
+class AuditEntry(BaseModel):
+    id: str
+    timestamp: str
+    transaction_id: str
+    level: str
+    decision: str
+    reason: str
+    amount_sar: float
+    institution: str
+    violation_category: Optional[str] = None
+    actor: str
+    note: Optional[str] = None
+
+
+class ReviewStats(BaseModel):
+    pending: int
+    approved_today: int
+    rejected_today: int
+    approval_rate_pct: float
+
+
+@app.get("/api/review-queue")
+def get_review_queue():
+    return {"items": REVIEW_QUEUE}
+
+
+@app.post("/api/review-queue/{transaction_id}/decide", response_model=AuditEntry)
+def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
+    match = next((t for t in REVIEW_QUEUE if t["id"] == transaction_id), None)
+    if not match:
+        return AuditEntry(
+            id=_new_audit_id(),
+            timestamp=_iso(_now()),
+            transaction_id=transaction_id,
+            level="human_review",
+            decision="not_found",
+            reason="",
+            amount_sar=0,
+            institution="",
+            actor=payload.reviewer_name,
+            note="Transaction not found in queue (may have already been decided).",
+        )
+    REVIEW_QUEUE.remove(match)
+    decision_label = "approved" if payload.decision == "approve" else "rejected"
+    entry = _log_audit(match, "human_review", decision_label, payload.reviewer_name, payload.note)
+    return AuditEntry(**entry)
+
+
+@app.get("/api/audit-log")
+def get_audit_log(limit: int = Query(default=50, ge=1, le=200)):
+    return {"items": AUDIT_LOG[:limit]}
+
+
+@app.get("/api/review-queue/stats", response_model=ReviewStats)
+def review_stats():
+    today = _now().date()
+    approved_today = sum(
+        1 for e in AUDIT_LOG if e["decision"] == "approved" and datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).date() == today
+    )
+    rejected_today = sum(
+        1 for e in AUDIT_LOG if e["decision"] == "rejected" and datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).date() == today
+    )
+    total_decided = approved_today + rejected_today
+    approval_rate = round((approved_today / total_decided) * 100, 1) if total_decided else 0.0
+    return ReviewStats(
+        pending=len(REVIEW_QUEUE),
+        approved_today=approved_today,
+        rejected_today=rejected_today,
+        approval_rate_pct=approval_rate,
+    )
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=port == 8000)
