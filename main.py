@@ -26,8 +26,12 @@ Run:
 
 from __future__ import annotations
 
+import json
+import os
 import random
 import re
+import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
@@ -492,6 +496,7 @@ class ChatbotAnswer(BaseModel):
     confidence: Literal["high", "medium", "none"]
     sources: List[ChatbotSource]
     disclaimer: str
+    ai_powered: bool = False
 
 
 class SuggestedQuestions(BaseModel):
@@ -1122,6 +1127,52 @@ SAMA_KNOWLEDGE_BASE = [
 
 
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+
+
+def _call_gemini(prompt: str, timeout: int = 12) -> Optional[str]:
+    """Calls the real Gemini API if a key is configured. Returns None on any
+    failure (missing key, network error, quota, malformed response) so the
+    caller can silently fall back to the existing grounded-text behavior —
+    the chatbot must never appear broken just because the AI call failed."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        body = json.dumps(
+            {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 300},
+            }
+        ).encode("utf-8")
+        req = urllib.request.Request(
+            f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return text or None
+    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, IndexError, TimeoutError, ValueError):
+        return None
+
+
+def _rag_prompt(question: str, facts: str, lang: str) -> str:
+    language_name = "English" if lang == "en" else "Arabic"
+    return (
+        "You are Meyar's regulatory assistant inside a Saudi fintech compliance dashboard demo. "
+        "Answer the user's question using ONLY the facts provided below — do not add any "
+        "information, numbers, or claims not present in these facts, and do not speculate. "
+        f"Respond in {language_name}, in 2-4 concise, natural sentences suitable for a chat UI. "
+        "If the facts don't fully answer the question, say what they do cover rather than guessing.\n\n"
+        f"User question: {question}\n\n"
+        f"Facts:\n{facts}"
+    )
+
+
 @app.post("/api/chatbot/query", response_model=ChatbotAnswer)
 def chatbot_query(payload: ChatbotQuery):
     lang = payload.lang
@@ -1171,15 +1222,25 @@ def chatbot_query(payload: ChatbotQuery):
         confidence = "medium"
 
     if lang == "en":
-        answer_text = "\n\n".join(e["answer_en"] for e in top_entries)
+        facts_text = "\n\n".join(e["answer_en"] for e in top_entries)
     else:
-        answer_text = "\n\n".join(e["answer_ar"] for e in top_entries)
+        facts_text = "\n\n".join(e["answer_ar"] for e in top_entries)
+
+    # Try the real Gemini API to phrase this more naturally, but ONLY as a
+    # rewording layer over the grounded facts above — never as a source of
+    # new information. Falls back silently to the raw grounded text if no
+    # API key is configured or the call fails for any reason.
+    answer_text = facts_text
+    ai_phrased = _call_gemini(_rag_prompt(payload.question, facts_text, lang))
+    if ai_phrased:
+        answer_text = ai_phrased
 
     return ChatbotAnswer(
         answer=answer_text,
         confidence=confidence,
         sources=[ChatbotSource(circular_number=e["circular_number"], title=e["title"]) for e in top_entries],
         disclaimer=DISCLAIMER_EN if lang == "en" else DISCLAIMER_AR,
+        ai_powered=bool(ai_phrased),
     )
 
 
