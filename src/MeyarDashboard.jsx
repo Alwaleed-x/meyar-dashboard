@@ -195,6 +195,8 @@ const STR = {
       reviewerLabel: "المراجع:",
       defaultReviewer: "موظف الامتثال (تجريبي)",
       decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
+      exportDecisions: "تقرير القرارات (موافقة/رفض)",
+      exportPending: "تصدير المعلَّقة فقط",
     },
     auditTrail: {
       title: "سجل التدقيق",
@@ -380,6 +382,8 @@ const STR = {
       reviewerLabel: "Reviewer:",
       defaultReviewer: "Compliance officer (demo)",
       decidedToast: "Decision recorded and added to the audit trail",
+      exportDecisions: "Decisions report (approved/rejected)",
+      exportPending: "Export pending only",
     },
     auditTrail: {
       title: "Audit trail",
@@ -1730,12 +1734,50 @@ function MiniStat({ icon: Icon, label, value, color }) {
   );
 }
 
-function ReviewQueueTab({ reviewQueue, stats, onDecide, lang, t }) {
-  const handleExport = () => {
+function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
+  const decidedItems = useMemo(() => (auditLog || []).filter((e) => e.level === "human_review"), [auditLog]);
+
+  const formatExactTime = (isoString) => {
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return "";
+    // Explicit hour:minute:second, as requested, rather than a relative
+    // "3 hours ago" style string which isn't useful in an exported report.
+    return d.toLocaleString(lang === "en" ? "en-GB" : "ar-SA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  };
+
+  const handleExportDecisions = () => {
+    exportToExcel({
+      rows: decidedItems,
+      sheetTitle: lang === "en" ? "Meyar — Review Decisions Report" : "معيار — تقرير قرارات المراجعة",
+      fileName: `meyar-review-decisions-${new Date().toISOString().slice(0, 10)}`,
+      columns: [
+        { header: lang === "en" ? "Transaction ID" : "رقم المعاملة", value: (r) => r.transaction_id, width: 16 },
+        { header: lang === "en" ? "Decision" : "حالة القرار", value: (r) => t.auditTrail.decisionLabels[r.decision] || r.decision, width: 16 },
+        { header: lang === "en" ? "Decision Time" : "وقت القرار (بالساعة والدقيقة والثانية)", value: (r) => formatExactTime(r.timestamp), width: 26 },
+        { header: lang === "en" ? "Violation Category" : "نوع المخالفة", value: (r) => (r.violation_category ? localize(r.violation_category, lang) : ""), width: 24 },
+        { header: lang === "en" ? "Reason" : "السبب", value: (r) => localize(r.reason, lang), width: 46 },
+        { header: lang === "en" ? "Related Circular" : "التعميم المرتبط", value: (r) => r.circular_number || "", width: 16 },
+        { header: lang === "en" ? "Institution" : "المؤسسة", value: (r) => localize(r.institution, lang), width: 24 },
+        { header: lang === "en" ? "Amount (SAR)" : "المبلغ (ر.س)", value: (r) => r.amount_sar, width: 14 },
+        { header: lang === "en" ? "Reviewer" : "المراجع", value: (r) => localize(r.actor, lang), width: 20 },
+        { header: lang === "en" ? "Note" : "ملاحظة", value: (r) => r.note || "", width: 30 },
+      ],
+    });
+  };
+
+  const handleExportPending = () => {
     exportToExcel({
       rows: reviewQueue,
-      sheetTitle: lang === "en" ? "Meyar — Review Queue Export" : "معيار — تصدير قائمة المراجعة",
-      fileName: `meyar-review-queue-${new Date().toISOString().slice(0, 10)}`,
+      sheetTitle: lang === "en" ? "Meyar — Pending Review Queue" : "معيار — المعاملات المعلَّقة بانتظار المراجعة",
+      fileName: `meyar-pending-queue-${new Date().toISOString().slice(0, 10)}`,
       columns: [
         { header: lang === "en" ? "Transaction ID" : "رقم المعاملة", value: (r) => r.id, width: 16 },
         { header: lang === "en" ? "Institution" : "المؤسسة", value: (r) => localize(r.institution, lang), width: 24 },
@@ -1751,7 +1793,7 @@ function ReviewQueueTab({ reviewQueue, stats, onDecide, lang, t }) {
 
   return (
     <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up flex items-start justify-between gap-3">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
             <ClipboardList size={16} style={{ color: "var(--gold)" }} />
@@ -1759,14 +1801,25 @@ function ReviewQueueTab({ reviewQueue, stats, onDecide, lang, t }) {
           </h3>
           <p className="text-[11px] text-white/40">{t.reviewQueue.subtitle}</p>
         </div>
-        <button
-          onClick={handleExport}
-          title={t.monitor.exportExcel}
-          className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border transition-colors"
-          style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
-        >
-          <Download size={15} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportDecisions}
+            title={t.reviewQueue.exportDecisions}
+            className="shrink-0 h-9 px-3 rounded-xl flex items-center gap-1.5 border transition-colors text-[11px] font-bold"
+            style={{ backgroundColor: "rgba(166,172,255,0.1)", borderColor: "rgba(166,172,255,0.3)", color: "var(--lavender)" }}
+          >
+            <Download size={14} />
+            {t.reviewQueue.exportDecisions}
+          </button>
+          <button
+            onClick={handleExportPending}
+            title={t.reviewQueue.exportPending}
+            className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border transition-colors"
+            style={{ backgroundColor: "rgba(232,196,104,0.08)", borderColor: "rgba(232,196,104,0.25)", color: "var(--gold)" }}
+          >
+            <ClipboardList size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -2663,10 +2716,10 @@ export default function MeyarDashboard() {
 
       const decision = decisionWord === "approve" ? "approved" : "rejected";
       const reviewerName = t.reviewQueue.defaultReviewer;
-
-      setReviewQueue((prev) => prev.filter((t) => t.id !== transactionId));
+      const nextReviewQueue = reviewQueue.filter((t) => t.id !== transactionId);
 
       let entry;
+      let backendOk = false;
       try {
         const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
           method: "POST",
@@ -2675,17 +2728,32 @@ export default function MeyarDashboard() {
         });
         if (!res.ok) throw new Error("decide failed");
         entry = await res.json();
-      } catch {
+        backendOk = true;
+      } catch (err) {
+        console.error("Review decision request failed, using local fallback:", err);
         entry = makeFallbackAuditEntry(tx, "human_review", decision, reviewerName);
       }
 
-      setAuditLog((prev) => {
-        const next = [entry, ...prev];
-        setReviewStats(computeReviewStats(reviewQueue.filter((t) => t.id !== transactionId), next));
-        return next;
-      });
+      const nextAuditLog = [entry, ...auditLog];
+
+      // Apply all three updates from values we actually know, rather than
+      // nesting one setState call inside another's updater — the nested
+      // version could compute stats from an audit log that hadn't been
+      // committed yet, which is what caused the counters to stay frozen.
+      setReviewQueue(nextReviewQueue);
+      setAuditLog(nextAuditLog);
+
+      if (backendOk) {
+        try {
+          setReviewStats(await fetchJSON("/review-queue/stats"));
+          return;
+        } catch (err) {
+          console.error("Could not refresh stats from backend, computing locally:", err);
+        }
+      }
+      setReviewStats(computeReviewStats(nextReviewQueue, nextAuditLog));
     },
-    [reviewQueue, t]
+    [reviewQueue, auditLog, t, fetchJSON]
   );
 
   const sparkSeeds = useMemo(() => {
@@ -2810,7 +2878,7 @@ export default function MeyarDashboard() {
           {activeTab === "analytics" && <AnalyticsTab trends={trends} summary={summary} lang={lang} t={t} />}
 
           {activeTab === "review" && (
-            <ReviewQueueTab reviewQueue={reviewQueue} stats={reviewStats} onDecide={handleDecide} lang={lang} t={t} />
+            <ReviewQueueTab reviewQueue={reviewQueue} auditLog={auditLog} stats={reviewStats} onDecide={handleDecide} lang={lang} t={t} />
           )}
 
           {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
