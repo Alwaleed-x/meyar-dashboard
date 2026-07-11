@@ -2699,11 +2699,22 @@ function ChatbotTab({ lang, t }) {
       setThinking(true);
 
       try {
-        const res = await fetch(`${API_BASE}/chatbot/query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, lang }),
-        });
+        // 20s allows for a slow/cold backend plus the Gemini round-trip,
+        // but guarantees the chat never appears permanently stuck — after
+        // this, it falls back to the local knowledge base search below.
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        let res;
+        try {
+          res = await fetch(`${API_BASE}/chatbot/query`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question, lang }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
         if (!res.ok) throw new Error("bad response");
         const data = await res.json();
         setMessages((m) => [...m, { role: "bot", text: data.answer, sources: data.sources, confidence: data.confidence, disclaimer: data.disclaimer, aiPowered: data.ai_powered }]);
@@ -3196,6 +3207,21 @@ export default function MeyarDashboard() {
     }
   }, []);
 
+  // Show a fully working dashboard INSTANTLY with local demo data, before
+  // any network request even starts. loadAll() below then silently swaps
+  // in real data whenever the backend responds — the user is never stuck
+  // staring at an empty "syncing" screen while a slow/cold backend wakes up.
+  useEffect(() => {
+    setSummary((prev) => prev ?? makeFallbackSummary());
+    setTransactions((prev) => (prev.length ? prev : Array.from({ length: 24 }, (_, i) => makeFallbackTransaction(i))));
+    setTrends((prev) => (prev.length ? prev : makeFallbackTrends()));
+    setRegulatory((prev) => (prev.length ? prev : makeFallbackRegulatory()));
+    setReviewQueue((prev) => (prev.length ? prev : makeFallbackReviewQueue()));
+    setAuditLog((prev) => (prev.length ? prev : makeFallbackAuditLog()));
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadAll = useCallback(async () => {
     try {
       const [summaryRes, txRes, trendsRes, regRes, reviewRes, auditRes, statsRes] = await Promise.all([
@@ -3216,14 +3242,8 @@ export default function MeyarDashboard() {
       setReviewStats(statsRes);
       setOnline(true);
     } catch (err) {
-      // Backend unreachable — fall back to locally generated data so the
-      // interface stays fully interactive and never appears broken.
-      setSummary((prev) => prev ?? makeFallbackSummary());
-      setTransactions((prev) => (prev.length ? prev : Array.from({ length: 24 }, (_, i) => makeFallbackTransaction(i))));
-      setTrends((prev) => (prev.length ? prev : makeFallbackTrends()));
-      setRegulatory((prev) => (prev.length ? prev : makeFallbackRegulatory()));
-      setReviewQueue((prev) => (prev.length ? prev : makeFallbackReviewQueue()));
-      setAuditLog((prev) => (prev.length ? prev : makeFallbackAuditLog()));
+      // Backend still unreachable/slow — the instant fallback above is
+      // already on screen, so there's nothing further to do here.
       setOnline(false);
     } finally {
       setLoading(false);
