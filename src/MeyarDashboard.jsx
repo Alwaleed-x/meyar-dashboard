@@ -113,6 +113,7 @@ const STR = {
       blockedDrop: "انخفاض في محاولات المخالفة",
       savedPenalties: "قيمة الغرامات المُوفّرة",
       costReduction: "خفض في تكاليف الامتثال",
+      savedPenaltiesTrend: "أقل من الأسبوع الماضي",
     },
     status: { passed: "مطابقة", flagged: "قيد المراجعة", blocked: "محظورة" },
     level: {
@@ -212,8 +213,8 @@ const STR = {
       sourcesLabel: "المصادر:",
       suggestedLabel: "أسئلة مقترحة",
       noMatch:
-        "لا تتوفر إجابة موثوقة لهذا السؤال ضمن قاعدة المعرفة الحالية. للمصدر الرسمي يُرجى مراجعة sama.gov.sa مباشرة.",
-      confidence: { high: "تطابق قوي", medium: "تطابق جزئي", none: "غير موجود" },
+        "ما لقيت إجابة مباشرة لهذا السؤال بالوضع المحلي الحالي. جرّب تعيد صياغة السؤال، أو اسأل عن مواضيع نغطيها بالتفصيل مثل: KYC، السقف اليومي، مكافحة غسل الأموال، Open Banking، أو الشبهة الشرعية. وللمصدر الرسمي: sama.gov.sa.",
+      confidence: { high: "تطابق قوي", medium: "تطابق جزئي", general: "إجابة عامة", none: "غير موجود" },
     },
     reviewQueue: {
       title: "قائمة المراجعة",
@@ -354,6 +355,7 @@ const STR = {
       blockedDrop: "drop in violation attempts",
       savedPenalties: "Saved Penalties Value",
       costReduction: "reduction in compliance costs",
+      savedPenaltiesTrend: "vs. last week",
     },
     status: { passed: "Passed", flagged: "Under Review", blocked: "Blocked" },
     level: {
@@ -452,8 +454,8 @@ const STR = {
       thinking: "Searching the knowledge base...",
       sourcesLabel: "Sources:",
       suggestedLabel: "Suggested questions",
-      noMatch: "No reliable answer is available for this question in the current knowledge base. For the official source, consult sama.gov.sa directly.",
-      confidence: { high: "Strong match", medium: "Partial match", none: "Not found" },
+      noMatch: "I couldn't find a direct answer in local offline mode. Try rephrasing, or ask about topics I cover in depth: KYC, daily limits, AML, Open Banking, or Sharia concerns. For the official source: sama.gov.sa.",
+      confidence: { high: "Strong match", medium: "Partial match", general: "General answer", none: "Not found" },
     },
     reviewQueue: {
       title: "Review queue",
@@ -1020,19 +1022,46 @@ const FALLBACK_COST_METHODOLOGY_AR =
 const FALLBACK_COST_METHODOLOGY_EN =
   "Calculated as (1 − post-automation review hours ÷ pre-automation review hours) × 100, assuming 1,200 manual review hours/month before the system vs. 360 hours remaining after automation (Level-2 human review only). This is an auditable operational estimate.";
 
+const FALLBACK_AVERAGE_FINE_PER_VIOLATION_SAR = 65000;
+const FALLBACK_COMPLIANCE_SCORE_METHODOLOGY_AR =
+  "مؤشر الالتزام الكلي مقياس مركّب يقيس الصحة التنظيمية العامة للمؤسسات الخاضعة للمراقبة (اكتمال البيانات، الالتزام بالمهل، جاهزية الأنظمة)، وهو مختلف عن «عدد المعاملات المحظورة» المعروض بجانبه. المعاملات المحظورة نسبة صغيرة جداً (أقل من 0.2%) من إجمالي حجم المعاملات اليومي لأنها تمثّل حالات استثنائية فقط، بينما مؤشر الالتزام يقيّم الصورة المؤسسية الأوسع.";
+const FALLBACK_COMPLIANCE_SCORE_METHODOLOGY_EN =
+  "The overall compliance index is a composite measure of the monitored institutions' general regulatory health — distinct from the 'blocked transactions' count shown alongside it, which is under 0.2% of daily volume since it represents exceptional cases only.";
+
 function makeFallbackSummary() {
+  const blockedNow = Math.round(320 + Math.random() * 90);
+  const volumeCountNow = Math.round(184000 + Math.random() * 28000);
+  const complianceScoreNow = Math.round((97.9 + Math.random() * 0.8) * 10) / 10;
+
+  const blockedBefore = Math.round(blockedNow * (1.05 + Math.random() * 0.1));
+  const volumeCountBefore = Math.round(volumeCountNow / (1.08 + Math.random() * 0.1));
+  const complianceScoreBefore = Math.round((complianceScoreNow - (0.3 + Math.random() * 0.6)) * 10) / 10;
+
+  const blockedDeltaPct = Math.round(((blockedNow - blockedBefore) / blockedBefore) * 1000) / 10;
+  const volumeDeltaPct = Math.round(((volumeCountNow - volumeCountBefore) / volumeCountBefore) * 1000) / 10;
+  const complianceScoreDelta = Math.round((complianceScoreNow - complianceScoreBefore) * 10) / 10;
+
+  const savedPenaltiesNow = blockedNow * FALLBACK_AVERAGE_FINE_PER_VIOLATION_SAR;
+  const savedPenaltiesBefore = blockedBefore * FALLBACK_AVERAGE_FINE_PER_VIOLATION_SAR;
+  const savedPenaltiesDeltaPct = Math.round(((savedPenaltiesNow - savedPenaltiesBefore) / savedPenaltiesBefore) * 1000) / 10;
+
   return {
-    compliance_score: 98.4,
-    compliance_score_delta: 0.6,
-    transactions_scanned_today: 198432,
-    transactions_scanned_delta_pct: 12.3,
+    compliance_score: complianceScoreNow,
+    compliance_score_delta: complianceScoreDelta,
+    compliance_score_methodology_ar: FALLBACK_COMPLIANCE_SCORE_METHODOLOGY_AR,
+    compliance_score_methodology_en: FALLBACK_COMPLIANCE_SCORE_METHODOLOGY_EN,
+    transactions_scanned_today: volumeCountNow,
+    transactions_scanned_delta_pct: volumeDeltaPct,
     compliance_cost_saved_pct: 70,
     cost_methodology_ar: FALLBACK_COST_METHODOLOGY_AR,
     cost_methodology_en: FALLBACK_COST_METHODOLOGY_EN,
     total_monitored_volume_sar: 2350000000,
-    total_blocked_violations: 364,
-    total_blocked_delta_pct: -8.4,
-    saved_penalties_value_sar: 21400000,
+    total_blocked_violations: blockedNow,
+    total_blocked_delta_pct: blockedDeltaPct,
+    saved_penalties_value_sar: savedPenaltiesNow,
+    saved_penalties_delta_pct: savedPenaltiesDeltaPct,
+    saved_penalties_methodology_ar: `القيمة = عدد المخالفات المحظورة آلياً (${blockedNow}) × متوسط الغرامة النظامية التقديرية لكل مخالفة (${FALLBACK_AVERAGE_FINE_PER_VIOLATION_SAR.toLocaleString()} ر.س).`,
+    saved_penalties_methodology_en: `Value = automatically blocked violations (${blockedNow}) × an illustrative average regulatory fine per violation (${FALLBACK_AVERAGE_FINE_PER_VIOLATION_SAR.toLocaleString()} SAR).`,
     system_status: "المنظومة آمنة - الرقابة الذاتية نشطة (المستوى ١ آلي / المستوى ٢ بمراجعة بشرية)",
     ai_core_online: true,
     last_sync: new Date().toISOString(),
@@ -1272,7 +1301,7 @@ function Sparkline({ data, color }) {
   );
 }
 
-function KPICard({ icon: Icon, label, value, suffix, delta, deltaLabel, glowVar, sparkColor, sparkData, isPositiveGood = true }) {
+function KPICard({ icon: Icon, label, value, suffix, delta, deltaLabel, glowVar, sparkColor, sparkData, isPositiveGood = true, methodology, t }) {
   const isPositive = delta >= 0;
   const goodDirection = isPositiveGood ? isPositive : !isPositive;
 
@@ -1301,7 +1330,10 @@ function KPICard({ icon: Icon, label, value, suffix, delta, deltaLabel, glowVar,
         </div>
       </div>
 
-      <p className="text-white/45 text-[13px] font-medium mb-1">{label}</p>
+      <p className="text-white/45 text-[13px] font-medium mb-1 flex items-center gap-1.5">
+        {label}
+        {methodology && t && <InfoTooltip label={t.costTooltip.label} text={methodology} />}
+      </p>
       <p className="font-display text-2xl md:text-[26px] font-black text-white tracking-tight tabular-nums-ar">
         {value}
         {suffix && <span className="text-sm font-medium text-white/40 mx-1">{suffix}</span>}
@@ -1546,6 +1578,7 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
       glowVar: "var(--gold)",
       sparkColor: "#e8c468",
       sparkData: sparkSeeds.compliance,
+      methodology: lang === "en" ? summary.compliance_score_methodology_en : summary.compliance_score_methodology_ar,
     },
     {
       icon: Wallet,
@@ -1575,11 +1608,12 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
       label: t.kpi.savedPenalties,
       value: compactFmt(summary.saved_penalties_value_sar, lang),
       suffix: t.currencySuffix,
-      delta: summary.compliance_cost_saved_pct,
-      deltaLabel: t.kpi.costReduction,
+      delta: summary.saved_penalties_delta_pct,
+      deltaLabel: t.kpi.savedPenaltiesTrend,
       glowVar: "var(--orchid)",
       sparkColor: "#e4a0ff",
       sparkData: sparkSeeds.savings,
+      methodology: lang === "en" ? summary.saved_penalties_methodology_en : summary.saved_penalties_methodology_ar,
     },
   ];
 
@@ -1588,7 +1622,7 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {kpis.map((k, i) => (
           <div key={k.label} style={{ animationDelay: `${i * 80}ms` }}>
-            <KPICard {...k} />
+            <KPICard {...k} t={t} />
           </div>
         ))}
       </div>
@@ -2797,9 +2831,9 @@ function ChatbotTab({ lang, t }) {
                 }
               >
                 {m.text}
-                {m.role === "bot" && m.sources && m.sources.length > 0 && (
+                {m.role === "bot" && (m.sources?.length > 0 || m.confidence === "general") && (
                   <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5">
-                    {m.sources.map((s) => (
+                    {m.sources?.map((s) => (
                       <span
                         key={s.circular_number}
                         className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
@@ -2808,6 +2842,14 @@ function ChatbotTab({ lang, t }) {
                         {s.circular_number}
                       </span>
                     ))}
+                    {m.confidence === "general" && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                        style={{ color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)" }}
+                      >
+                        {t.chatbot.confidence.general}
+                      </span>
+                    )}
                     {m.aiPowered && (
                       <span
                         className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
