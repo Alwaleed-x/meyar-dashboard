@@ -1356,16 +1356,27 @@ function TransactionRow({ tx, lang, t }) {
   const isFlagged = tx.status === "flagged";
   const levelCfg = LEVEL_META[tx.action_level] || LEVEL_META.no_action;
   const LevelIcon = levelCfg.icon;
+  const gateAnimClass = isBlocked ? "animate-gate-blocked" : isFlagged ? "animate-gate-flagged" : "animate-gate-passed";
+  const gateDx = lang === "ar" ? "14px" : "-14px";
   return (
     <div
-      className={`animate-slide-in-row grid grid-cols-12 items-start gap-3 px-4 py-3 rounded-xl border transition-colors ${
+      className={`relative overflow-hidden ${gateAnimClass} grid grid-cols-12 items-start gap-3 px-4 py-3 rounded-xl border transition-colors ${
         isBlocked
           ? "bg-[var(--coral)]/[0.07] border-[var(--coral)]/30 animate-pulse-coral"
           : isFlagged
           ? "bg-[var(--gold)]/[0.05] border-[var(--gold)]/15"
           : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04]"
       }`}
+      style={{ "--gate-dx": gateDx }}
     >
+      {(isBlocked || isFlagged) && (
+        <span
+          className="absolute inset-0 flex items-center justify-center pointer-events-none animate-gate-flash"
+          style={{ color: isBlocked ? "var(--coral)" : "var(--gold)" }}
+        >
+          {isBlocked ? <ShieldAlert size={26} /> : <UserCheck size={26} />}
+        </span>
+      )}
       <div className="col-span-2 flex items-center gap-2">
         <div className={`w-1.5 h-1.5 rounded-full mt-1 ${STATUS_META[tx.status].dot}`} />
         <div>
@@ -2895,10 +2906,93 @@ function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentation
   );
 }
 
+const LOGO_PARTICLES = [
+  { x: -90, y: -60, color: "#e4a0ff", delay: 0.0 },
+  { x: 85, y: -70, color: "#e8c468", delay: 0.05 },
+  { x: -100, y: 40, color: "#a6acff", delay: 0.1 },
+  { x: 95, y: 55, color: "#9d4edd", delay: 0.03 },
+  { x: 0, y: -95, color: "#e4a0ff", delay: 0.08 },
+  { x: 0, y: 90, color: "#e8c468", delay: 0.12 },
+  { x: -60, y: 85, color: "#a6acff", delay: 0.06 },
+  { x: 65, y: -85, color: "#9d4edd", delay: 0.02 },
+  { x: -110, y: -10, color: "#e4a0ff", delay: 0.14 },
+  { x: 110, y: 5, color: "#e8c468", delay: 0.09 },
+  { x: -40, y: -100, color: "#a6acff", delay: 0.11 },
+  { x: 45, y: 98, color: "#e4a0ff", delay: 0.04 },
+];
+
+function LogoAssemblyIntro({ onDone, appName, tagline }) {
+  useEffect(() => {
+    const t1 = setTimeout(() => onDone(), 2400);
+    return () => clearTimeout(t1);
+  }, [onDone]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center cursor-pointer"
+      onClick={onDone}
+      style={{ backgroundColor: "rgba(6,4,9,0.92)" }}
+    >
+      <div style={{ position: "relative", width: 220, height: 220 }}>
+        {LOGO_PARTICLES.map((p, i) => (
+          <span
+            key={i}
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: p.color,
+              animation: `logo-particle-converge 1.1s cubic-bezier(0.16,1,0.3,1) both`,
+              animationDelay: `${p.delay}s`,
+              "--px": `${p.x}px`,
+              "--py": `${p.y}px`,
+            }}
+          />
+        ))}
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "logo-reveal 0.8s cubic-bezier(0.16,1,0.3,1) both",
+            animationDelay: "0.9s",
+          }}
+        >
+          <MeyarLogo size={88} />
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          top: "63%",
+          textAlign: "center",
+          animation: "logo-reveal 0.6s ease both",
+          animationDelay: "1.5s",
+        }}
+      >
+        <p className="font-display text-xl font-black text-white">{appName}</p>
+        <p className="text-[12px] text-white/40 mt-1">{tagline}</p>
+      </div>
+    </div>
+  );
+}
+
 function OnboardingTour({ onFinish, lang, t }) {
+  const [phase, setPhase] = useState("intro");
   const [step, setStep] = useState(0);
   const steps = t.onboarding.steps;
   const isLast = step === steps.length - 1;
+
+  if (phase === "intro") {
+    return <LogoAssemblyIntro onDone={() => setPhase("steps")} appName={t.appName} tagline={t.appSubtitle} />;
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" dir={t.dir}>
@@ -3136,6 +3230,25 @@ const EMBEDDED_STYLE = `
   .animate-fade-up { animation: fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both; }
   @keyframes slide-in-row { 0% { opacity: 0; transform: translateY(-8px); } 100% { opacity: 1; transform: translateY(0); } }
   .animate-slide-in-row { animation: slide-in-row 0.4s ease-out both; }
+
+  @keyframes gate-pass { 0% { opacity: 0; transform: translateX(var(--gate-dx, 10px)) scale(0.97); } 60% { opacity: 1; } 100% { opacity: 1; transform: translateX(0) scale(1); } }
+  @keyframes gate-blocked { 0% { opacity: 0; transform: translateX(var(--gate-dx, 10px)) scale(0.9); } 55% { opacity: 1; transform: translateX(-3px) scale(1.015); box-shadow: 0 0 0 1px rgba(255,107,129,0.5), 0 0 18px rgba(255,107,129,0.35); } 100% { opacity: 1; transform: translateX(0) scale(1); box-shadow: 0 0 0 0 rgba(255,107,129,0); } }
+  @keyframes gate-flagged { 0% { opacity: 0; transform: translateX(var(--gate-dx, 10px)) scale(0.94); } 50% { opacity: 1; box-shadow: 0 0 0 1px rgba(232,196,104,0.5), 0 0 16px rgba(232,196,104,0.3); } 100% { opacity: 1; transform: translateX(0) scale(1); box-shadow: 0 0 0 0 rgba(232,196,104,0); } }
+  .animate-gate-passed { animation: gate-pass 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+  .animate-gate-blocked { animation: gate-blocked 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+  .animate-gate-flagged { animation: gate-flagged 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes gate-flash { 0% { opacity: 0; transform: scale(0.6); } 30% { opacity: 0.85; transform: scale(1.15); } 100% { opacity: 0; transform: scale(1.4); } }
+  .animate-gate-flash { animation: gate-flash 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes logo-particle-converge {
+    0% { transform: translate(calc(-50% + var(--px)), calc(-50% + var(--py))) scale(1); opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.15); opacity: 0; }
+  }
+  @keyframes logo-reveal {
+    0% { opacity: 0; transform: scale(0.7); filter: drop-shadow(0 0 0 rgba(228,160,255,0)); }
+    60% { opacity: 1; transform: scale(1.08); filter: drop-shadow(0 0 22px rgba(228,160,255,0.6)); }
+    100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 10px rgba(228,160,255,0.35)); }
+  }
   @keyframes pulse-glow-lavender { 0%,100% { opacity: 1; box-shadow: 0 0 12px rgba(166,172,255,0.5); } 50% { opacity: 0.65; box-shadow: 0 0 4px rgba(166,172,255,0.2); } }
   .animate-pulse-lavender { animation: pulse-glow-lavender 2.4s ease-in-out infinite; }
   @keyframes pulse-glow-coral { 0%,100% { box-shadow: 0 0 12px rgba(255,107,129,0.55); } 50% { box-shadow: 0 0 34px rgba(255,107,129,0.85); } }
