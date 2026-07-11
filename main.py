@@ -435,6 +435,8 @@ COST_METHODOLOGY_TEXT_EN = (
 class ComplianceSummary(BaseModel):
     compliance_score: float
     compliance_score_delta: float
+    compliance_score_methodology_ar: str
+    compliance_score_methodology_en: str
     transactions_scanned_today: int
     transactions_scanned_delta_pct: float
     compliance_cost_saved_pct: float
@@ -444,6 +446,9 @@ class ComplianceSummary(BaseModel):
     total_blocked_violations: int
     total_blocked_delta_pct: float
     saved_penalties_value_sar: float
+    saved_penalties_delta_pct: float
+    saved_penalties_methodology_ar: str
+    saved_penalties_methodology_en: str
     system_status: str
     ai_core_online: bool
     last_sync: str
@@ -528,7 +533,7 @@ class ChatbotSource(BaseModel):
 
 class ChatbotAnswer(BaseModel):
     answer: str
-    confidence: Literal["high", "medium", "none"]
+    confidence: Literal["high", "medium", "general", "none"]
     sources: List[ChatbotSource]
     disclaimer: str
     ai_powered: bool = False
@@ -672,20 +677,82 @@ def root():
     }
 
 
+AVERAGE_FINE_PER_VIOLATION_SAR = 65_000
+# Disclosed assumption: illustrative average regulatory fine per definitively
+# blocked (Level-1) violation, based on typical SAMA penalty brackets for
+# common violation categories (limit breaches, unlicensed-entity transfers).
+# This is an estimate for demo purposes, not an audited figure.
+
+COMPLIANCE_SCORE_METHODOLOGY_AR = (
+    "مؤشر الالتزام الكلي مقياس مركّب يقيس الصحة التنظيمية العامة للمؤسسات الخاضعة للمراقبة "
+    "(اكتمال البيانات، الالتزام بالمهل، جاهزية الأنظمة)، وهو مختلف عن «عدد المعاملات المحظورة» "
+    "المعروض بجانبه. المعاملات المحظورة نسبة صغيرة جداً (أقل من 0.2%) من إجمالي حجم المعاملات "
+    "اليومي لأنها تمثّل حالات استثنائية فقط، بينما مؤشر الالتزام يقيّم الصورة المؤسسية الأوسع."
+)
+COMPLIANCE_SCORE_METHODOLOGY_EN = (
+    "The overall compliance index is a composite measure of the monitored institutions' general "
+    "regulatory health (data completeness, timeliness, system readiness) — distinct from the "
+    "'blocked transactions' count shown alongside it. Blocked transactions are a very small share "
+    "(under 0.2%) of daily volume since they represent exceptional cases, while the compliance "
+    "index evaluates the broader institutional picture."
+)
+
+
 @app.get("/api/compliance-summary", response_model=ComplianceSummary)
 def compliance_summary():
+    # Current-period figures
+    blocked_now = RNG.randint(320, 410)
+    volume_count_now = RNG.randint(184_000, 212_000)
+    compliance_score_now = round(RNG.uniform(97.9, 98.7), 1)
+
+    # Previous-period baselines, generated as a realistic variation of the
+    # current figures so every displayed trend percentage is an ACTUAL
+    # computed delta between two periods, not an independent hardcoded
+    # number that could drift out of sync with what's on screen.
+    blocked_before = round(blocked_now * RNG.uniform(1.05, 1.15))
+    volume_count_before = round(volume_count_now / RNG.uniform(1.08, 1.18))
+    compliance_score_before = round(compliance_score_now - RNG.uniform(0.3, 0.9), 1)
+
+    blocked_delta_pct = round((blocked_now - blocked_before) / blocked_before * 100, 1)
+    volume_delta_pct = round((volume_count_now - volume_count_before) / volume_count_before * 100, 1)
+    compliance_score_delta = round(compliance_score_now - compliance_score_before, 1)
+
+    # Saved-penalties value is DERIVED from the actual blocked count — not
+    # an independent random figure — so its trend is mathematically
+    # identical to the blocked-violations trend, and its methodology is
+    # fully stated rather than left as an unsourced number.
+    saved_penalties_now = round(blocked_now * AVERAGE_FINE_PER_VIOLATION_SAR, 2)
+    saved_penalties_before = round(blocked_before * AVERAGE_FINE_PER_VIOLATION_SAR, 2)
+    saved_penalties_delta_pct = round((saved_penalties_now - saved_penalties_before) / saved_penalties_before * 100, 1)
+
+    saved_penalties_methodology_ar = (
+        f"القيمة = عدد المخالفات المحظورة آلياً ({blocked_now}) × متوسط الغرامة النظامية التقديرية "
+        f"لكل مخالفة ({AVERAGE_FINE_PER_VIOLATION_SAR:,} ر.س) — تقدير توضيحي بمنهجية معلنة، مرتبط "
+        f"مباشرة بعدد المخالفات الفعلي، وليس رقماً مستقلاً بلا مصدر."
+    )
+    saved_penalties_methodology_en = (
+        f"Value = automatically blocked violations ({blocked_now}) × an illustrative average "
+        f"regulatory fine per violation ({AVERAGE_FINE_PER_VIOLATION_SAR:,} SAR) — a disclosed-"
+        f"methodology estimate directly tied to the actual violation count, not an unsourced figure."
+    )
+
     return ComplianceSummary(
-        compliance_score=98.4,
-        compliance_score_delta=0.6,
-        transactions_scanned_today=RNG.randint(184_000, 212_000),
-        transactions_scanned_delta_pct=12.3,
+        compliance_score=compliance_score_now,
+        compliance_score_delta=compliance_score_delta,
+        compliance_score_methodology_ar=COMPLIANCE_SCORE_METHODOLOGY_AR,
+        compliance_score_methodology_en=COMPLIANCE_SCORE_METHODOLOGY_EN,
+        transactions_scanned_today=volume_count_now,
+        transactions_scanned_delta_pct=volume_delta_pct,
         compliance_cost_saved_pct=_compliance_cost_saved_pct(),
         cost_methodology_ar=COST_METHODOLOGY_TEXT_AR,
         cost_methodology_en=COST_METHODOLOGY_TEXT_EN,
         total_monitored_volume_sar=round(RNG.uniform(2.1e9, 2.6e9), 2),
-        total_blocked_violations=RNG.randint(320, 410),
-        total_blocked_delta_pct=-8.4,
-        saved_penalties_value_sar=round(RNG.uniform(18_000_000, 24_500_000), 2),
+        total_blocked_violations=blocked_now,
+        total_blocked_delta_pct=blocked_delta_pct,
+        saved_penalties_value_sar=saved_penalties_now,
+        saved_penalties_delta_pct=saved_penalties_delta_pct,
+        saved_penalties_methodology_ar=saved_penalties_methodology_ar,
+        saved_penalties_methodology_en=saved_penalties_methodology_en,
         system_status="المنظومة آمنة - الرقابة الذاتية نشطة (المستوى ١ آلي / المستوى ٢ بمراجعة بشرية)",
         ai_core_online=True,
         last_sync=_iso(_now()),
@@ -1206,18 +1273,19 @@ GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 
-def _call_gemini(prompt: str, timeout: int = 12) -> Optional[str]:
+def _call_gemini(prompt: str, timeout: int = 9, max_tokens: int = 180) -> Optional[str]:
     """Calls the real Gemini API if a key is configured. Returns None on any
     failure (missing key, network error, quota, malformed response) so the
     caller can silently fall back to the existing grounded-text behavior —
-    the chatbot must never appear broken just because the AI call failed."""
+    the chatbot must never appear broken just because the AI call failed.
+    Short timeout + tight token budget keep responses feeling fast."""
     if not GEMINI_API_KEY:
         return None
     try:
         body = json.dumps(
             {
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 300},
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens},
             }
         ).encode("utf-8")
         req = urllib.request.Request(
@@ -1247,6 +1315,25 @@ def _rag_prompt(question: str, facts: str, lang: str) -> str:
     )
 
 
+def _general_knowledge_prompt(question: str, lang: str) -> str:
+    language_name = "English" if lang == "en" else "Arabic"
+    return (
+        "You are a helpful assistant inside 'Meyar', a Saudi fintech compliance dashboard demo. "
+        "The user's question is NOT covered by Meyar's specific internal SAMA-circular knowledge "
+        "base, so you're answering from your own general knowledge instead. You may explain "
+        "general financial, compliance, AML/KYC, or Open Banking concepts helpfully and concisely. "
+        f"Respond in {language_name}, in 2-4 sentences, in a warm and direct tone. "
+        "Hard rule: never invent or cite a specific SAMA circular number, article number, or exact "
+        "date as if it were verified — if the question needs a specific official citation, say the "
+        "general concept plainly and note that the exact circular should be confirmed at sama.gov.sa "
+        "or with a compliance officer, rather than stating a precise reference you're not certain of. "
+        "If the question is genuinely outside what you can responsibly answer (e.g. needs real-time "
+        "data, or is unrelated to finance/compliance/this dashboard), say so briefly instead of "
+        "guessing.\n\n"
+        f"User question: {question}"
+    )
+
+
 @app.post("/api/chatbot/query", response_model=ChatbotAnswer)
 def chatbot_query(payload: ChatbotQuery):
     lang = payload.lang
@@ -1266,15 +1353,37 @@ def chatbot_query(payload: ChatbotQuery):
     matches = _search_knowledge_base(payload.question)
 
     if not matches:
+        # Nothing in our documented KB — rather than a flat refusal, try a
+        # general-knowledge answer via Gemini (clearly labeled as such, not
+        # attributed to our verified circular database). Only falls back to
+        # the plain redirect if Gemini is unavailable or declines to help.
+        general_answer = _call_gemini(_general_knowledge_prompt(payload.question, lang), timeout=11, max_tokens=200)
+        if general_answer:
+            general_disclaimer_ar = (
+                "هذي إجابة عامة من الذكاء الاصطناعي، وليست من قاعدة معرفة تعاميم ساما الموثّقة "
+                "داخل النظام. للتأكد من أي رقم أو تاريخ تعميم محدد، راجع sama.gov.sa مباشرة."
+            )
+            general_disclaimer_en = (
+                "This is a general AI-generated answer, not from Meyar's verified SAMA-circular "
+                "knowledge base. For any specific circular number or date, confirm at sama.gov.sa."
+            )
+            return ChatbotAnswer(
+                answer=general_answer,
+                confidence="general",
+                sources=[],
+                disclaimer=general_disclaimer_en if lang == "en" else general_disclaimer_ar,
+                ai_powered=True,
+            )
+
         no_match_ar = (
-            "لا تتوفر إجابة موثوقة لهذا السؤال ضمن قاعدة المعرفة الحالية للنظام. "
-            "بدل التخمين، يُفضَّل الرجوع مباشرة لتعاميم ساما الرسمية على sama.gov.sa، "
-            "أو استشارة موظف الامتثال."
+            "ما لقيت إجابة موثوقة أو عامة لهذا السؤال بالوقت الحالي. جرّب تعيد صياغة السؤال، أو اسأل "
+            "عن مواضيع نغطيها بالتفصيل مثل: KYC، السقف اليومي، مكافحة غسل الأموال، Open Banking، "
+            "الشبهة الشرعية، أو منهجية النظام. وللمصدر الرسمي: sama.gov.sa."
         )
         no_match_en = (
-            "No reliable answer is available for this question in the system's current "
-            "knowledge base. Rather than guessing, please consult SAMA's official circulars "
-            "at sama.gov.sa, or a compliance officer."
+            "I couldn't find a reliable or general answer for this right now. Try rephrasing, or ask "
+            "about topics I cover in depth: KYC, daily limits, AML, Open Banking, Sharia concerns, or "
+            "the system's methodology. For the official source: sama.gov.sa."
         )
         return ChatbotAnswer(
             answer=no_match_en if lang == "en" else no_match_ar,
