@@ -92,8 +92,6 @@ const STR = {
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
       methodology: "منهجية الدقة",
-      comparison: "مقارنة عالمية",
-      changelog: "الأخطاء والإصلاحات",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
       settings: "الإعدادات",
@@ -313,22 +311,6 @@ const STR = {
       testSetLabel: "حجم عيّنة الاختبار",
       loading: "جارٍ حساب المقاييس من الموديل الفعلي...",
     },
-    comparison: {
-      title: "مقارنة عالمية — أين نتفوّق وأين المنافسون أقوى",
-      subtitle: "مقارنة صريحة مع حلول RegTech / SupTech العالمية المعروفة، بلا مبالغة",
-      dimension: "المعيار",
-      meyarCol: "معيار",
-      globalCol: "الحلول العالمية (RegTech/SupTech)",
-      edgeMeyar: "نتفوّق",
-      edgeGlobal: "هم أقوى",
-      edgeTie: "متقارب",
-    },
-    changelog: {
-      title: "سجل الأخطاء والإصلاحات",
-      subtitle: "بشفافية كاملة: هذي أخطاء حقيقية اكتشفناها أثناء بناء واختبار النظام، وكيف صلّحناها",
-      foundLabel: "المشكلة المكتشفة",
-      fixLabel: "الإصلاح",
-    },
     chart: {
       month: "الشهر",
       tooltipCurrency: "ر.س",
@@ -351,8 +333,6 @@ const STR = {
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
       methodology: "Accuracy Methodology",
-      comparison: "Global Comparison",
-      changelog: "Bugs & Fixes",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
       settings: "Settings",
@@ -571,22 +551,6 @@ const STR = {
       testSetLabel: "Test set size",
       loading: "Computing metrics from the live model...",
     },
-    comparison: {
-      title: "Global Comparison — Where We Win, Where Competitors Are Stronger",
-      subtitle: "An honest comparison against known global RegTech/SupTech solutions, without overclaiming",
-      dimension: "Dimension",
-      meyarCol: "Meyar",
-      globalCol: "Global RegTech/SupTech",
-      edgeMeyar: "We win",
-      edgeGlobal: "They're stronger",
-      edgeTie: "Comparable",
-    },
-    changelog: {
-      title: "Bugs & Fixes Log",
-      subtitle: "Full transparency: real bugs we found while building and testing the system, and how we fixed them",
-      foundLabel: "Issue found",
-      fixLabel: "Fix",
-    },
     chart: {
       month: "Month",
       tooltipCurrency: "SAR",
@@ -598,7 +562,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "comparison", "changelog", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -607,8 +571,6 @@ const NAV_ICONS = {
   analytics: BarChart3,
   regulatory: FileText,
   methodology: Gauge,
-  comparison: GitCompare,
-  changelog: Bug,
   chatbot: MessageCircle,
   limits: ShieldAlert,
 };
@@ -2467,224 +2429,6 @@ function MethodologyTab({ lang, t }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Global Comparison — honest positioning vs. known RegTech/SupTech players
-// ---------------------------------------------------------------------------
-
-const COMPARISON_ROWS = [
-  {
-    dimension: { ar: "التخصص بتعاميم ساما والسياق السعودي", en: "SAMA-specific circulars & Saudi context" },
-    meyar: { ar: "مصمَّم خصيصاً لتعاميم ساما والسوق السعودي", en: "Purpose-built for SAMA circulars and the Saudi market" },
-    global: { ar: "أطر عامة عالمية، تحتاج تخصيصاً محلياً إضافياً", en: "Generic global frameworks, need extra local customization" },
-    edge: "meyar",
-  },
-  {
-    dimension: { ar: "الوعي بالحوكمة الشرعية", en: "Sharia-governance awareness" },
-    meyar: { ar: "مستوى مستقل مخصص للشبهات الشرعية بمراجعة بشرية", en: "Dedicated Level for Sharia concerns with human review" },
-    global: { ar: "غير موجود عادة كمفهوم أصلي بالنظام", en: "Not typically a native concept in the system" },
-    edge: "meyar",
-  },
-  {
-    dimension: { ar: "الشفافية بحدود القرار الآلي", en: "Transparency on automated-decision limits" },
-    meyar: { ar: "تبويب كامل يفصح صراحة عن الحدود والمسؤوليات", en: "A dedicated tab explicitly discloses limits & accountability" },
-    global: { ar: "غالباً «صندوق أسود» تجاري بلا إفصاح مماثل", en: "Often a commercial \"black box\" without similar disclosure" },
-    edge: "meyar",
-  },
-  {
-    dimension: { ar: "النضج التشغيلي وسجل الأداء", en: "Operational maturity & track record" },
-    meyar: { ar: "نموذج أولي حديث، بلا عملاء إنتاجيين بعد", en: "Recent prototype, no production customers yet" },
-    global: { ar: "سنوات من التشغيل الفعلي مع عشرات البنوك", en: "Years of live operation across dozens of banks" },
-    edge: "global",
-  },
-  {
-    dimension: { ar: "حجم بيانات التدريب والنماذج", en: "Training data volume & models" },
-    meyar: { ar: "بيانات اصطناعية محدودة لأغراض العرض", en: "Limited synthetic data for demo purposes" },
-    global: { ar: "ملايين المعاملات الحقيقية عبر أسواق متعددة", en: "Millions of real transactions across multiple markets" },
-    edge: "global",
-  },
-  {
-    dimension: { ar: "التمويل والفريق الهندسي", en: "Funding & engineering team size" },
-    meyar: { ar: "فريق هاكاثون صغير", en: "Small hackathon team" },
-    global: { ar: "شركات مموَّلة بمئات الملايين وفرق ضخمة", en: "Companies funded with hundreds of millions, large teams" },
-    edge: "global",
-  },
-  {
-    dimension: { ar: "تكلفة التبني والتخصيص", en: "Adoption & customization cost" },
-    meyar: { ar: "أخف وأسرع تخصيصاً لمؤسسة سعودية صغيرة/متوسطة", en: "Lighter and faster to customize for a small/mid Saudi institution" },
-    global: { ar: "غالباً عقود طويلة وتكلفة تكامل عالية", en: "Often long contracts and high integration cost" },
-    edge: "meyar",
-  },
-  {
-    dimension: { ar: "الامتثال التنظيمي والتراخيص", en: "Regulatory compliance & certifications" },
-    meyar: { ar: "لا يملك بعد أي ترخيص أو اعتماد رسمي", en: "Does not yet hold any official license or certification" },
-    global: { ar: "معتمدة ومرخّصة بعدة أسواق تنظيمية", en: "Certified and licensed across multiple regulatory markets" },
-    edge: "global",
-  },
-];
-
-const COMPARISON_EDGE_META = {
-  meyar: { color: "var(--lavender)", bg: "rgba(166,172,255,0.12)" },
-  global: { color: "var(--coral)", bg: "rgba(255,107,129,0.12)" },
-  tie: { color: "var(--gold)", bg: "rgba(232,196,104,0.12)" },
-};
-
-function ComparisonTab({ lang, t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <GitCompare size={16} style={{ color: "var(--orchid)" }} />
-          {t.comparison.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.comparison.subtitle}</p>
-      </div>
-
-      <div className="aurora-border glass-panel rounded-2xl overflow-hidden animate-fade-up">
-        <div className="grid grid-cols-12 px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-          <span className="col-span-4 text-[10.5px] font-bold text-white/40">{t.comparison.dimension}</span>
-          <span className="col-span-4 text-[10.5px] font-bold" style={{ color: "var(--lavender)" }}>{t.comparison.meyarCol}</span>
-          <span className="col-span-4 text-[10.5px] font-bold text-white/40">{t.comparison.globalCol}</span>
-        </div>
-        {COMPARISON_ROWS.map((row, i) => {
-          const edgeMeta = COMPARISON_EDGE_META[row.edge];
-          return (
-            <div
-              key={i}
-              style={{ animationDelay: `${i * 40}ms` }}
-              className="grid grid-cols-12 px-4 py-3.5 border-b border-white/5 last:border-b-0 animate-fade-up items-start"
-            >
-              <div className="col-span-4 pr-2">
-                <p className="text-[11.5px] font-bold text-white/80">{row.dimension[lang] || row.dimension.ar}</p>
-                <span
-                  className="inline-block mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                  style={{ color: edgeMeta.color, backgroundColor: edgeMeta.bg }}
-                >
-                  {row.edge === "meyar" ? t.comparison.edgeMeyar : row.edge === "global" ? t.comparison.edgeGlobal : t.comparison.edgeTie}
-                </span>
-              </div>
-              <p className="col-span-4 text-[11.5px] text-white/60 leading-relaxed pr-2">{row.meyar[lang] || row.meyar.ar}</p>
-              <p className="col-span-4 text-[11.5px] text-white/40 leading-relaxed">{row.global[lang] || row.global.ar}</p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Bugs & Fixes Log — real issues found and fixed while building this project
-// ---------------------------------------------------------------------------
-
-const CHANGELOG_ENTRIES = [
-  {
-    date: "2026-07-02",
-    found: {
-      ar: "منطق مطابقة الشات بوت كان يدمج مصادر غير مرتبطة إذا تشاركوا كلمة ضعيفة وحدة، منتجاً إجابات مشوَّشة.",
-      en: "Chatbot matching merged unrelated sources when they shared just one weak keyword, producing confusing answers.",
-    },
-    fix: {
-      ar: "أُضيف شرط: لا يُدمَج أكثر من مصدر إلا إذا كان التطابق قوياً فعلاً (كلمتان فأكثر)، وإلا يُرجَّح المصدر الأقوى فقط.",
-      en: "Added a rule: sources only merge on a genuinely strong match (2+ keywords); otherwise only the single best match is returned.",
-    },
-  },
-  {
-    date: "2026-07-02",
-    found: {
-      ar: "دالة تطبيع النص العربي بالفرونت إند استخدمت \\w بالجافاسكربت، وبخلاف بايثون، هذا لا يشمل الحروف العربية إطلاقاً — فكانت تمسح كل سؤال عربي قبل المطابقة.",
-      en: "The frontend's Arabic-normalization function used JavaScript's \\w, which — unlike Python's — excludes Arabic letters entirely, wiping every Arabic question before matching.",
-    },
-    fix: {
-      ar: "استُبدلت بـ \\p{L}\\p{N} مع علامة /u (يونيكود)، وتم فحصها فعلياً بتشغيل الكود قبل التسليم.",
-      en: "Replaced with \\p{L}\\p{N} plus the /u (Unicode) flag, and verified by actually executing the code before delivery.",
-    },
-  },
-  {
-    date: "2026-07-04",
-    found: {
-      ar: "إحصائيات «موافقة/مرفوضة اليوم» كانت تُحدَّث بمنطق متداخل غير موثوق، فترجع لقيم قديمة بدل قرار المستخدم الفعلي.",
-      en: "\"Approved/rejected today\" counters updated via a fragile nested state pattern, reverting to stale values instead of the user's actual decision.",
-    },
-    fix: {
-      ar: "أُعيدت الكتابة لحساب مباشر من القيم المعروفة، مع تفضيل استعلام الباك إند الرسمي فور توفره.",
-      en: "Rewritten to compute directly from known values, preferring a fresh authoritative backend query whenever available.",
-    },
-  },
-  {
-    date: "2026-07-10",
-    found: {
-      ar: "قرارات الموافقة/الرفض على معاملات محلية (fallback) كانت تُرسَل للباك إند الحقيقي، اللي يرد «غير موجودة» — منتجاً سجلات فارغة بالتقرير.",
-      en: "Approve/reject decisions on locally-generated fallback transactions were sent to the real backend, which replied \"not found\" — producing empty report rows.",
-    },
-    fix: {
-      ar: "أُضيف فحص: المعاملات المحلية تُحلّ محلياً بالكامل، ولا تُرسَل للباك إند إطلاقاً.",
-      en: "Added a check: locally-generated transactions are now resolved entirely client-side and never sent to the backend.",
-    },
-  },
-  {
-    date: "2026-07-11",
-    found: {
-      ar: "زر الشات بوت العائم كان يتموضع بمكان غير متوقع بعد نقله لمستوى الصفحة (Portal)، لأن كلاسات اليمين/اليسار كانت تعتمد على عنصر أب فقدناه.",
-      en: "The floating chatbot button landed in an unexpected position after moving to a page-level portal, because its left/right classes depended on an ancestor element that was lost.",
-    },
-    fix: {
-      ar: "حُوِّل الشات بوت بالكامل لتبويب عادي بالقائمة الجانبية، بدل عنصر عائم — يلغي المشكلة من جذورها.",
-      en: "The chatbot was converted entirely into a normal sidebar tab instead of a floating element — removing the problem at its root.",
-    },
-  },
-  {
-    date: "2026-07-11",
-    found: {
-      ar: "سؤال «وش تعميم ١٠٢؟» ما كان يطابق أي شي، لأن البحث يعتمد على كلمات موضوعية (KYC...) لا على رقم التعميم المذكور مباشرة.",
-      en: "Asking \"what is circular 102?\" matched nothing, because search relied on topical keywords (KYC...) rather than the bare circular number mentioned.",
-    },
-    fix: {
-      ar: "أُضيفت مطابقة مباشرة: ذكر رقم تعميم بمفرده يُعتبر إشارة قوية كافية لوحدها.",
-      en: "Added direct number matching: mentioning a bare circular number alone is now treated as a strong enough signal on its own.",
-    },
-  },
-];
-
-function ChangelogTab({ lang, t }) {
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <Bug size={16} style={{ color: "var(--coral)" }} />
-          {t.changelog.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.changelog.subtitle}</p>
-      </div>
-
-      <div className="space-y-3">
-        {CHANGELOG_ENTRIES.map((entry, i) => (
-          <div key={i} style={{ animationDelay: `${i * 50}ms` }} className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-            <p className="text-[10px] text-white/30 font-mono mb-2">{entry.date}</p>
-            <div className="flex items-start gap-2 mb-2.5">
-              <span
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 mt-0.5"
-                style={{ color: "var(--coral)", backgroundColor: "rgba(255,107,129,0.1)" }}
-              >
-                {t.changelog.foundLabel}
-              </span>
-              <p className="text-[12px] text-white/70 leading-relaxed">{entry.found[lang] || entry.found.ar}</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <span
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 mt-0.5"
-                style={{ color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)" }}
-              >
-                {t.changelog.fixLabel}
-              </span>
-              <p className="text-[12px] text-white/60 leading-relaxed">{entry.fix[lang] || entry.fix.ar}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
 
 // ---------------------------------------------------------------------------
@@ -3720,10 +3464,6 @@ export default function MeyarDashboard() {
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
           {activeTab === "methodology" && <MethodologyTab lang={lang} t={t} />}
-
-          {activeTab === "comparison" && <ComparisonTab lang={lang} t={t} />}
-
-          {activeTab === "changelog" && <ChangelogTab lang={lang} t={t} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
