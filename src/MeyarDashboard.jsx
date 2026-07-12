@@ -132,6 +132,10 @@ const STR = {
       empty: "لا توجد تنبيهات جديدة",
       viewAll: "عرض الكل في المراقبة اللحظية",
     },
+    toast: {
+      blockedTitle: "معاملة محظورة الآن",
+      viewInMonitor: "عرض بالمراقبة اللحظية",
+    },
     settingsModal: {
       title: "عن النظام",
       version: "الإصدار",
@@ -373,6 +377,10 @@ const STR = {
       title: "Latest Alerts",
       empty: "No new alerts",
       viewAll: "View all in Live Monitor",
+    },
+    toast: {
+      blockedTitle: "Transaction blocked just now",
+      viewInMonitor: "View in Live Monitor",
     },
     settingsModal: {
       title: "About This System",
@@ -1301,9 +1309,40 @@ function Sparkline({ data, color }) {
   );
 }
 
-function KPICard({ icon: Icon, label, value, suffix, delta, deltaLabel, glowVar, sparkColor, sparkData, isPositiveGood = true, methodology, t }) {
+function useCountUp(target, duration = 1000) {
+  const [display, setDisplay] = useState(0);
+  const prevTarget = useRef(0);
+  const rafRef = useRef();
+
+  useEffect(() => {
+    const from = prevTarget.current;
+    const to = typeof target === "number" && !Number.isNaN(target) ? target : 0;
+    if (from === to) return;
+    const start = performance.now();
+
+    function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      setDisplay(from + (to - from) * eased);
+      if (p < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setDisplay(to);
+        prevTarget.current = to;
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+
+  return display;
+}
+
+function KPICard({ icon: Icon, label, rawValue, format, suffix, delta, deltaLabel, glowVar, sparkColor, sparkData, isPositiveGood = true, methodology, t }) {
   const isPositive = delta >= 0;
   const goodDirection = isPositiveGood ? isPositive : !isPositive;
+  const animatedValue = useCountUp(rawValue);
+  const displayValue = format ? format(animatedValue) : animatedValue;
 
   return (
     <div
@@ -1335,7 +1374,7 @@ function KPICard({ icon: Icon, label, value, suffix, delta, deltaLabel, glowVar,
         {methodology && t && <InfoTooltip label={t.costTooltip.label} text={methodology} />}
       </p>
       <p className="font-display text-2xl md:text-[26px] font-black text-white tracking-tight tabular-nums-ar">
-        {value}
+        {displayValue}
         {suffix && <span className="text-sm font-medium text-white/40 mx-1">{suffix}</span>}
       </p>
       <p className="text-[11px] text-white/35 mt-1">{deltaLabel}</p>
@@ -1513,10 +1552,10 @@ function TopBanner({ summary, lang, setLang, t, transactions, onGoToMonitor }) {
           style={{ backgroundColor: "rgba(166,172,255,0.12)" }}
         >
           <Wifi size={17} style={{ color: "var(--lavender)" }} />
-          <span
-            className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full animate-pulse-lavender"
-            style={{ backgroundColor: "var(--lavender)" }}
-          />
+          <span className="absolute -top-1 -left-1 w-2.5 h-2.5">
+            <span className="absolute inset-0 rounded-full animate-radar-ping" style={{ backgroundColor: "var(--lavender)" }} />
+            <span className="absolute inset-0 rounded-full animate-pulse-lavender" style={{ backgroundColor: "var(--lavender)" }} />
+          </span>
         </div>
         <div className="min-w-0">
           <p className="text-[13px] font-bold text-white flex items-center gap-1.5 truncate">
@@ -1571,7 +1610,8 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
     {
       icon: ShieldCheck,
       label: t.kpi.complianceScore,
-      value: summary.compliance_score.toFixed(1),
+      rawValue: summary.compliance_score,
+      format: (v) => v.toFixed(1),
       suffix: "%",
       delta: summary.compliance_score_delta,
       deltaLabel: t.kpi.vsLastWeek,
@@ -1583,7 +1623,8 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
     {
       icon: Wallet,
       label: t.kpi.monitoredVolume,
-      value: compactFmt(summary.total_monitored_volume_sar, lang),
+      rawValue: summary.total_monitored_volume_sar,
+      format: (v) => compactFmt(v, lang),
       suffix: t.currencySuffix,
       delta: summary.transactions_scanned_delta_pct,
       deltaLabel: `${numberFmt.format(summary.transactions_scanned_today)} ${t.kpi.txToday}`,
@@ -1594,7 +1635,8 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
     {
       icon: XCircle,
       label: t.kpi.blockedViolations,
-      value: numberFmt.format(summary.total_blocked_violations),
+      rawValue: summary.total_blocked_violations,
+      format: (v) => numberFmt.format(Math.round(v)),
       suffix: "",
       delta: summary.total_blocked_delta_pct,
       deltaLabel: t.kpi.blockedDrop,
@@ -1606,7 +1648,8 @@ function OverviewTab({ summary, sparkSeeds, trends, onGoToMonitor, lang, t }) {
     {
       icon: Gem,
       label: t.kpi.savedPenalties,
-      value: compactFmt(summary.saved_penalties_value_sar, lang),
+      rawValue: summary.saved_penalties_value_sar,
+      format: (v) => compactFmt(v, lang),
       suffix: t.currencySuffix,
       delta: summary.saved_penalties_delta_pct,
       deltaLabel: t.kpi.savedPenaltiesTrend,
@@ -1863,7 +1906,9 @@ function TrendChart({ data, height = 300, lang, t }) {
           stroke="#a6acff"
           strokeWidth={2.5}
           fill="url(#actualFill)"
-          animationDuration={1200}
+          isAnimationActive
+          animationDuration={1300}
+          animationEasing="ease-out"
         />
         <Line
           yAxisId="left"
@@ -1874,7 +1919,9 @@ function TrendChart({ data, height = 300, lang, t }) {
           strokeWidth={2}
           strokeDasharray="5 4"
           dot={false}
-          animationDuration={1200}
+          isAnimationActive
+          animationDuration={1300}
+          animationEasing="ease-out"
         />
         <Bar
           yAxisId="right"
@@ -1883,7 +1930,10 @@ function TrendChart({ data, height = 300, lang, t }) {
           fill="#e8c468"
           fillOpacity={0.4}
           radius={[6, 6, 0, 0]}
-          animationDuration={1200}
+          isAnimationActive
+          animationDuration={900}
+          animationEasing="ease-out"
+          animationBegin={300}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -2892,6 +2942,78 @@ function ChatbotTab({ lang, t }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Blocked-transaction toast — surfaces a brief, dismissible notification the
+// instant a new transaction is auto-blocked, so the dashboard feels "live"
+// even from a tab other than Live Monitor. Anchored to the bottom corner
+// OPPOSITE the sidebar (which docks to the reading-direction "end" side),
+// so it can never sit under or overlap the nav, and capped at 3 stacked
+// cards so a burst of blocks never crowds the screen.
+// ---------------------------------------------------------------------------
+
+function BlockedTransactionToast({ tx, onDismiss, onView, lang, t }) {
+  const [leaving, setLeaving] = useState(false);
+
+  const startDismiss = useCallback(() => {
+    setLeaving(true);
+    setTimeout(onDismiss, 280);
+  }, [onDismiss]);
+
+  useEffect(() => {
+    const timer = setTimeout(startDismiss, 5000);
+    return () => clearTimeout(timer);
+  }, [startDismiss]);
+
+  return (
+    <div
+      className={`pointer-events-auto w-[17rem] aurora-border glass-panel-strong rounded-2xl p-3.5 shadow-2xl overflow-hidden relative ${
+        leaving ? "animate-toast-out" : "animate-toast-in"
+      }`}
+      style={{ borderColor: "rgba(255,107,129,0.3)" }}
+    >
+      <div className="flex items-start gap-2.5">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: "rgba(255,107,129,0.15)", color: "var(--coral)" }}
+        >
+          <ShieldAlert size={16} />
+        </div>
+        <button onClick={onView} className="min-w-0 flex-1 text-start">
+          <p className="text-[11px] font-bold text-white">{t.toast.blockedTitle}</p>
+          <p className="text-[10.5px] text-white/50 mt-0.5 truncate">
+            {tx.id} · {localize(tx.institution, lang)}
+          </p>
+          <p className="text-[10px] text-white/35 mt-1 leading-snug line-clamp-2">{localize(tx.legal_reason, lang)}</p>
+        </button>
+        <button onClick={startDismiss} className="shrink-0 text-white/30 hover:text-white/70 transition-colors" aria-label="dismiss">
+          <X size={13} />
+        </button>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5">
+        <div className="h-full animate-toast-progress" style={{ backgroundColor: "var(--coral)" }} />
+      </div>
+    </div>
+  );
+}
+
+function ToastStack({ toasts, onDismiss, onView, lang, t }) {
+  if (!toasts.length) return null;
+  return (
+    <div className="fixed bottom-5 rtl:left-5 ltr:right-5 z-50 flex flex-col-reverse gap-2.5 pointer-events-none">
+      {toasts.map((toast) => (
+        <BlockedTransactionToast
+          key={toast.id}
+          tx={toast.tx}
+          onDismiss={() => onDismiss(toast.id)}
+          onView={() => onView(toast.id)}
+          lang={lang}
+          t={t}
+        />
+      ))}
+    </div>
+  );
+}
+
 function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentationMode, onTogglePresentation, t }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -3293,6 +3415,16 @@ const EMBEDDED_STYLE = `
   }
   @keyframes pulse-glow-lavender { 0%,100% { opacity: 1; box-shadow: 0 0 12px rgba(166,172,255,0.5); } 50% { opacity: 0.65; box-shadow: 0 0 4px rgba(166,172,255,0.2); } }
   .animate-pulse-lavender { animation: pulse-glow-lavender 2.4s ease-in-out infinite; }
+  @keyframes radar-ping { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.8); opacity: 0; } }
+  .animate-radar-ping { animation: radar-ping 1.8s cubic-bezier(0,0,0.2,1) infinite; }
+  @keyframes toast-in { 0% { opacity: 0; transform: translateY(18px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  .animate-toast-in { animation: toast-in 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes toast-out { 0% { opacity: 1; transform: translateY(0) scale(1); max-height: 120px; } 100% { opacity: 0; transform: translateY(10px) scale(0.95); max-height: 0px; } }
+  .animate-toast-out { animation: toast-out 0.3s cubic-bezier(0.4,0,1,1) both; }
+  @keyframes toast-progress { 0% { width: 100%; } 100% { width: 0%; } }
+  .animate-toast-progress { animation: toast-progress 5s linear forwards; }
+  button:not(:disabled) { transition: transform 0.12s ease; }
+  button:not(:disabled):active { transform: scale(0.96); }
   @keyframes pulse-glow-coral { 0%,100% { box-shadow: 0 0 12px rgba(255,107,129,0.55); } 50% { box-shadow: 0 0 34px rgba(255,107,129,0.85); } }
   .animate-pulse-coral { animation: pulse-glow-coral 1.4s ease-in-out infinite; }
   @keyframes logo-glow { 0%,100% { filter: drop-shadow(0 0 6px rgba(228,160,255,0.55)) drop-shadow(0 0 14px rgba(157,78,221,0.35)); } 50% { filter: drop-shadow(0 0 12px rgba(232,196,104,0.6)) drop-shadow(0 0 22px rgba(166,172,255,0.4)); } }
@@ -3336,6 +3468,38 @@ export default function MeyarDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
+  const [toasts, setToasts] = useState([]);
+  const seenBlockedIdsRef = useRef(new Set());
+
+  const dismissToast = useCallback((toastId) => {
+    setToasts((prev) => prev.filter((tst) => tst.id !== toastId));
+  }, []);
+
+  // Detect newly-appeared blocked transactions and surface a brief toast —
+  // this is what makes the dashboard feel "alive" even while looking at a
+  // tab other than Live Monitor. Capped at 3 stacked toasts so a burst of
+  // blocks can never crowd the screen; each auto-dismisses on its own.
+  // The very first batch of transactions is recorded silently (no toast
+  // storm on page load) — only genuinely new arrivals afterward trigger one.
+  const hasInitializedBlockedRef = useRef(false);
+  useEffect(() => {
+    if (!transactions.length) return;
+    if (!hasInitializedBlockedRef.current) {
+      transactions.forEach((tx) => seenBlockedIdsRef.current.add(tx.id));
+      hasInitializedBlockedRef.current = true;
+      return;
+    }
+    const freshlyBlocked = transactions.filter((tx) => tx.status === "blocked" && !seenBlockedIdsRef.current.has(tx.id));
+    transactions.forEach((tx) => seenBlockedIdsRef.current.add(tx.id));
+    if (freshlyBlocked.length === 0) return;
+
+    setToasts((prev) => {
+      const additions = freshlyBlocked.slice(0, 2).map((tx) => ({ id: `toast-${tx.id}-${Date.now()}`, tx }));
+      return [...additions, ...prev].slice(0, 3);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions]);
+
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -3574,6 +3738,17 @@ export default function MeyarDashboard() {
       )}
 
       {showOnboarding && <OnboardingTour onFinish={dismissOnboarding} lang={lang} t={t} />}
+
+      <ToastStack
+        toasts={toasts}
+        onDismiss={dismissToast}
+        onView={(toastId) => {
+          setActiveTab("monitor");
+          dismissToast(toastId);
+        }}
+        lang={lang}
+        t={t}
+      />
 
       <main className="flex-1 min-w-0 h-screen overflow-y-auto relative z-0">
         <div className="p-4 md:p-6 space-y-5 max-w-[1600px] mx-auto">
