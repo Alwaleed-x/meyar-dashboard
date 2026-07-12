@@ -3,3 +3,8 @@ uvicorn==0.49.0
 pydantic==2.13.4
 scikit-learn==1.8.0
 numpy==2.2.6
+joblib==1.4.2
+
+# Testing (not needed for the deployed app, only for running test_main.py)
+pytest==8.3.3
+httpx==0.27.2
