@@ -30,11 +30,13 @@ import json
 import os
 import random
 import re
+import sqlite3
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
+import joblib
 import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,9 +54,17 @@ app = FastAPI(
     version="3.0.0",
 )
 
+# CORS: tightened from a wildcard to an explicit allow-list. A financial-
+# compliance API accepting requests from any origin is not defensible even
+# in a demo. Configurable via the ALLOWED_ORIGINS env var (comma-separated)
+# so new Vercel preview URLs can be added without a code change; defaults
+# cover local development and the known production frontend domain.
+_DEFAULT_ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:3000,https://meyar-dashboard.vercel.app"
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ALLOWED_ORIGINS).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,6 +115,9 @@ def _make_synthetic_training_data(n: int = 4000, seed: int = 42):
     return X, label
 
 
+MODEL_PATH = os.environ.get("MEYAR_MODEL_PATH", "risk_model.joblib")
+
+
 def _train_risk_model() -> RandomForestClassifier:
     X, y = _make_synthetic_training_data()
     model = RandomForestClassifier(n_estimators=80, max_depth=6, random_state=42)
@@ -112,7 +125,27 @@ def _train_risk_model() -> RandomForestClassifier:
     return model
 
 
-RISK_MODEL = _train_risk_model()
+def _load_or_train_risk_model() -> tuple:
+    """Loads a previously trained model from disk if one exists (fast
+    startup), otherwise trains a fresh one and saves it for next time. Since
+    training here is deterministic (fixed random_state, fixed synthetic
+    data), a loaded model is numerically identical to a freshly trained one
+    — this only saves the ~1-2s of retraining on every process start."""
+    if os.path.exists(MODEL_PATH):
+        try:
+            model = joblib.load(MODEL_PATH)
+            return model, True
+        except Exception:
+            pass  # corrupted/incompatible file — fall through and retrain
+    model = _train_risk_model()
+    try:
+        joblib.dump(model, MODEL_PATH)
+    except Exception:
+        pass  # read-only filesystem etc. — training still succeeded
+    return model, False
+
+
+RISK_MODEL, RISK_MODEL_LOADED_FROM_DISK = _load_or_train_risk_model()
 RISK_MODEL_TRAINED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 RISK_FLAG_THRESHOLD = 0.55
 
@@ -1451,21 +1484,115 @@ def chatbot_suggested_questions():
 
 
 # ---------------------------------------------------------------------------
-# Review Queue + Audit Trail
+# Review Queue + Audit Trail — now backed by a real SQLite database instead
+# of an in-memory Python list.
 #
-# This is what turns "flagged transactions are routed to a human reviewer"
-# from a sentence in the pitch into something a committee can actually click.
-# Every Level-2 transaction sits in REVIEW_QUEUE until a named human approves
-# or rejects it; every decision — automatic Level-1 blocks included — is
-# permanently recorded in AUDIT_LOG with who/when/why, so nothing is a black
-# box and no decision can silently disappear.
-#
-# In-memory only (fine for a hackathon demo); a real deployment would back
-# this with a database.
+# Honest scope: Render's free tier uses an ephemeral filesystem, so this
+# file is still wiped whenever the container restarts — it does not, by
+# itself, survive a Render redeploy. What it DOES demonstrate is a real
+# persistence layer (schema, SQL queries, a durable file) instead of state
+# that vanishes the instant the Python process exits, which is the
+# meaningful engineering difference from before. A production deployment
+# would point DB_PATH at a mounted persistent volume or a managed database.
 # ---------------------------------------------------------------------------
 
-REVIEW_QUEUE: List[dict] = []
-AUDIT_LOG: List[dict] = []
+DB_PATH = os.environ.get("MEYAR_DB_PATH", "meyar.db")
+
+
+def _db_connect() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _init_db() -> None:
+    conn = _db_connect()
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS review_queue ("
+        "id TEXT PRIMARY KEY, status TEXT, timestamp TEXT, data TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS audit_log ("
+        "id TEXT PRIMARY KEY, decision TEXT, timestamp TEXT, data TEXT)"
+    )
+    conn.commit()
+    conn.close()
+
+
+def _db_insert_review_item(tx: dict) -> None:
+    conn = _db_connect()
+    conn.execute(
+        "INSERT OR REPLACE INTO review_queue (id, status, timestamp, data) VALUES (?, ?, ?, ?)",
+        (tx["id"], tx["status"], tx["timestamp"], json.dumps(tx, ensure_ascii=False)),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _db_get_review_queue() -> List[dict]:
+    conn = _db_connect()
+    rows = conn.execute("SELECT data FROM review_queue ORDER BY timestamp DESC").fetchall()
+    conn.close()
+    return [json.loads(r["data"]) for r in rows]
+
+
+def _db_get_review_item(tx_id: str) -> Optional[dict]:
+    conn = _db_connect()
+    row = conn.execute("SELECT data FROM review_queue WHERE id = ?", (tx_id,)).fetchone()
+    conn.close()
+    return json.loads(row["data"]) if row else None
+
+
+def _db_remove_review_item(tx_id: str) -> None:
+    conn = _db_connect()
+    conn.execute("DELETE FROM review_queue WHERE id = ?", (tx_id,))
+    conn.commit()
+    conn.close()
+
+
+def _db_count_review_queue() -> int:
+    conn = _db_connect()
+    n = conn.execute("SELECT COUNT(*) AS c FROM review_queue").fetchone()["c"]
+    conn.close()
+    return n
+
+
+def _db_insert_audit(entry: dict) -> None:
+    conn = _db_connect()
+    conn.execute(
+        "INSERT OR REPLACE INTO audit_log (id, decision, timestamp, data) VALUES (?, ?, ?, ?)",
+        (entry["id"], entry["decision"], entry["timestamp"], json.dumps(entry, ensure_ascii=False)),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _db_get_audit_log(limit: int = 50) -> List[dict]:
+    conn = _db_connect()
+    rows = conn.execute(
+        "SELECT data FROM audit_log ORDER BY timestamp DESC LIMIT ?", (limit,)
+    ).fetchall()
+    conn.close()
+    return [json.loads(r["data"]) for r in rows]
+
+
+def _db_count_audit_by_decision_today(decision: str) -> int:
+    conn = _db_connect()
+    rows = conn.execute("SELECT timestamp FROM audit_log WHERE decision = ?", (decision,)).fetchall()
+    conn.close()
+    today = _now().date()
+    count = 0
+    for r in rows:
+        try:
+            if datetime.fromisoformat(r["timestamp"].replace("Z", "+00:00")).date() == today:
+                count += 1
+        except ValueError:
+            continue
+    return count
+
+
+_init_db()
+
 _audit_counter = 0
 
 
@@ -1490,17 +1617,20 @@ def _log_audit(transaction: dict, level: str, decision: str, actor: str, note: O
         "actor": actor,
         "note": note,
     }
-    AUDIT_LOG.insert(0, entry)
+    _db_insert_audit(entry)
     return entry
 
 
 def _seed_review_and_audit():
     """Populate the queue and log with realistic starting data so both tabs
-    have content on first load, instead of an empty state."""
+    have content on first load, instead of an empty state. Skipped if the
+    database already has data (e.g. a warm restart within the same
+    container), so we never duplicate seed rows."""
+    if _db_count_review_queue() > 0:
+        return
+
     base_time = _now()
 
-    # A handful of already-resolved historical decisions, so the audit trail
-    # isn't empty on first visit.
     for i in range(6):
         tx = _generate_transaction(1000 + i, base_time - timedelta(hours=RNG.randint(2, 48)))
         if tx.status == "blocked":
@@ -1510,16 +1640,16 @@ def _seed_review_and_audit():
             reviewer = tx.reviewer_required or "موظف الامتثال"
             entry = _log_audit(tx.model_dump(), "human_review", outcome, reviewer)
             entry["timestamp"] = _iso(base_time - timedelta(hours=RNG.randint(1, 40)))
+            _db_insert_audit(entry)
 
-    # Currently pending items awaiting a human decision — keep generating
-    # until we have a healthy demo-sized queue instead of leaving it to
-    # random chance (which could seed an empty, boring-looking queue).
     attempts = 0
     idx = 2000
-    while len(REVIEW_QUEUE) < 8 and attempts < 200:
+    seeded = 0
+    while seeded < 8 and attempts < 200:
         tx = _generate_transaction(idx, base_time - timedelta(minutes=RNG.randint(1, 90)))
         if tx.status == "flagged":
-            REVIEW_QUEUE.append(tx.model_dump())
+            _db_insert_review_item(tx.model_dump())
+            seeded += 1
         idx += 1
         attempts += 1
 
@@ -1557,12 +1687,12 @@ class ReviewStats(BaseModel):
 
 @app.get("/api/review-queue")
 def get_review_queue():
-    return {"items": REVIEW_QUEUE}
+    return {"items": _db_get_review_queue()}
 
 
 @app.post("/api/review-queue/{transaction_id}/decide", response_model=AuditEntry)
 def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
-    match = next((t for t in REVIEW_QUEUE if t["id"] == transaction_id), None)
+    match = _db_get_review_item(transaction_id)
     if not match:
         return AuditEntry(
             id=_new_audit_id(),
@@ -1576,7 +1706,7 @@ def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
             actor=payload.reviewer_name,
             note="Transaction not found in queue (may have already been decided).",
         )
-    REVIEW_QUEUE.remove(match)
+    _db_remove_review_item(transaction_id)
     decision_label = "approved" if payload.decision == "approve" else "rejected"
     entry = _log_audit(match, "human_review", decision_label, payload.reviewer_name, payload.note)
     return AuditEntry(**entry)
@@ -1584,26 +1714,135 @@ def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
 
 @app.get("/api/audit-log")
 def get_audit_log(limit: int = Query(default=50, ge=1, le=200)):
-    return {"items": AUDIT_LOG[:limit]}
+    return {"items": _db_get_audit_log(limit)}
 
 
 @app.get("/api/review-queue/stats", response_model=ReviewStats)
 def review_stats():
-    today = _now().date()
-    approved_today = sum(
-        1 for e in AUDIT_LOG if e["decision"] == "approved" and datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).date() == today
-    )
-    rejected_today = sum(
-        1 for e in AUDIT_LOG if e["decision"] == "rejected" and datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).date() == today
-    )
+    approved_today = _db_count_audit_by_decision_today("approved")
+    rejected_today = _db_count_audit_by_decision_today("rejected")
     total_decided = approved_today + rejected_today
     approval_rate = round((approved_today / total_decided) * 100, 1) if total_decided else 0.0
     return ReviewStats(
-        pending=len(REVIEW_QUEUE),
+        pending=_db_count_review_queue(),
         approved_today=approved_today,
         rejected_today=rejected_today,
         approval_rate_pct=approval_rate,
     )
+
+
+# ---------------------------------------------------------------------------
+# Open Banking-style webhook — classifies a REAL provided transaction
+# (rather than generating a random demo one) using the same two-tier logic:
+# a deterministic numeric-limit check for Level 1, and the trained model's
+# probability for Level 2. This is the shape a real bank integration would
+# call the moment a transaction occurs.
+# ---------------------------------------------------------------------------
+
+SAMA_DAILY_LIMIT_SAR = 400_000
+
+
+class WebhookTransactionRequest(BaseModel):
+    amount_sar: float
+    institution: str = "غير محدد"
+    customer_ref: Optional[str] = None
+    channel: str = "Open Banking API"
+    deviation: Optional[float] = None
+    freq_last_hour: Optional[int] = None
+    is_first_time: Optional[bool] = None
+
+
+def _classify_transaction(payload: WebhookTransactionRequest) -> Transaction:
+    ts = _now()
+    customer_ref = payload.customer_ref or f"CUST-{RNG.randint(10000, 99999)}"
+
+    # Level 1 — a real, deterministic numeric-limit check (not a random
+    # roll), matching Circular No. 55's daily-limit rule.
+    if payload.amount_sar > SAMA_DAILY_LIMIT_SAR:
+        rule = next(r for r in LEVEL1_BLOCKED_RULES if "السقف اليومي" in r["reason"])
+        tx = Transaction(
+            id=f"TXN-WH-{int(ts.timestamp())}",
+            timestamp=_iso(ts),
+            institution=payload.institution,
+            amount_sar=payload.amount_sar,
+            status="blocked",
+            action_level="auto_block",
+            certainty="rule_based",
+            legal_reason=rule["reason"],
+            decision_basis=rule["basis"],
+            reviewer_required=None,
+            article_reference=rule["article"],
+            violation_category=rule["category"],
+            circular_number=rule["circular_number"],
+            ai_risk_score=None,
+            customer_ref=customer_ref,
+            channel=payload.channel,
+        )
+        _log_audit(tx.model_dump(), "auto_block", "blocked", "النظام (قاعدة آلية عبر Webhook)")
+        return tx
+
+    # Level 2 — the real trained model scores it; only flagged transactions
+    # are added to the review queue awaiting a human decision.
+    hour = ts.hour
+    deviation = payload.deviation if payload.deviation is not None else RNG.random()
+    freq_last_hour = payload.freq_last_hour if payload.freq_last_hour is not None else RNG.randint(0, 4)
+    is_first_time = 1 if payload.is_first_time else 0
+
+    risk = _score_transaction_risk(payload.amount_sar, hour, deviation, freq_last_hour, is_first_time)
+
+    if risk["probability"] > RISK_FLAG_THRESHOLD:
+        candidates = [r for r in LEVEL2_FLAGGED_RULES if r["feature_tag"] == risk["dominant_feature"]]
+        rule = RNG.choice(candidates) if candidates else RNG.choice(LEVEL2_FLAGGED_RULES)
+        tx = Transaction(
+            id=f"TXN-WH-{int(ts.timestamp())}",
+            timestamp=_iso(ts),
+            institution=payload.institution,
+            amount_sar=payload.amount_sar,
+            status="flagged",
+            action_level="pending_review",
+            certainty="ai_assessed",
+            legal_reason=rule["reason"],
+            decision_basis=rule["basis"],
+            reviewer_required=rule["reviewer"],
+            article_reference=rule["article"],
+            violation_category=rule["category"],
+            circular_number=rule["circular_number"],
+            ai_risk_score=risk["probability"],
+            customer_ref=customer_ref,
+            channel=payload.channel,
+        )
+        _db_insert_review_item(tx.model_dump())
+        return tx
+
+    reason = RNG.choice(LEVEL_PASSED_RULES)
+    return Transaction(
+        id=f"TXN-WH-{int(ts.timestamp())}",
+        timestamp=_iso(ts),
+        institution=payload.institution,
+        amount_sar=payload.amount_sar,
+        status="passed",
+        action_level="no_action",
+        certainty="rule_based",
+        legal_reason=reason,
+        decision_basis="مطابقة قواعد صريحة معلنة",
+        reviewer_required=None,
+        article_reference=None,
+        violation_category=None,
+        circular_number=None,
+        ai_risk_score=risk["probability"],
+        customer_ref=customer_ref,
+        channel=payload.channel,
+    )
+
+
+@app.post("/api/webhook/transaction", response_model=Transaction)
+def receive_transaction_webhook(payload: WebhookTransactionRequest):
+    """Simulates the endpoint a bank's Open Banking integration would call
+    the instant a real transaction occurs. Returns the system's live
+    classification decision — auto-blocked, flagged for human review, or
+    passed — computed from the actual submitted amount and the trained
+    model, not a pre-generated demo record."""
+    return _classify_transaction(payload)
 
 
 if __name__ == "__main__":
