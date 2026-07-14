@@ -2695,6 +2695,38 @@ const CHATBOT_KB = [
     ar: "النسبة محسوبة كـ (١ − ساعات المراجعة بعد الأتمتة ÷ ساعات المراجعة قبل الأتمتة) × ١٠٠، بافتراض ١٢٠٠ ساعة قبل النظام مقابل ٣٦٠ ساعة بعد الأتمتة.",
     en: "Calculated as (1 − post-automation hours ÷ pre-automation hours) × 100, assuming 1,200 hours before the system vs. 360 hours after automation.",
   },
+  {
+    id: "KB-PEP",
+    circular_number: "مفهوم عام",
+    title: "من هو الشخص السياسي المعرَّض للمخاطر (PEP)؟",
+    keywords: ["شخص سياسي معرض", "pep", "شخصية سياسية"],
+    ar: "الشخص السياسي المعرَّض للمخاطر (PEP) فرد يشغل أو شغل منصباً عاماً بارزاً، ما يجعل حساباته تحتاج مستوى تدقيق أعلى. معاملات هذي الفئة غالباً تُصنَّف مستوى ٢.",
+    en: "A PEP holds or held a prominent public position, requiring extra AML scrutiny. Such accounts are typically Level 2 (human review).",
+  },
+  {
+    id: "KB-COMPLIANCE-OFFICER",
+    circular_number: "مفهوم عام",
+    title: "وش دور موظف الامتثال بالضبط؟",
+    keywords: ["دور موظف الامتثال", "compliance officer"],
+    ar: "موظف الامتثال هو المسؤول عن مراجعة أي حالة اجتهادية (مستوى ٢) ما يقدر النظام يقرر فيها بمفرده، ويوافق أو يرفض بقرار نهائي موثَّق عبر شاشة قائمة المراجعة.",
+    en: "A compliance officer reviews Level-2 cases the system cannot decide alone, issuing a final documented decision via the Review Queue.",
+  },
+  {
+    id: "KB-BNPL",
+    circular_number: "تعميم رقم ١١٨",
+    title: "أنظمة خدمات الشراء الآن والدفع لاحقاً (BNPL)",
+    keywords: ["الشراء الان والدفع لاحقا", "bnpl"],
+    ar: "تعميم رقم ١١٨ ينظّم مزودي BNPL، ويشترط ترخيصاً رسمياً وسقفاً على مبلغ التقسيط الإجمالي. تجاوزه قاعدة مستوى ١ بنظامنا.",
+    en: "Circular No. 118 regulates BNPL providers with a licensing requirement and an installment cap — exceeding it is a Level-1 rule.",
+  },
+  {
+    id: "KB-OUTSOURCING",
+    circular_number: "تعميم رقم ٦٤",
+    title: "هل يقدر البنك يفوّض جزء من الرقابة لطرف ثالث؟",
+    keywords: ["طرف ثالث", "outsourcing"],
+    ar: "يجوز الاستعانة بطرف ثالث لبعض المهام التقنية، لكن المسؤولية النهائية تبقى دائماً على المؤسسة المرخَّصة نفسها، مو على الطرف الثالث.",
+    en: "Outsourcing certain technical functions is allowed, but final accountability always stays with the licensed institution, never the vendor.",
+  },
 ];
 
 function normalizeArabicClient(text) {
@@ -2712,7 +2744,19 @@ function normalizeArabicClient(text) {
 }
 
 function stripAlClient(word) {
-  return word.startsWith("ال") && word.length > 3 ? word.slice(2) : word;
+  const preps = ["و", "ف", "ب", "ل", "ك"];
+  for (let i = 0; i < 2; i++) {
+    if (word.startsWith("ال") && word.length > 3) {
+      word = word.slice(2);
+      continue;
+    }
+    if (preps.includes(word[0]) && word.length > 3) {
+      word = word.slice(1);
+      continue;
+    }
+    break;
+  }
+  return word;
 }
 
 function tokenizeClient(text) {
