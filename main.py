@@ -1007,10 +1007,19 @@ def _normalize_arabic(text: str) -> str:
 
 
 def _strip_al(word: str) -> str:
-    """Strip the Arabic definite article (ال) so 'الشبهة' and 'شبهة' match
-    the same token — users type the article inconsistently."""
-    if word.startswith("ال") and len(word) > 3:
-        return word[2:]
+    """Strips the Arabic definite article (ال) and common single-letter
+    attached prepositions (و ف ب ل ك), applied iteratively so a word like
+    'بالنظام' (به + ال + نظام) resolves to 'نظام'. Without this, a keyword
+    like 'طرف ثالث' would fail to match a question containing 'لطرف ثالث' —
+    a real gap found while testing the expanded knowledge base."""
+    for _ in range(2):
+        if word.startswith("ال") and len(word) > 3:
+            word = word[2:]
+            continue
+        if word[:1] in ("و", "ف", "ب", "ل", "ك") and len(word) > 3:
+            word = word[1:]
+            continue
+        break
     return word
 
 
@@ -1295,6 +1304,232 @@ SAMA_KNOWLEDGE_BASE = [
             f"manual hours/month before the system vs. "
             f"{COST_METHODOLOGY['automated_review_hours_per_month']} hours after automation "
             f"(Level-2 review only). An auditable operational estimate."
+        ),
+    },
+    {
+        "id": "KB-PEP",
+        "circular_number": "مفهوم عام",
+        "title": "من هو الشخص السياسي المعرَّض للمخاطر (PEP)؟",
+        "keywords": ["شخص سياسي معرض", "pep", "شخصية سياسية", "معرض للمخاطر"],
+        "answer_ar": (
+            "الشخص السياسي المعرَّض للمخاطر (PEP) هو فرد يشغل أو شغل منصباً عاماً بارزاً (مثل "
+            "مسؤول حكومي رفيع أو قيادي حزبي)، ما يجعل حساباته تحتاج مستوى تدقيق أعلى بموجب "
+            "أنظمة مكافحة غسل الأموال، لارتفاع احتمالية استغلال نفوذه. بنظام معيار، معاملات "
+            "هذي الفئة غالباً تُصنَّف مستوى ٢ (تحتاج مراجعة بشرية) بدل مستوى ١."
+        ),
+        "answer_en": (
+            "A Politically Exposed Person (PEP) is someone who holds or held a prominent public "
+            "position (senior government official, party leader, etc.), requiring extra AML "
+            "scrutiny due to higher misuse-of-influence risk. In Meyar, such accounts are "
+            "typically Level 2 (human review), not Level 1."
+        ),
+    },
+    {
+        "id": "KB-STR",
+        "circular_number": "مفهوم عام",
+        "title": "ما هو تقرير المعاملة المشبوهة (STR)؟",
+        "keywords": ["تقرير معاملة مشبوهة", "str", "بلاغ اشتباه"],
+        "answer_ar": (
+            "تقرير المعاملة المشبوهة (STR) هو البلاغ الرسمي اللي ترفعه المؤسسة المالية لجهة "
+            "مكافحة غسل الأموال عند اشتباه فعلي بنشاط مالي مريب، بعد مراجعة بشرية تؤكد الاشتباه. "
+            "بنظام معيار، أي معاملة مستوى ٢ يوافق عليها موظف الامتثال كمخالفة فعلية، هذي هي "
+            "بالضبط اللحظة اللي يُرفَع فيها STR بواقع العمل الحقيقي."
+        ),
+        "answer_en": (
+            "A Suspicious Transaction Report (STR) is the formal filing a financial institution "
+            "submits to the AML authority once human review confirms genuine suspicion. In "
+            "Meyar, this maps to a Level-2 transaction a compliance officer confirms as an actual "
+            "violation via the Review Queue."
+        ),
+    },
+    {
+        "id": "KB-EDD",
+        "circular_number": "مفهوم عام",
+        "title": "ما هي العناية الواجبة المعزَّزة (EDD)؟",
+        "keywords": ["عناية واجبة معززة", "edd", "تدقيق معزز"],
+        "answer_ar": (
+            "العناية الواجبة المعزَّزة (EDD) هي مستوى تحقق أعمق من KYC العادي، يُطبَّق على "
+            "العملاء عالي المخاطر (مثل PEP أو حسابات بحجم معاملات غير معتاد). تشمل تدقيق مصدر "
+            "الأموال ومراجعة دورية أكثر تكراراً. بنظامنا، هذا يتماشى مع تصنيف مستوى ٢."
+        ),
+        "answer_en": (
+            "Enhanced Due Diligence (EDD) is a deeper verification tier than standard KYC, "
+            "applied to higher-risk customers (PEPs, unusual transaction volumes). It includes "
+            "source-of-funds checks and more frequent review — aligned with our Level-2 tier."
+        ),
+    },
+    {
+        "id": "KB-COMPLIANCE-OFFICER",
+        "circular_number": "مفهوم عام",
+        "title": "وش دور موظف الامتثال بالضبط؟",
+        "keywords": ["دور موظف الامتثال", "مسؤوليات موظف الامتثال", "compliance officer"],
+        "answer_ar": (
+            "موظف الامتثال هو الجهة البشرية المسؤولة عن مراجعة أي حالة اجتهادية (مستوى ٢) ما "
+            "يقدر النظام يقرر فيها بمفرده — يراجع السبب المقترح، يتأكد من صحته، ويوافق أو يرفض "
+            "بقرار نهائي موثَّق. بمعيار، هذا بالضبط اللي تسويه شاشة «قائمة المراجعة»."
+        ),
+        "answer_en": (
+            "A compliance officer is the human authority responsible for reviewing any Level-2 "
+            "(interpretive) case the system cannot decide alone — checking the suggested reason "
+            "and issuing a final, documented approve/reject decision. In Meyar, this is exactly "
+            "what the Review Queue screen enables."
+        ),
+    },
+    {
+        "id": "KB-BNPL",
+        "circular_number": "تعميم رقم ١١٨",
+        "title": "أنظمة خدمات الشراء الآن والدفع لاحقاً (BNPL)",
+        "keywords": ["الشراء الان والدفع لاحقا", "bnpl", "تقسيط بدون فوائد"],
+        "answer_ar": (
+            "تعميم رقم ١١٨ ينظّم مزودي خدمة «اشترِ الآن وادفع لاحقاً» (BNPL)، ويشترط ترخيصاً "
+            "رسمياً وسقوفاً على مبلغ التقسيط الإجمالي للعميل الواحد. تجاوز هذا السقف يُعامَل "
+            "كقاعدة مستوى ١ (رقمية قطعية) بنظامنا."
+        ),
+        "answer_en": (
+            "Circular No. 118 regulates Buy-Now-Pay-Later (BNPL) providers, requiring formal "
+            "licensing and a cap on a single customer's total installment exposure. Exceeding it "
+            "is treated as a Level-1 numeric rule in our system."
+        ),
+    },
+    {
+        "id": "KB-SANDBOX",
+        "circular_number": "إطار عام",
+        "title": "وش هي بيئة ساما التجريبية التنظيمية (Sandbox)؟",
+        "keywords": ["بيئة تجريبية تنظيمية", "sandbox", "الاختبار التنظيمي"],
+        "answer_ar": (
+            "بيئة الاختبار التنظيمي (Regulatory Sandbox) بيئة معزولة تتيحها ساما لشركات "
+            "Fintech تختبر منتجاً مالياً جديداً بموافقة محدودة ونطاق عملاء صغير، قبل الحصول على "
+            "ترخيص كامل. أي مشروع RegTech (زي معيار) يسعى للتكامل الحقيقي عادة يبدأ من هذي "
+            "البيئة، مو الترخيص الكامل مباشرة."
+        ),
+        "answer_en": (
+            "SAMA's Regulatory Sandbox is a controlled environment letting fintechs test a new "
+            "financial product with limited approval and a small customer base before full "
+            "licensing. Any RegTech project (like Meyar) seeking real integration typically "
+            "starts here, not with a full license immediately."
+        ),
+    },
+    {
+        "id": "KB-CONSUMER-PROTECTION",
+        "circular_number": "تعميم رقم ٩٠",
+        "title": "مبادئ حماية العملاء بالخدمات المالية",
+        "keywords": ["حماية العملاء", "حقوق العميل المالي", "الشفافية بالرسوم"],
+        "answer_ar": (
+            "تعميم رقم ٩٠ يلزم المؤسسات المالية بالإفصاح الواضح عن الرسوم والشروط قبل أي "
+            "معاملة، ومنح العميل حق الاعتراض خلال مدة محدَّدة. هذا مبدأ عام يكمّل قواعد منع "
+            "المخالفات، لأنه يحمي العميل حتى بالمعاملات المطابقة (غير المخالفة) أصلاً."
+        ),
+        "answer_en": (
+            "Circular No. 90 requires clear fee and terms disclosure before any transaction, and "
+            "grants the customer a defined objection window. This is a general principle "
+            "complementing violation-prevention rules, protecting customers even on fully "
+            "compliant transactions."
+        ),
+    },
+    {
+        "id": "KB-COMPLAINTS",
+        "circular_number": "تعميم رقم ٩٠",
+        "title": "كم مدة الرد الإلزامية على شكوى العميل؟",
+        "keywords": ["مدة الرد على الشكوى", "شكاوى العملاء", "مهلة الرد"],
+        "answer_ar": (
+            "بموجب تعميم رقم ٩٠، تلتزم المؤسسة المالية بالرد على شكوى العميل خلال مهلة محدَّدة "
+            "نظامياً (عادة أيام معدودة)، وتصعيد الشكوى لساما لو ما انحلّت بالمهلة. هذا مسار "
+            "منفصل تماماً عن تصنيف المخالفات بنظام معيار، ويخص جودة الخدمة لا المخالفة المالية."
+        ),
+        "answer_en": (
+            "Under Circular No. 90, institutions must respond to customer complaints within a "
+            "defined statutory window, escalating to SAMA if unresolved. This is a separate "
+            "track from Meyar's violation classification — it concerns service quality, not "
+            "financial violations."
+        ),
+    },
+    {
+        "id": "KB-DORMANT",
+        "circular_number": "تعميم رقم ٧٠",
+        "title": "متى يُعتبر الحساب البنكي راكداً (Dormant)؟",
+        "keywords": ["حساب راكد", "dormant", "حساب خامل"],
+        "answer_ar": (
+            "تعميم رقم ٧٠ يحدد الحساب كـ«راكد» بعد فترة معينة بلا أي حركة من العميل (عادة "
+            "سنوات)، وتُطبَّق عليه ضوابط إضافية قبل أي تحويل يصير منه لاحقاً، لتقليل خطر "
+            "استغلاله. بنظامنا، أول معاملة تصير من حساب راكد فترة طويلة تُصنَّف مستوى ٢ (نمط "
+            "سلوكي غير معتاد)."
+        ),
+        "answer_en": (
+            "Circular No. 70 defines an account as 'dormant' after a set period of no customer "
+            "activity (typically years), adding extra controls before any later transfer from "
+            "it. In our system, a first transaction from a long-dormant account is Level 2 "
+            "(unusual behavioral pattern)."
+        ),
+    },
+    {
+        "id": "KB-EKYC",
+        "circular_number": "تعميم رقم ١٠٢",
+        "title": "هل التحقق الرقمي من الهوية (e-KYC) معتمد؟",
+        "keywords": ["التحقق الرقمي من الهوية", "e-kyc", "التحقق عن بعد"],
+        "answer_ar": (
+            "نعم، تعميم رقم ١٠٢ نفسه يجيز التحقق الرقمي من الهوية (e-KYC) عبر قنوات معتمدة "
+            "(كربطه بمنصة أبشر أو نفاذ)، بشرط استيفاء معايير تحقق محدَّدة (كالتحقق الحيوي "
+            "بالوجه). غياب أي حقل إلزامي بهذي العملية يبقى قاعدة مستوى ١ بنظامنا، بغض النظر إذا "
+            "كان التحقق رقمياً أو حضورياً."
+        ),
+        "answer_en": (
+            "Yes — Circular No. 102 itself permits digital identity verification (e-KYC) via "
+            "approved channels (e.g. linked to national digital identity platforms), given "
+            "certain verification standards (like facial biometric checks). A missing mandatory "
+            "field in this process remains a Level-1 rule regardless of channel."
+        ),
+    },
+    {
+        "id": "KB-CREDIT-BUREAU",
+        "circular_number": "تعميم رقم ٨٥",
+        "title": "علاقة شركات المعلومات الائتمانية بمعاملات العميل",
+        "keywords": ["شركات المعلومات الائتمانية", "التصنيف الائتماني", "سمة"],
+        "answer_ar": (
+            "شركات المعلومات الائتمانية (زي سمة بالسعودية) تحتفظ بسجل ائتماني للعميل يُستخدم "
+            "لتقييم الجدارة الائتمانية قبل منح تمويل. هذا مصدر بيانات منفصل عن نظام معيار، "
+            "لكن يمكن ربطه مستقبلاً كخاصية إضافية لتحسين دقة تقييم مخاطر العميل بالمستوى ٢."
+        ),
+        "answer_en": (
+            "Credit information companies (e.g. Saudi Arabia's SIMAH) maintain a customer's "
+            "credit record used to assess creditworthiness before financing. This is a separate "
+            "data source from Meyar, though it could be integrated later as an extra Level-2 "
+            "risk-scoring feature."
+        ),
+    },
+    {
+        "id": "KB-REMITTANCE",
+        "circular_number": "تعميم رقم ٧٧",
+        "title": "ضوابط إضافية على التحويلات الدولية (Remittance)",
+        "keywords": ["تحويلات دولية", "remittance", "حوالات خارجية"],
+        "answer_ar": (
+            "التحويلات المالية الدولية تخضع لضوابط أشد ضمن تعميم رقم ٧٧ لمكافحة غسل الأموال، "
+            "لارتفاع مخاطرها مقارنة بالتحويلات المحلية. بنظام معيار، القناة الدولية غالباً تُزيد "
+            "احتمالية تصنيف المعاملة مستوى ٢ لو صاحبتها مؤشرات أخرى (مبلغ كبير، عميل جديد)."
+        ),
+        "answer_en": (
+            "Cross-border transfers face stricter controls under Circular No. 77's AML "
+            "framework, given their higher inherent risk vs. domestic transfers. In Meyar, an "
+            "international channel raises the likelihood of a Level-2 classification when "
+            "combined with other signals (large amount, new customer)."
+        ),
+    },
+    {
+        "id": "KB-OUTSOURCING",
+        "circular_number": "تعميم رقم ٦٤",
+        "title": "هل يقدر البنك يفوّض جزء من الرقابة لطرف ثالث؟",
+        "keywords": ["طرف ثالث", "outsourcing", "الاستعانة بمصادر خارجية", "مصادر خارجية"],
+        "answer_ar": (
+            "أنظمة ساما تسمح بالاستعانة بطرف ثالث (Outsourcing) لبعض المهام التقنية، لكن "
+            "**المسؤولية النهائية تبقى على المؤسسة المرخَّصة نفسها**، مو على الطرف الثالث. هذا "
+            "بالضبط ينطبق على نظام معيار: لو تبنّاه بنك، البنك يبقى المسؤول القانوني النهائي، "
+            "ومعيار أداة مساعدة له لا بديل عن مسؤوليته."
+        ),
+        "answer_en": (
+            "SAMA regulations permit outsourcing certain technical functions to a third party, "
+            "but final accountability always stays with the licensed institution itself, not the "
+            "vendor. This applies directly to Meyar: if a bank adopts it, the bank remains the "
+            "final legal party responsible — Meyar is a supporting tool, not a liability "
+            "substitute."
         ),
     },
 ]
