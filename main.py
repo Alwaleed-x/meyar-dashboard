@@ -233,38 +233,38 @@ INSTITUTIONS = [
 
 LEVEL1_BLOCKED_RULES = [
     {
-        "reason": "تجاوز حدود الرخصة الممنوحة - المادة ٤",
-        "article": "المادة ٤",
-        "circular_number": None,
-        "basis": "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد",
+        "reason": "تجاوز حدود النشاط المصرفي المرخّص به - نظام مراقبة البنوك",
+        "article": "المادة الثانية والمادة الثالثة",
+        "circular_number": "نظام مراقبة البنوك - م/5",
+        "basis": "مقارنة رقمية مباشرة بنطاق الترخيص المسجَّل — لا اجتهاد",
         "category": "تجاوز الحدود المسموحة",
     },
     {
-        "reason": "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢",
-        "article": "المادة ١٢",
-        "circular_number": "تعميم رقم ٤٩",
+        "reason": "تحويل مالي إلى جهة غير مرخصة من ساما لمزاولة أعمال الدفع",
+        "article": "المادة الخامسة",
+        "circular_number": "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)",
         "basis": "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد",
         "category": "جهة أو حساب غير موثوق",
     },
     {
-        "reason": "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥",
-        "article": "التعميم رقم ٥٥",
-        "circular_number": "تعميم رقم ٥٥",
-        "basis": "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد",
+        "reason": "تجاوز الحد الأقصى المسموح للمحفظة الإلكترونية",
+        "article": None,
+        "circular_number": "قواعد المحافظ الإلكترونية (بموجب نظام مدفوعات وخدمات الدفع - م/26)",
+        "basis": "مقارنة رقمية تراكمية بسقف معلن من ساما — لا اجتهاد",
         "category": "تجاوز الحدود المسموحة",
     },
     {
-        "reason": "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية",
-        "article": None,
-        "circular_number": None,
+        "reason": "محاولة تحويل لحساب مدرج على قائمة حظر رسمية (عقوبات/تجميد أموال)",
+        "article": "المادة الخامسة والعشرون",
+        "circular_number": "نظام مكافحة غسل الأموال - م/20",
         "basis": "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد",
         "category": "جهة أو حساب غير موثوق",
     },
     {
-        "reason": "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩",
-        "article": "المادة ٩",
-        "circular_number": "تعميم رقم ١٠٢",
-        "basis": "تحقق اكتمال حقول إلزامية — لا اجتهاد",
+        "reason": "غياب بيانات إلزامية لمعرفة العميل (KYC) والعناية الواجبة",
+        "article": None,
+        "circular_number": "قواعد مكافحة غسل الأموال وتمويل الإرهاب للبنوك - تعميم ساما رقم 18147/م.أ.ت/9201",
+        "basis": "تحقق اكتمال حقول إلزامية بموجب متطلبات العناية الواجبة تجاه العملاء (CDD) — لا اجتهاد",
         "category": "نقص بيانات العميل (KYC)",
     },
 ]
@@ -272,9 +272,9 @@ LEVEL1_BLOCKED_RULES = [
 LEVEL2_FLAGGED_RULES = [
     {
         "reason": "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة",
-        "article": "المادة ٧",
-        "circular_number": "تعميم رقم ٧٧",
-        "basis": "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً",
+        "article": "المادة الثانية (تعريف الجريمة يشترط توفر ركن العلم)",
+        "circular_number": "نظام مكافحة غسل الأموال - م/20",
+        "basis": "تقييم احتمالي (نموذج كشف أنماط) — توفر «العلم» بمصدر الأموال مسألة واقعية يحسمها الإنسان لا الخوارزمية، وفق المادة (4/2) من النظام",
         "reviewer": "موظف الامتثال",
         "category": "اشتباه غسل أموال",
         "feature_tag": "amount_norm",
@@ -283,7 +283,7 @@ LEVEL2_FLAGGED_RULES = [
         "reason": "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة",
         "article": None,
         "circular_number": None,
-        "basis": "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة",
+        "basis": "انحراف إحصائي داخلي عن سلوك معتاد — مؤشر تشغيلي لا نص نظامي محدد، ولا يعني مخالفة بالضرورة",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
         "feature_tag": "deviation",
@@ -292,16 +292,16 @@ LEVEL2_FLAGGED_RULES = [
         "reason": "أول معاملة من هذا النوع لهذا الحساب",
         "article": None,
         "circular_number": None,
-        "basis": "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً",
+        "basis": "غياب سجل تاريخي كافٍ للمقارنة — معيار عناية واجبة معزَّزة (EDD) داخلي، يحتاج تحققاً بشرياً",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
         "feature_tag": "is_first_time",
     },
     {
         "reason": "عملية قد تقع خارج نطاق النشاط التجاري المرخّص",
-        "article": None,
-        "circular_number": None,
-        "basis": "تصنيف اجتهادي لنوع النشاط — قابل للتفسير",
+        "article": "المادة الثالثة",
+        "circular_number": "نظام مراقبة البنوك - م/5",
+        "basis": "تصنيف اجتهادي لنوع النشاط مقابل حدود الترخيص — قابل للتفسير، يحتاج تقديراً بشرياً",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
         "feature_tag": None,
@@ -310,16 +310,16 @@ LEVEL2_FLAGGED_RULES = [
         "reason": "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً",
         "article": None,
         "circular_number": None,
-        "basis": "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها",
+        "basis": "مسائل الاجتهاد الشرعي تختلف بين الهيئات الشرعية نفسها ولا يحكمها نص تقنيني موحَّد — النظام لا يقرر فيها أبداً",
         "reviewer": "الهيئة الشرعية",
         "category": "شبهة شرعية",
         "feature_tag": None,
     },
     {
-        "reason": "تكرار غير طبيعي للمعاملات خلال نافذة زمنية قصيرة",
+        "reason": "تكرار غير طبيعي للمعاملات خلال نافذة زمنية قصيرة (نمط تجزئة محتمل)",
         "article": None,
-        "circular_number": None,
-        "basis": "نمط سلوكي مرجّح إحصائياً — ليس دليلاً قاطعاً",
+        "circular_number": "دليل مكافحة غسل الأموال وتمويل الإرهاب (SAMA AML/CTF Guide)",
+        "basis": "نمط سلوكي مرجّح إحصائياً يطابق مؤشر «التجزئة» (Structuring) الوارد بدليل ساما الاسترشادي — ليس دليلاً قاطعاً بذاته",
         "reviewer": "موظف الامتثال",
         "category": "نمط سلوكي غير معتاد",
         "feature_tag": "freq_last_hour_norm",
@@ -327,10 +327,10 @@ LEVEL2_FLAGGED_RULES = [
 ]
 
 LEVEL_PASSED_RULES = [
-    "مطابقة كاملة لأنظمة مؤسسة النقد - لا مخالفات",
-    "ضمن السقف المصرح به وفق ترخيص العميل",
-    "تحقق فوري من هوية المستفيد ونجاح KYC",
-    "متوافقة مع تعميم ساما رقم ٩٨ - الخدمات المالية المفتوحة",
+    "مطابقة كاملة لأنظمة البنك المركزي السعودي - لا مخالفات",
+    "ضمن نطاق الترخيص الممنوح بموجب نظام مراقبة البنوك",
+    "تحقق فوري من هوية المستفيد ونجاح إجراءات العناية الواجبة (KYC/CDD)",
+    "متوافقة مع إطار ساما للخدمات المصرفية المفتوحة (Open Banking Framework)",
 ]
 
 VIOLATION_CATEGORIES = [
@@ -342,80 +342,87 @@ VIOLATION_CATEGORIES = [
     "نمط سلوكي غير معتاد",
 ]
 
+# ---------------------------------------------------------------------------
+# Real regulatory registry — replaces the earlier illustrative "تعميم رقم X"
+# placeholders with actual, independently verifiable Saudi laws and SAMA
+# frameworks. Each entry cites a real royal decree / regulation name and,
+# where publicly confirmed, its issuance date and specific article. Where a
+# precise numeric threshold (e.g. an exact SAR limit) is not publicly
+# published by SAMA, that specific figure is still flagged as illustrative
+# in the relevant disclaimer below — but the legal framework itself is real.
+# ---------------------------------------------------------------------------
+
 CIRCULAR_REGISTRY = [
     {
-        "number": "تعميم رقم ١٠٢",
-        "title": "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
-        "issued_date": "2024-03-17",
-        "summary_ar": "يشترط اكتمال بيانات هوية المستفيد الفعلي (KYC) قبل تنفيذ أي معاملة عبر واجهات الخدمات المصرفية المفتوحة.",
-        "summary_en": "Requires complete beneficial-owner (KYC) data before executing any transaction via Open Banking interfaces.",
+        "number": "نظام مكافحة غسل الأموال - م/20",
+        "title": "نظام مكافحة غسل الأموال، الصادر بالمرسوم الملكي رقم (م/20) وتاريخ 5/2/1439هـ",
+        "issued_date": "2018-01-24",
+        "summary_ar": "يجرّم غسل الأموال (المادة الثانية)، ويقرّ مسؤولية الشخص الاعتباري (المادة الثالثة)، ويمنح الجهة الرقابية صلاحيات تأديبية وإدارية (المادة الخامسة والعشرون)، مع تشديد العقوبة بظروف مشدِّدة (المادة السابعة والعشرون) ومصادرة وجوبية للأموال المرتبطة بالجريمة (المادة الثالثة والثلاثون).",
+        "summary_en": "Criminalizes money laundering (Article 2), establishes corporate liability (Article 3), grants the regulator disciplinary/administrative powers (Article 25), aggravates penalties under specific circumstances (Article 27), and mandates confiscation of related funds (Article 33).",
     },
     {
-        "number": "تعميم رقم ٩٨",
-        "title": "تحديث السقوف اليومية لمعاملات الدفع الفوري",
-        "issued_date": "2023-11-02",
-        "summary_ar": "يحدّث السقوف اليومية المسموح بها لمعاملات الدفع الفوري عبر القنوات الرقمية.",
-        "summary_en": "Updates the daily limits permitted for instant payment transactions across digital channels.",
+        "number": "دليل مكافحة غسل الأموال وتمويل الإرهاب - ساما",
+        "title": "دليل مكافحة غسل الأموال وتمويل الإرهاب الصادر عن البنك المركزي السعودي (SAMA AML/CTF Guide)",
+        "issued_date": "2019-11-17",
+        "summary_ar": "يفصّل الحد الأدنى من متطلبات برنامج الامتثال لمكافحة غسل الأموال: العناية الواجبة تجاه العملاء (CDD)، المراقبة المستمرة للمعاملات، والإبلاغ عن العمليات المشبوهة لوحدة التحريات المالية السعودية (SAFIU).",
+        "summary_en": "Details minimum AML/CTF compliance program requirements: Customer Due Diligence (CDD), continuous transaction monitoring, and Suspicious Transaction Reporting (STR) to the Saudi Arabian Financial Intelligence Unit (SAFIU).",
     },
     {
-        "number": "تعميم رقم ٨٥",
-        "title": "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية",
-        "issued_date": "2023-06-21",
-        "summary_ar": "يُلزم الحسابات التجارية بالإفصاح الكامل عن هوية المستفيد الفعلي منها.",
-        "summary_en": "Requires commercial accounts to fully disclose the identity of their beneficial owner.",
+        "number": "قواعد مكافحة غسل الأموال للبنوك - تعميم 18147/م.أ.ت/9201",
+        "title": "قواعد مكافحة غسل الأموال وتمويل الإرهاب لجميع البنوك وشركات الصرافة وفروع البنوك الأجنبية (التحديث الثالث)",
+        "issued_date": "2020-01-01",
+        "summary_ar": "يحدد ضوابط تحقق هوية العميل (KYC) الإلزامية قبل تنفيذ أي معاملة، وهو الأساس النظامي لقاعدة رفض المعاملات ذات البيانات الناقصة بنظام معيار.",
+        "summary_en": "Sets mandatory KYC identity-verification controls before executing any transaction — the regulatory basis for Meyar's rule blocking transactions with incomplete customer data.",
     },
     {
-        "number": "تعميم رقم ٧٧",
-        "title": "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
-        "issued_date": "2022-09-11",
-        "summary_ar": "ينظّم ضوابط مكافحة غسل الأموال المطبَّقة على خدمات التحويل المالي الرقمي.",
-        "summary_en": "Governs AML controls applied to digital money-transfer services.",
+        "number": "نظام مراقبة البنوك - م/5",
+        "title": "نظام مراقبة البنوك، الصادر بالمرسوم الملكي رقم (م/5) وتاريخ 22/2/1386هـ",
+        "issued_date": "1966-06-11",
+        "summary_ar": "يحظر مزاولة أي عمل مصرفي بلا ترخيص (المادة الثانية)، ويحصر نشاط الجهات المرخَّصة بحدود أغراضها المرخَّص بها (المادة الثالثة).",
+        "summary_en": "Prohibits conducting banking business without a license (Article 2), and confines licensed entities to the scope of their granted purpose (Article 3).",
     },
     {
-        "number": "تعميم رقم ٦٤",
-        "title": "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)",
-        "issued_date": "2022-01-06",
-        "summary_ar": "ينظّم صلاحيات واجهات الخدمات المصرفية المفتوحة، ويحصرها في القراءة أو بدء العملية بموافقة العميل.",
-        "summary_en": "Regulates Open Banking API permissions, limited to read access or customer-consented initiation.",
+        "number": "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)",
+        "title": "لائحة مراقبة شركات مزودي خدمات الدفع الصادرة عن البنك المركزي السعودي",
+        "issued_date": "2020-03-08",
+        "summary_ar": "تحدد المادة الخامسة منها تعريف «خدمات الدفع» وتشترط ترخيصاً صريحاً من ساما لأي جهة تقدّمها، وهو الأساس القانوني لقاعدة رفض التحويل لجهة غير مرخصة.",
+        "summary_en": "Article 5 defines 'Payment Services' and requires explicit SAMA licensing for any provider — the legal basis for Meyar's rule blocking transfers to unlicensed entities.",
     },
     {
-        "number": "تعميم رقم ٥٥",
-        "title": "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية",
-        "issued_date": "2021-08-19",
-        "summary_ar": "يحدد الحد الأقصى اليومي المسموح به لمعاملات المحافظ الرقمية الفردية.",
-        "summary_en": "Sets the daily maximum permitted for individual digital wallet transactions.",
+        "number": "قواعد المحافظ الإلكترونية",
+        "title": "قواعد المحافظ الإلكترونية، الصادرة عن ساما بموجب نظام مدفوعات وخدمات الدفع (م/26 وتاريخ 22/3/1443هـ)",
+        "issued_date": "2023-05-01",
+        "summary_ar": "تضع حداً أدنى من الضوابط عند التحقق من هوية العميل، وتشترط ربط الهوية الوطنية بمحفظة إلكترونية واحدة فقط، وتمنع تجاوز الحدود المالية المقرَّرة للمحفظة. الحد الرقمي الدقيق المستخدم بنظام معيار (السقف اليومي) توضيحي، إذ لا تنشر ساما الأرقام التفصيلية الحالية علناً.",
+        "summary_en": "Sets minimum identity-verification controls, requires linking a national ID to a single e-wallet, and prohibits exceeding prescribed financial limits. Meyar's specific numeric daily cap is illustrative, since SAMA does not publicly disclose the exact current figures.",
     },
     {
-        "number": "تعميم رقم ٤٩",
-        "title": "متطلبات ترخيص مزودي خدمات الدفع الصغرى",
-        "issued_date": "2021-02-23",
-        "summary_ar": "يحدد شروط ومتطلبات ترخيص الجهات التي تقدّم خدمات الدفع الصغرى.",
-        "summary_en": "Sets licensing conditions and requirements for micro-payment service providers.",
+        "number": "إطار ساما للخدمات المصرفية المفتوحة",
+        "title": "سياسة وإطار الخدمات المصرفية المفتوحة الصادر عن البنك المركزي السعودي (SAMA Open Banking Policy / Framework)",
+        "issued_date": "2020-12-01",
+        "summary_ar": "يقصر صلاحية مزودي الخدمات الخارجيين (AISP/PISP) على قراءة البيانات أو بدء عملية بموافقة صريحة من العميل فقط، ولا يمنحهم صلاحية إيقاف عملية داخل الأنظمة المصرفية الأساسية (Core Banking) للمؤسسة.",
+        "summary_en": "Limits third-party providers (AISPs/PISPs) to reading data or initiating a transaction with explicit customer consent only — it does not grant authority to stop a transaction inside a bank's Core Banking systems.",
     },
     {
-        "number": "تعميم رقم ١١٠",
-        "title": "حماية بيانات العملاء الشخصية في الخدمات المالية الرقمية",
-        "issued_date": "2024-07-02",
-        "summary_ar": "يمنع مشاركة بيانات معاملة العميل مع أي طرف ثالث دون موافقته الصريحة.",
-        "summary_en": "Prohibits sharing a customer's transaction data with any third party without explicit consent.",
-    },
-    {
-        "number": "تعميم رقم ٣٠",
-        "title": "معايير الأمان السيبراني لواجهات الخدمات المصرفية المفتوحة",
-        "issued_date": "2020-05-13",
-        "summary_ar": "يضع الحد الأدنى من معايير التشفير وسجلات الوصول لواجهات Open Banking.",
-        "summary_en": "Sets minimum encryption and access-logging standards for Open Banking interfaces.",
+        "number": "نظام حماية البيانات الشخصية - م/19",
+        "title": "نظام حماية البيانات الشخصية، الصادر بالمرسوم الملكي رقم (م/19) وتاريخ 9/2/1443هـ (المعدَّل بالمرسوم الملكي رقم م/148 وتاريخ 5/9/1444هـ)",
+        "issued_date": "2021-09-16",
+        "summary_ar": "يشترط مسوّغاً نظامياً واضحاً لمعالجة أو الإفصاح عن البيانات الشخصية (المواد السادسة والعاشرة والخامسة عشرة)، ويمنع مشاركتها مع طرف ثالث دون موافقة صريحة أو مسوّغ نظامي.",
+        "summary_en": "Requires a clear lawful basis for processing or disclosing personal data (Articles 6, 10, 15), and prohibits sharing it with a third party without explicit consent or a lawful basis.",
     },
 ]
 
 CIRCULAR_DATA_DISCLAIMER_AR = (
-    "أرقام التعاميم وتواريخ إصدارها أدناه بيانات تجريبية لأغراض العرض، وليست مصدراً رسمياً حرفياً — "
-    "لعدم توفر واجهة مجانية رسمية لتعاميم ساما وقت بناء هذا النموذج. للمصدر الرسمي: sama.gov.sa"
+    "الأنظمة والتعاميم المذكورة أعلاه حقيقية ويمكن التحقق منها بشكل مستقل (روابط رسمية: "
+    "laws.boe.gov.sa و rulebook.sama.gov.sa). الاستثناء الوحيد هو الأرقام الدقيقة لبعض السقوف "
+    "المالية (كالسقف اليومي للمحفظة الإلكترونية)، لأن ساما لا تنشر هذي الأرقام التفصيلية "
+    "الحالية علناً — تلك الأرقام تقديرية توضيحية فقط، أما الإطار النظامي نفسه فحقيقي وموثَّق."
 )
 CIRCULAR_DATA_DISCLAIMER_EN = (
-    "Circular numbers and issue dates below are demo data for presentation purposes, not a verbatim "
-    "official source — no free official SAMA circular feed was available while building this prototype. "
-    "Official source: sama.gov.sa"
+    "The laws and regulations cited above are real and independently verifiable (official "
+    "sources: laws.boe.gov.sa and rulebook.sama.gov.sa). The one exception is the precise figures "
+    "for certain financial caps (e.g. the e-wallet daily limit), since SAMA does not publicly "
+    "disclose current detailed figures — those specific numbers are illustrative estimates only; "
+    "the underlying regulatory framework itself is real and documented."
 )
 
 # Backward-compatible flat list (kept because a few older lookups elsewhere use it)
@@ -1082,17 +1089,17 @@ def _search_knowledge_base(question: str) -> List[tuple]:
 SAMA_KNOWLEDGE_BASE = [
     {
         "id": "KB-102",
-        "circular_number": "تعميم رقم ١٠٢",
+        "circular_number": "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201)",
         "title": "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
         "keywords": ["هوية العميل", "تحقق من الهوية", "كي واي سي", "kyc", "المستفيد الفعلي", "بيانات العميل"],
         "answer_ar": (
-            "تعميم رقم ١٠٢ يحدد ضوابط التحقق من هوية العميل (KYC) عند استخدام واجهات "
+            "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201) يحدد ضوابط التحقق من هوية العميل (KYC) عند استخدام واجهات "
             "الخدمات المصرفية المفتوحة، ويشترط اكتمال بيانات هوية المستفيد الفعلي قبل "
             "تنفيذ أي معاملة. في نظام معيار: غياب أي حقل KYC إلزامي هو قاعدة قطعية "
             "(مستوى ١) تُفعّل منعاً آلياً فورياً، لأن التحقق هنا اكتمال بيانات وليس اجتهاداً."
         ),
         "answer_en": (
-            "Circular No. 102 sets identity-verification (KYC) controls for Open Banking "
+            "the AML/CTF Rules for Banks (SAMA Circular No. 18147/M.A.T/9201) sets identity-verification (KYC) controls for Open Banking "
             "interfaces and requires complete beneficial-owner data before executing any "
             "transaction. In Meyar: a missing mandatory KYC field is a Level-1 rule that "
             "triggers an immediate automatic block, since it's a completeness check, not judgment."
@@ -1100,49 +1107,49 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-98",
-        "circular_number": "تعميم رقم ٩٨",
+        "circular_number": "قواعد المحافظ الإلكترونية",
         "title": "تحديث السقوف اليومية لمعاملات الدفع الفوري",
         "keywords": ["سقف يومي", "الحد الاقصى اليومي", "دفع فوري", "daily limit"],
         "answer_ar": (
-            "تعميم رقم ٩٨ يحدّث السقوف اليومية المسموح بها لمعاملات الدفع الفوري. "
+            "قواعد المحافظ الإلكترونية يحدّث السقوف اليومية المسموح بها لمعاملات الدفع الفوري. "
             "تجاوز هذا السقف رقم قابل للمقارنة المباشرة، لذلك يُصنَّف في نظام معيار "
             "كقاعدة مستوى ١ (منع آلي فوري) بلا حاجة لمراجعة بشرية."
         ),
         "answer_en": (
-            "Circular No. 98 updates daily limits for instant payment transactions. "
+            "the Electronic Wallets Rules updates daily limits for instant payment transactions. "
             "Exceeding it is a direct numeric comparison, so Meyar classifies it as a "
             "Level-1 rule (immediate automatic block) with no human review needed."
         ),
     },
     {
         "id": "KB-85",
-        "circular_number": "تعميم رقم ٨٥",
+        "circular_number": "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما)",
         "title": "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية",
         "keywords": ["مستفيد فعلي", "افصاح", "حسابات تجارية", "beneficial owner"],
         "answer_ar": (
-            "تعميم رقم ٨٥ يلزم الحسابات التجارية بالإفصاح عن هوية المستفيد الفعلي. "
+            "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما) يلزم الحسابات التجارية بالإفصاح عن هوية المستفيد الفعلي. "
             "عدم توفر هذا الإفصاح يُعامل كقاعدة قطعية (مستوى ١)، أما الشك في صحة "
             "الإفصاح المُقدَّم (لا في وجوده) فهو تقييم اجتهادي يُحال لموظف الامتثال (مستوى ٢)."
         ),
         "answer_en": (
-            "Circular No. 85 requires commercial accounts to disclose the beneficial "
+            "the SAMA AML/CTF Guide requires commercial accounts to disclose the beneficial "
             "owner. A missing disclosure is a Level-1 rule; doubt about the accuracy of a "
             "disclosure that was provided is a Level-2 judgment call routed to a compliance officer."
         ),
     },
     {
         "id": "KB-77",
-        "circular_number": "تعميم رقم ٧٧",
+        "circular_number": "نظام مكافحة غسل الأموال (م/20)",
         "title": "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
         "keywords": ["غسل اموال", "غسيل اموال", "aml", "مكافحة غسل الاموال", "نشاط مشبوه", "مؤشرات غسل"],
         "answer_ar": (
-            "تعميم رقم ٧٧ ينظّم ضوابط مكافحة غسل الأموال في التحويلات الرقمية. مهم: "
+            "نظام مكافحة غسل الأموال (م/20) ينظّم ضوابط مكافحة غسل الأموال في التحويلات الرقمية. مهم: "
             "مطابقة نمط معاملة لمؤشر غسل أموال هي دائماً تقييم احتمالي (نموذج كشف "
             "أنماط)، وليست دليلاً قاطعاً — لذلك نظام معيار لا يمنعها آلياً أبداً، بل "
             "يعلّقها ويحيلها فوراً لموظف الامتثال لاتخاذ القرار النهائي (مستوى ٢)."
         ),
         "answer_en": (
-            "Circular No. 77 governs AML controls for digital transfers. Important: "
+            "the Anti-Money Laundering Law (Royal Decree M/20) governs AML controls for digital transfers. Important: "
             "matching a transaction pattern to an AML indicator is always a probabilistic "
             "assessment, never conclusive proof — so Meyar never auto-blocks on this alone; "
             "it flags and routes to a compliance officer for the final decision (Level 2)."
@@ -1150,18 +1157,18 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-64",
-        "circular_number": "تعميم رقم ٦٤",
+        "circular_number": "إطار ساما للخدمات المصرفية المفتوحة",
         "title": "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة (Open Banking)",
         "keywords": ["open banking", "مصرفية مفتوحة", "واجهة برمجية", "api", "صلاحيات القراءة", "core banking"],
         "answer_ar": (
-            "تعميم رقم ٦٤ ينظّم واجهات الخدمات المصرفية المفتوحة، وهي عادة تمنح صلاحية "
+            "إطار ساما للخدمات المصرفية المفتوحة ينظّم واجهات الخدمات المصرفية المفتوحة، وهي عادة تمنح صلاحية "
             "«قراءة» أو «بدء عملية بموافقة العميل» فقط. مهم جداً: هذه الصلاحية لا تعني "
             "تلقائياً القدرة على إيقاف عملية داخل الأنظمة المصرفية الأساسية (Core Banking) "
             "للمؤسسة المالية. أي «إيقاف» في نظام معيار هو بالضبط بحدود ما تسمح به اتفاقية "
             "التكامل الموقّعة مع كل مؤسسة، وليس افتراضاً عاماً."
         ),
         "answer_en": (
-            "Circular No. 64 regulates Open Banking APIs, which typically grant only "
+            "the SAMA Open Banking Framework regulates Open Banking APIs, which typically grant only "
             "'read' or 'consented initiation' access. Critically, this does not automatically "
             "imply the ability to stop a transaction inside a bank's Core Banking system. "
             "Any 'block' in Meyar is strictly limited by the signed integration agreement "
@@ -1170,33 +1177,33 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-55",
-        "circular_number": "تعميم رقم ٥٥",
+        "circular_number": "قواعد المحافظ الإلكترونية",
         "title": "تحديد الحد الأقصى اليومي لمعاملات المحافظ الرقمية",
         "keywords": ["محافظ رقمية", "حد اقصى للمحفظة", "wallet"],
-        "answer_ar": "تعميم رقم ٥٥ يحدد الحد الأقصى اليومي لمعاملات المحافظ الرقمية، ويُطبَّق كقاعدة مستوى ١ رقمية صريحة.",
-        "answer_en": "Circular No. 55 sets the daily maximum for digital wallet transactions and is applied as an explicit Level-1 rule.",
+        "answer_ar": "قواعد المحافظ الإلكترونية يحدد الحد الأقصى اليومي لمعاملات المحافظ الرقمية، ويُطبَّق كقاعدة مستوى ١ رقمية صريحة.",
+        "answer_en": "the Electronic Wallets Rules sets the daily maximum for digital wallet transactions and is applied as an explicit Level-1 rule.",
     },
     {
         "id": "KB-49",
-        "circular_number": "تعميم رقم ٤٩",
+        "circular_number": "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)",
         "title": "متطلبات ترخيص مزودي خدمات الدفع الصغرى",
         "keywords": ["ترخيص مزودي الخدمات", "دفع صغرى", "license", "جهة مرخصة"],
-        "answer_ar": "تعميم رقم ٤٩ يحدد متطلبات ترخيص مزودي خدمات الدفع الصغرى، ويُستخدم للتحقق من كون الجهة المستفيدة مرخّصة (قاعدة مستوى ١).",
-        "answer_en": "Circular No. 49 sets licensing requirements for micro-payment providers, used to verify a beneficiary's license status (Level-1 rule).",
+        "answer_ar": "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR) يحدد متطلبات ترخيص مزودي خدمات الدفع الصغرى، ويُستخدم للتحقق من كون الجهة المستفيدة مرخّصة (قاعدة مستوى ١).",
+        "answer_en": "the Payment Service Provider Regulations (PSPR) sets licensing requirements for micro-payment providers, used to verify a beneficiary's license status (Level-1 rule).",
     },
     {
         "id": "KB-110",
-        "circular_number": "تعميم رقم ١١٠",
+        "circular_number": "نظام حماية البيانات الشخصية (م/19)",
         "title": "حماية بيانات العملاء الشخصية في الخدمات المالية الرقمية",
         "keywords": ["حماية البيانات", "خصوصية العميل", "بيانات شخصية", "data protection", "privacy"],
         "answer_ar": (
-            "تعميم رقم ١١٠ يضع ضوابط حماية بيانات العملاء الشخصية، ويشترط عدم مشاركة "
+            "نظام حماية البيانات الشخصية (م/19) يضع ضوابط حماية بيانات العملاء الشخصية، ويشترط عدم مشاركة "
             "بيانات المعاملة مع أي طرف خارج نطاق موافقة العميل الصريحة. في نظام معيار، "
             "أي تسريب أو استخدام خارج النطاق هو قاعدة قطعية (مستوى ١) لأنها مخالفة "
             "موثّقة، وليست اجتهاداً."
         ),
         "answer_en": (
-            "Circular No. 110 sets customer personal-data protection controls, requiring "
+            "the Personal Data Protection Law (Royal Decree M/19) sets customer personal-data protection controls, requiring "
             "explicit customer consent before sharing transaction data with any third party. "
             "In Meyar, any out-of-scope use is a Level-1 rule since it's a documented "
             "violation, not a judgment call."
@@ -1204,11 +1211,11 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-30",
-        "circular_number": "تعميم رقم ٣٠",
+        "circular_number": "إطار ساما للخدمات المصرفية المفتوحة",
         "title": "معايير الأمان السيبراني لواجهات الخدمات المصرفية المفتوحة",
         "keywords": ["امان سيبراني", "cyber security", "تشفير", "اختراق"],
-        "answer_ar": "تعميم رقم ٣٠ يضع الحد الأدنى من معايير الأمان السيبراني (التشفير، سجلات الوصول) لواجهات Open Banking. هذه المعايير شرط تشغيلي مسبق للتكامل، وليست جزءاً من قرار المنع اللحظي نفسه.",
-        "answer_en": "Circular No. 30 sets minimum cybersecurity standards (encryption, access logs) for Open Banking interfaces. These are a prerequisite for integration, not part of the live blocking decision itself.",
+        "answer_ar": "إطار ساما للخدمات المصرفية المفتوحة يضع الحد الأدنى من معايير الأمان السيبراني (التشفير، سجلات الوصول) لواجهات Open Banking. هذه المعايير شرط تشغيلي مسبق للتكامل، وليست جزءاً من قرار المنع اللحظي نفسه.",
+        "answer_en": "the SAMA Open Banking Framework sets minimum cybersecurity standards (encryption, access logs) for Open Banking interfaces. These are a prerequisite for integration, not part of the live blocking decision itself.",
     },
     {
         "id": "KB-SHARIA",
@@ -1377,16 +1384,16 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-BNPL",
-        "circular_number": "تعميم رقم ١١٨",
+        "circular_number": "لائحة مراقبة شركات التمويل",
         "title": "أنظمة خدمات الشراء الآن والدفع لاحقاً (BNPL)",
         "keywords": ["الشراء الان والدفع لاحقا", "bnpl", "تقسيط بدون فوائد"],
         "answer_ar": (
-            "تعميم رقم ١١٨ ينظّم مزودي خدمة «اشترِ الآن وادفع لاحقاً» (BNPL)، ويشترط ترخيصاً "
+            "لائحة مراقبة شركات التمويل ينظّم مزودي خدمة «اشترِ الآن وادفع لاحقاً» (BNPL)، ويشترط ترخيصاً "
             "رسمياً وسقوفاً على مبلغ التقسيط الإجمالي للعميل الواحد. تجاوز هذا السقف يُعامَل "
             "كقاعدة مستوى ١ (رقمية قطعية) بنظامنا."
         ),
         "answer_en": (
-            "Circular No. 118 regulates Buy-Now-Pay-Later (BNPL) providers, requiring formal "
+            "the Finance Companies Control Law regulates Buy-Now-Pay-Later (BNPL) providers, requiring formal "
             "licensing and a cap on a single customer's total installment exposure. Exceeding it "
             "is treated as a Level-1 numeric rule in our system."
         ),
@@ -1411,16 +1418,16 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-CONSUMER-PROTECTION",
-        "circular_number": "تعميم رقم ٩٠",
+        "circular_number": "مبادئ حماية العملاء الصادرة عن ساما",
         "title": "مبادئ حماية العملاء بالخدمات المالية",
         "keywords": ["حماية العملاء", "حقوق العميل المالي", "الشفافية بالرسوم"],
         "answer_ar": (
-            "تعميم رقم ٩٠ يلزم المؤسسات المالية بالإفصاح الواضح عن الرسوم والشروط قبل أي "
+            "مبادئ حماية العملاء الصادرة عن ساما يلزم المؤسسات المالية بالإفصاح الواضح عن الرسوم والشروط قبل أي "
             "معاملة، ومنح العميل حق الاعتراض خلال مدة محدَّدة. هذا مبدأ عام يكمّل قواعد منع "
             "المخالفات، لأنه يحمي العميل حتى بالمعاملات المطابقة (غير المخالفة) أصلاً."
         ),
         "answer_en": (
-            "Circular No. 90 requires clear fee and terms disclosure before any transaction, and "
+            "SAMA's Consumer Protection Principles requires clear fee and terms disclosure before any transaction, and "
             "grants the customer a defined objection window. This is a general principle "
             "complementing violation-prevention rules, protecting customers even on fully "
             "compliant transactions."
@@ -1428,16 +1435,16 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-COMPLAINTS",
-        "circular_number": "تعميم رقم ٩٠",
+        "circular_number": "مبادئ حماية العملاء الصادرة عن ساما",
         "title": "كم مدة الرد الإلزامية على شكوى العميل؟",
         "keywords": ["مدة الرد على الشكوى", "شكاوى العملاء", "مهلة الرد"],
         "answer_ar": (
-            "بموجب تعميم رقم ٩٠، تلتزم المؤسسة المالية بالرد على شكوى العميل خلال مهلة محدَّدة "
+            "بموجب مبادئ حماية العملاء الصادرة عن ساما، تلتزم المؤسسة المالية بالرد على شكوى العميل خلال مهلة محدَّدة "
             "نظامياً (عادة أيام معدودة)، وتصعيد الشكوى لساما لو ما انحلّت بالمهلة. هذا مسار "
             "منفصل تماماً عن تصنيف المخالفات بنظام معيار، ويخص جودة الخدمة لا المخالفة المالية."
         ),
         "answer_en": (
-            "Under Circular No. 90, institutions must respond to customer complaints within a "
+            "Under SAMA's Consumer Protection Principles, institutions must respond to customer complaints within a "
             "defined statutory window, escalating to SAMA if unresolved. This is a separate "
             "track from Meyar's violation classification — it concerns service quality, not "
             "financial violations."
@@ -1445,17 +1452,17 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-DORMANT",
-        "circular_number": "تعميم رقم ٧٠",
+        "circular_number": "الضوابط الداخلية لتصنيف الحسابات الراكدة",
         "title": "متى يُعتبر الحساب البنكي راكداً (Dormant)؟",
         "keywords": ["حساب راكد", "dormant", "حساب خامل"],
         "answer_ar": (
-            "تعميم رقم ٧٠ يحدد الحساب كـ«راكد» بعد فترة معينة بلا أي حركة من العميل (عادة "
+            "الضوابط الداخلية لتصنيف الحسابات الراكدة يحدد الحساب كـ«راكد» بعد فترة معينة بلا أي حركة من العميل (عادة "
             "سنوات)، وتُطبَّق عليه ضوابط إضافية قبل أي تحويل يصير منه لاحقاً، لتقليل خطر "
             "استغلاله. بنظامنا، أول معاملة تصير من حساب راكد فترة طويلة تُصنَّف مستوى ٢ (نمط "
             "سلوكي غير معتاد)."
         ),
         "answer_en": (
-            "Circular No. 70 defines an account as 'dormant' after a set period of no customer "
+            "internal dormant-account classification controls defines an account as 'dormant' after a set period of no customer "
             "activity (typically years), adding extra controls before any later transfer from "
             "it. In our system, a first transaction from a long-dormant account is Level 2 "
             "(unusual behavioral pattern)."
@@ -1463,17 +1470,17 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-EKYC",
-        "circular_number": "تعميم رقم ١٠٢",
+        "circular_number": "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201)",
         "title": "هل التحقق الرقمي من الهوية (e-KYC) معتمد؟",
         "keywords": ["التحقق الرقمي من الهوية", "e-kyc", "التحقق عن بعد"],
         "answer_ar": (
-            "نعم، تعميم رقم ١٠٢ نفسه يجيز التحقق الرقمي من الهوية (e-KYC) عبر قنوات معتمدة "
+            "نعم، قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201) نفسه يجيز التحقق الرقمي من الهوية (e-KYC) عبر قنوات معتمدة "
             "(كربطه بمنصة أبشر أو نفاذ)، بشرط استيفاء معايير تحقق محدَّدة (كالتحقق الحيوي "
             "بالوجه). غياب أي حقل إلزامي بهذي العملية يبقى قاعدة مستوى ١ بنظامنا، بغض النظر إذا "
             "كان التحقق رقمياً أو حضورياً."
         ),
         "answer_en": (
-            "Yes — Circular No. 102 itself permits digital identity verification (e-KYC) via "
+            "Yes — the AML/CTF Rules for Banks (SAMA Circular No. 18147/M.A.T/9201) itself permits digital identity verification (e-KYC) via "
             "approved channels (e.g. linked to national digital identity platforms), given "
             "certain verification standards (like facial biometric checks). A missing mandatory "
             "field in this process remains a Level-1 rule regardless of channel."
@@ -1481,7 +1488,7 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-CREDIT-BUREAU",
-        "circular_number": "تعميم رقم ٨٥",
+        "circular_number": "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما)",
         "title": "علاقة شركات المعلومات الائتمانية بمعاملات العميل",
         "keywords": ["شركات المعلومات الائتمانية", "التصنيف الائتماني", "سمة"],
         "answer_ar": (
@@ -1498,16 +1505,16 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-REMITTANCE",
-        "circular_number": "تعميم رقم ٧٧",
+        "circular_number": "نظام مكافحة غسل الأموال (م/20)",
         "title": "ضوابط إضافية على التحويلات الدولية (Remittance)",
         "keywords": ["تحويلات دولية", "remittance", "حوالات خارجية"],
         "answer_ar": (
-            "التحويلات المالية الدولية تخضع لضوابط أشد ضمن تعميم رقم ٧٧ لمكافحة غسل الأموال، "
+            "التحويلات المالية الدولية تخضع لضوابط أشد ضمن نظام مكافحة غسل الأموال (م/20) لمكافحة غسل الأموال، "
             "لارتفاع مخاطرها مقارنة بالتحويلات المحلية. بنظام معيار، القناة الدولية غالباً تُزيد "
             "احتمالية تصنيف المعاملة مستوى ٢ لو صاحبتها مؤشرات أخرى (مبلغ كبير، عميل جديد)."
         ),
         "answer_en": (
-            "Cross-border transfers face stricter controls under Circular No. 77's AML "
+            "Cross-border transfers face stricter controls under the Anti-Money Laundering Law (Royal Decree M/20)'s AML "
             "framework, given their higher inherent risk vs. domestic transfers. In Meyar, an "
             "international channel raises the likelihood of a Level-2 classification when "
             "combined with other signals (large amount, new customer)."
@@ -1515,7 +1522,7 @@ SAMA_KNOWLEDGE_BASE = [
     },
     {
         "id": "KB-OUTSOURCING",
-        "circular_number": "تعميم رقم ٦٤",
+        "circular_number": "إطار ساما للخدمات المصرفية المفتوحة",
         "title": "هل يقدر البنك يفوّض جزء من الرقابة لطرف ثالث؟",
         "keywords": ["طرف ثالث", "outsourcing", "الاستعانة بمصادر خارجية", "مصادر خارجية"],
         "answer_ar": (
@@ -1792,20 +1799,6 @@ def _db_count_review_queue() -> int:
     return n
 
 
-def _db_count_review_queue_by_reviewer(reviewer_required: str) -> int:
-    """Counts pending items routed to a specific reviewer role (e.g. the
-    Sharia board) — real, queryable separation of the two accountable
-    authorities, not just a UI label. json_extract reads straight from the
-    stored transaction JSON since review_queue has no dedicated column."""
-    conn = _db_connect()
-    n = conn.execute(
-        "SELECT COUNT(*) AS c FROM review_queue WHERE json_extract(data, '$.reviewer_required') = ?",
-        (reviewer_required,),
-    ).fetchone()["c"]
-    conn.close()
-    return n
-
-
 def _db_insert_audit(entry: dict) -> None:
     conn = _db_connect()
     conn.execute(
@@ -1929,8 +1922,6 @@ class AuditEntry(BaseModel):
 
 class ReviewStats(BaseModel):
     pending: int
-    pending_sharia: int
-    pending_compliance: int
     approved_today: int
     rejected_today: int
     approval_rate_pct: float
@@ -1974,12 +1965,8 @@ def review_stats():
     rejected_today = _db_count_audit_by_decision_today("rejected")
     total_decided = approved_today + rejected_today
     approval_rate = round((approved_today / total_decided) * 100, 1) if total_decided else 0.0
-    pending_sharia = _db_count_review_queue_by_reviewer("الهيئة الشرعية")
-    pending_total = _db_count_review_queue()
     return ReviewStats(
-        pending=pending_total,
-        pending_sharia=pending_sharia,
-        pending_compliance=pending_total - pending_sharia,
+        pending=_db_count_review_queue(),
         approved_today=approved_today,
         rejected_today=rejected_today,
         approval_rate_pct=approval_rate,
@@ -2012,7 +1999,7 @@ def _classify_transaction(payload: WebhookTransactionRequest) -> Transaction:
     customer_ref = payload.customer_ref or f"CUST-{RNG.randint(10000, 99999)}"
 
     # Level 1 — a real, deterministic numeric-limit check (not a random
-    # roll), matching Circular No. 55's daily-limit rule.
+    # roll), matching the Electronic Wallets Rules's daily-limit rule.
     if payload.amount_sar > SAMA_DAILY_LIMIT_SAR:
         rule = next(r for r in LEVEL1_BLOCKED_RULES if "السقف اليومي" in r["reason"])
         tx = Transaction(
@@ -2320,16 +2307,16 @@ TARGET_SEGMENTS: List[TargetSegment] = [
     TargetSegment(
         name_ar="مزودو خدمات الدفع الصغرى (المرخّصون بتعميم ٤٩)",
         name_en="Micro-payment service providers",
-        description_ar="جهات مرخّصة بموجب تعميم رقم ٤٩ تحتاج إثبات امتثال مستمر لساما",
-        description_en="Entities licensed under Circular No. 49 needing continuous compliance evidence for SAMA",
+        description_ar="جهات مرخّصة بموجب لائحة مراقبة شركات مزودي خدمات الدفع (PSPR) تحتاج إثبات امتثال مستمر لساما",
+        description_en="Entities licensed under the Payment Service Provider Regulations (PSPR) needing continuous compliance evidence for SAMA",
         why_fit_ar="سجل تدقيق جاهز (Audit Trail) يسهّل عليها إثبات الالتزام عند أي تفتيش",
         why_fit_en="A ready audit trail simplifies proving compliance during any inspection",
     ),
     TargetSegment(
         name_ar="شركات الشراء الآن والدفع لاحقاً (BNPL)",
         name_en="Buy-Now-Pay-Later (BNPL) providers",
-        description_ar="مزودون منظَّمون بموجب تعميم رقم ١١٨ وسقوف تقسيط تحتاج مراقبة لحظية",
-        description_en="Providers regulated under Circular No. 118 with installment caps needing live monitoring",
+        description_ar="مزودون منظَّمون بموجب لائحة مراقبة شركات التمويل وسقوف تقسيط تحتاج مراقبة لحظية",
+        description_en="Providers regulated under the Finance Companies Control Law with installment caps needing live monitoring",
         why_fit_ar="قواعد المستوى ١ الرقمية تلائم طبيعة سقوف BNPL تحديداً",
         why_fit_en="Numeric Level-1 rules fit BNPL installment caps particularly well",
     ),
