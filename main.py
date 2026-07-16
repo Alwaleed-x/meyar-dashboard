@@ -2080,6 +2080,424 @@ def receive_transaction_webhook(payload: WebhookTransactionRequest):
     return _classify_transaction(payload)
 
 
+# ---------------------------------------------------------------------------
+# Business model — added for the transition from hackathon prototype to a
+# commercial pitch. Kept as plainly-structured, disclosed-methodology data
+# (same philosophy as the rest of this file) rather than un-sourced pitch
+# numbers. Competitor names are real, publicly known players — cited so the
+# comparison can be checked, not invented for marketing effect.
+# ---------------------------------------------------------------------------
+
+
+class CompetitorEntry(BaseModel):
+    name: str
+    scope: str
+    origin: Literal["local", "global"]
+    strength: str
+    gap_vs_meyar: str
+
+
+class CompetitiveLandscape(BaseModel):
+    local_competitors: List[CompetitorEntry]
+    global_competitors: List[CompetitorEntry]
+    meyar_differentiator_ar: str
+    meyar_differentiator_en: str
+    disclaimer_ar: str
+    disclaimer_en: str
+
+
+class DifferentiationPillar(BaseModel):
+    icon_key: str
+    title_ar: str
+    title_en: str
+    body_ar: str
+    body_en: str
+
+
+class ShariaAdvisoryIllustrative(BaseModel):
+    disclaimer_ar: str
+    disclaimer_en: str
+    board_roles_ar: List[str]
+    board_roles_en: List[str]
+    process_steps_ar: List[str]
+    process_steps_en: List[str]
+
+
+COMPETITIVE_LANDSCAPE = CompetitiveLandscape(
+    local_competitors=[
+        CompetitorEntry(
+            name="FOCAL — من شركة Mozn",
+            scope="مكافحة غسل الأموال وكشف الاحتيال وفحص العقوبات وKYC — الأقوى محلياً، يخدم بنوك ومؤسسات مالية سعودية فعلية",
+            origin="local",
+            strength="دقة عالية بمطابقة الأسماء العربية، وتكامل ناضج مع مزودي هوية سعوديين وقوائم عقوبات حية",
+            gap_vs_meyar="نظام كشف (Detection) عام، ولا يذكر تصنيفاً مستقلاً لـ«الشبهة الشرعية» ولا يُسمّي صراحة المسؤول القانوني عن كل قرار",
+        ),
+        CompetitorEntry(
+            name="Fintor",
+            scope="منصة امتثال رقمي سعودية ناشئة تستخدم تعلّم الآلة لكشف المعاملات المشبوهة وأتمتة KYC/AML",
+            origin="local",
+            strength="حل خفيف وسريع الإعداد للمؤسسات الصغيرة والمتوسطة",
+            gap_vs_meyar="محرك كشف عام بلا فصل صريح بين قرار آلي نهائي وحالة تحتاج مراجعة بشرية موثّقة بالاسم",
+        ),
+        CompetitorEntry(
+            name="STAMP",
+            scope="منصة سعودية ناشئة (تمويل Pre-Seed بقيمة 2 مليون دولار) تجمع التراخيص والموارد البشرية والامتثال بلوحة واحدة",
+            origin="local",
+            strength="سهولة الإعداد وتغطية إدارية شاملة للشركات الناشئة",
+            gap_vs_meyar="حل إداري/توثيقي بالدرجة الأولى، وليس محرك قرار لحظي يصنّف المعاملات نفسها وقت حدوثها",
+        ),
+    ],
+    global_competitors=[
+        CompetitorEntry(
+            name="ComplyAdvantage",
+            scope="منصة Mesh لكشف الجرائم المالية وفحص العقوبات والأشخاص السياسيين المعرَّضين للمخاطر، تخدم أكثر من 1000 عميل عالمياً",
+            origin="global",
+            strength="تغطية بيانات عالمية واسعة، وAPI سهل التكامل للمطورين",
+            gap_vs_meyar="منتج عالمي عام غير مصمَّم لتعاميم ساما تحديداً، ولا لسياق الاجتهاد الشرعي",
+        ),
+        CompetitorEntry(
+            name="Oracle Financial Crime and Compliance",
+            scope="جناح حلول ضخم لمكافحة الجرائم المالية ضمن منظومة Oracle المصرفية، حائز جوائز عالمية بمجال AML",
+            origin="global",
+            strength="نضج تقني عالي وتكامل عميق مع البنية التحتية المصرفية القائمة على منتجات Oracle",
+            gap_vs_meyar="تكلفة وتعقيد تنفيذ عاليان جداً، وغير موجَّه أصلاً للبنوك متوسطة الحجم أو شركات Fintech الناشئة",
+        ),
+        CompetitorEntry(
+            name="NICE Actimize",
+            scope="من أقدم وأكبر حلول كشف الاحتيال ومكافحة غسل الأموال عالمياً، تخدم بنوكاً كبرى",
+            origin="global",
+            strength="نضج تقني وسجل حافل بالبنوك الكبرى حول العالم",
+            gap_vs_meyar="حل مصمَّم للبنوك الضخمة بميزانيات كبيرة، لا يوجد توطين لسياق تعاميم ساما أو الاجتهاد الشرعي",
+        ),
+    ],
+    meyar_differentiator_ar=(
+        "معيار مو نظام كشف احتيال إضافي — هو أول نظام يحدد بوضوح متى يقرر الآلة ومتى يقرر "
+        "الإنسان، بما يشمل الاجتهاد الشرعي، بتكلفة تناسب البنوك السعودية المتوسطة."
+    ),
+    meyar_differentiator_en=(
+        "Meyar isn't another fraud-detection add-on — it's the first system that explicitly "
+        "defines when the machine decides and when a human must, including Sharia judgment, at "
+        "a cost that fits mid-sized Saudi banks."
+    ),
+    disclaimer_ar=(
+        "أسماء المنافسين حقيقية ومبنية على معلومات عامة متاحة، والمقارنة توضيحية لأغراض العرض "
+        "التجاري وليست تقييماً تعاقدياً أو تسويقياً رسمياً من أي طرف."
+    ),
+    disclaimer_en=(
+        "Competitor names are real and based on publicly available information; the comparison is "
+        "illustrative for a business pitch, not an official contractual or marketing evaluation by "
+        "any party."
+    ),
+)
+
+POSITIONING_STATEMENT_AR = (
+    "معيار مو نظام كشف احتيال إضافي، هو أول نظام يحدد بوضوح متى يقرر الآلة ومتى يقرر الإنسان — "
+    "بما يشمل الاجتهاد الشرعي — بتكلفة تناسب البنوك السعودية المتوسطة."
+)
+POSITIONING_STATEMENT_EN = (
+    "Meyar isn't another fraud-detection add-on. It's the first system that explicitly defines "
+    "when the machine decides and when a human must — including Sharia judgment — at a cost "
+    "that fits mid-sized Saudi banks."
+)
+
+DIFFERENTIATION_PILLARS: List[DifferentiationPillar] = [
+    DifferentiationPillar(
+        icon_key="sharia",
+        title_ar="الزاوية الشرعية",
+        title_en="The Sharia angle",
+        body_ar="ولا منافس محلي أو عالمي يصنّف «الشبهة الشرعية» كفئة مستقلة تُحال لهيئة شرعية مسمّاة — معيار الوحيد اللي يفعل هذا صراحة",
+        body_en="No local or global competitor treats a Sharia concern as its own category routed to a named Sharia board — Meyar is the only one that does",
+    ),
+    DifferentiationPillar(
+        icon_key="accountability",
+        title_ar="الفصل القانوني الصريح",
+        title_en="Explicit legal separation",
+        body_ar="المنافسون يعطون درجة خطورة رقمية فقط؛ معيار يحدد بالاسم الوظيفي مين المسؤول قانونياً عن كل قرار اجتهادي",
+        body_en="Competitors give a numeric risk score only; Meyar names by role exactly who is legally accountable for each interpretive decision",
+    ),
+    DifferentiationPillar(
+        icon_key="localization",
+        title_ar="توطين كامل من الصفر",
+        title_en="Built local, not translated",
+        body_ar="منتجات عالمية مبنية بالإنجليزي ومُوطَّنة جزئياً؛ معيار مبني بالعربي كلغة أساسية بواجهة RTL كاملة ومنطق تعاميم ساما تحديداً",
+        body_en="Global products are English-first with partial localization; Meyar is Arabic-native with full RTL and logic built around SAMA circulars specifically",
+    ),
+    DifferentiationPillar(
+        icon_key="explainability",
+        title_ar="شفافية كاملة بالقرار",
+        title_en="Full decision explainability",
+        body_ar="الحلول الكبيرة تعتمد نماذج معقدة يصعب تفسيرها؛ كل قرار بمعيار مربوط بسبب مكتوب ومادة نظامية ومنهجية محسوبة",
+        body_en="Large solutions rely on hard-to-explain models; every Meyar decision is tied to a written reason, an article reference, and a disclosed methodology",
+    ),
+    DifferentiationPillar(
+        icon_key="pricing",
+        title_ar="فئة سعرية غير مخدومة",
+        title_en="An underserved price tier",
+        body_ar="الحلول العالمية الضخمة موجَّهة للبنوك الكبرى فقط؛ معيار يستهدف بالضبط البنوك المتوسطة وFintech الناشئة المهملة من هذا السوق",
+        body_en="Large global solutions target only major banks; Meyar targets exactly the mid-sized banks and Fintech startups this market underserves",
+    ),
+]
+
+SHARIA_ADVISORY_ILLUSTRATIVE = ShariaAdvisoryIllustrative(
+    disclaimer_ar=(
+        "هذا القسم توضيحي بالكامل لأغراض العرض — يمثّل شكل التكامل المستقبلي المقترح مع هيئة "
+        "شرعية معتمدة، وليس مجلساً شرعياً فعلياً قائماً ولا فتوى معتمدة."
+    ),
+    disclaimer_en=(
+        "This section is entirely illustrative for demo purposes — it represents the proposed "
+        "shape of future integration with a certified Sharia board, not an actual standing board "
+        "or an approved fatwa."
+    ),
+    board_roles_ar=[
+        "رئيس الهيئة الشرعية للمؤسسة المالية (صلاحية القرار النهائي)",
+        "عضو هيئة شرعية متخصص بالمعاملات المالية المعاصرة",
+        "منسّق امتثال شرعي (يهيّئ الملف قبل عرضه على الهيئة)",
+    ],
+    board_roles_en=[
+        "Chair of the institution's Sharia board (final decision authority)",
+        "Sharia board member specialized in contemporary financial transactions",
+        "Sharia-compliance coordinator (prepares the case file before board review)",
+    ],
+    process_steps_ar=[
+        "النظام يصنّف المعاملة كـ«شبهة شرعية محتملة» (مستوى ٢) ويوقفها مؤقتاً بلا قرار نهائي",
+        "منسّق الامتثال الشرعي يجهّز ملف المعاملة بالسياق والمستندات ذات الصلة",
+        "الهيئة الشرعية تصدر قرارها النهائي (إجازة أو رفض)، ويُسجَّل بسجل التدقيق باسم متخذ القرار",
+    ],
+    process_steps_en=[
+        "The system classifies the transaction as a potential Sharia concern (Level 2) and holds it with no final decision",
+        "The Sharia-compliance coordinator prepares the case file with relevant context and documents",
+        "The Sharia board issues its final ruling (approve or reject), logged in the audit trail under the deciding party's name",
+    ],
+)
+
+
+class TargetSegment(BaseModel):
+    name_ar: str
+    name_en: str
+    description_ar: str
+    description_en: str
+    why_fit_ar: str
+    why_fit_en: str
+
+
+TARGET_SEGMENTS: List[TargetSegment] = [
+    TargetSegment(
+        name_ar="البنوك المحلية الصغيرة والمتوسطة",
+        name_en="Small & mid-sized local banks",
+        description_ar="بنوك ليس لديها فريق هندسي داخلي كبير لبناء محرك امتثال خاص بها",
+        description_en="Banks without a large in-house engineering team to build a proprietary compliance engine",
+        why_fit_ar="تحتاج حلاً جاهزاً بتكلفة معقولة، لا رخصة عالمية مكلفة",
+        why_fit_en="Need a ready-made solution at reasonable cost, not an expensive global license",
+    ),
+    TargetSegment(
+        name_ar="شركات التقنية المالية الناشئة (Fintech)",
+        name_en="Fintech startups",
+        description_ar="شركات دفع ومحافظ رقمية بمرحلة نمو تحتاج طبقة امتثال دون تأخير إطلاق منتجها",
+        description_en="Payment and digital-wallet companies in growth stage that need a compliance layer without delaying product launch",
+        why_fit_ar="التكامل عبر Open Banking API يتماشى مباشرة مع بنيتها التقنية الحالية",
+        why_fit_en="Open Banking API integration aligns directly with their existing technical stack",
+    ),
+    TargetSegment(
+        name_ar="مزودو خدمات الدفع الصغرى (المرخّصون بتعميم ٤٩)",
+        name_en="Micro-payment service providers",
+        description_ar="جهات مرخّصة بموجب تعميم رقم ٤٩ تحتاج إثبات امتثال مستمر لساما",
+        description_en="Entities licensed under Circular No. 49 needing continuous compliance evidence for SAMA",
+        why_fit_ar="سجل تدقيق جاهز (Audit Trail) يسهّل عليها إثبات الالتزام عند أي تفتيش",
+        why_fit_en="A ready audit trail simplifies proving compliance during any inspection",
+    ),
+    TargetSegment(
+        name_ar="شركات الشراء الآن والدفع لاحقاً (BNPL)",
+        name_en="Buy-Now-Pay-Later (BNPL) providers",
+        description_ar="مزودون منظَّمون بموجب تعميم رقم ١١٨ وسقوف تقسيط تحتاج مراقبة لحظية",
+        description_en="Providers regulated under Circular No. 118 with installment caps needing live monitoring",
+        why_fit_ar="قواعد المستوى ١ الرقمية تلائم طبيعة سقوف BNPL تحديداً",
+        why_fit_en="Numeric Level-1 rules fit BNPL installment caps particularly well",
+    ),
+]
+
+
+class RevenueStream(BaseModel):
+    name_ar: str
+    name_en: str
+    model_ar: str
+    model_en: str
+
+
+REVENUE_STREAMS: List[RevenueStream] = [
+    RevenueStream(
+        name_ar="اشتراك شهري حسب حجم المعاملات (SaaS)",
+        name_en="Monthly volume-based subscription (SaaS)",
+        model_ar="رسم شهري يتدرّج حسب عدد المعاملات الشهرية المراقَبة لكل مؤسسة",
+        model_en="A monthly fee that scales with the number of monitored transactions per institution",
+    ),
+    RevenueStream(
+        name_ar="رسوم تنفيذ وتكامل أولي (Setup Fee)",
+        name_en="One-time setup & integration fee",
+        model_ar="رسم مرة واحدة عند ربط النظام بقنوات Open Banking الخاصة بالمؤسسة",
+        model_en="A one-time charge when connecting the system to the institution's Open Banking channels",
+    ),
+    RevenueStream(
+        name_ar="طبقة تقارير امتثال متقدمة (Add-on)",
+        name_en="Advanced compliance reporting add-on",
+        model_ar="اشتراك إضافي اختياري لتقارير منهجية الدقة والتحليلات المتقدمة للجنة الامتثال الداخلية",
+        model_en="An optional additional subscription for accuracy-methodology and advanced analytics reports for the internal compliance committee",
+    ),
+]
+
+
+class CostComparisonRow(BaseModel):
+    metric_ar: str
+    metric_en: str
+    before_ar: str
+    before_en: str
+    after_ar: str
+    after_en: str
+
+
+COST_COMPARISON_HUMAN_VS_SYSTEM: List[CostComparisonRow] = [
+    CostComparisonRow(
+        metric_ar="ساعات المراجعة اليدوية شهرياً",
+        metric_en="Monthly manual review hours",
+        before_ar=f"{COST_METHODOLOGY['baseline_manual_hours_per_month']} ساعة (فريق امتثال بشري كامل)",
+        before_en=f"{COST_METHODOLOGY['baseline_manual_hours_per_month']} hours (full human compliance team)",
+        after_ar=f"{COST_METHODOLOGY['automated_review_hours_per_month']} ساعة (مراجعة حالات المستوى ٢ فقط)",
+        after_en=f"{COST_METHODOLOGY['automated_review_hours_per_month']} hours (Level-2 review only)",
+    ),
+    CostComparisonRow(
+        metric_ar="نطاق عمل موظف الامتثال",
+        metric_en="Compliance officer's scope of work",
+        before_ar="مراجعة كل معاملة يدوياً بلا تصنيف مسبق",
+        before_en="Manually reviewing every transaction with no prior classification",
+        after_ar="مراجعة الحالات الاجتهادية المُصنَّفة والمُبررة آلياً فقط",
+        after_en="Reviewing only pre-classified, machine-justified interpretive cases",
+    ),
+    CostComparisonRow(
+        metric_ar="زمن اتخاذ القرار للمعاملة الواحدة",
+        metric_en="Decision time per transaction",
+        before_ar="دقائق إلى ساعات حسب ازدحام فريق الامتثال",
+        before_en="Minutes to hours depending on the compliance team's backlog",
+        after_ar="أجزاء من الثانية لمستوى ١، ومباشرة بقائمة مرتّبة لمستوى ٢",
+        after_en="Fractions of a second for Level 1, and an immediately sorted queue for Level 2",
+    ),
+    CostComparisonRow(
+        metric_ar="قابلية التوثيق لأي قرار (Audit Trail)",
+        metric_en="Documentability of any decision (Audit Trail)",
+        before_ar="تعتمد على تدوين يدوي متفاوت الجودة",
+        before_en="Depends on inconsistent manual note-taking",
+        after_ar="سجل تدقيق موحّد آلياً لكل قرار — آلي أو بشري",
+        after_en="A uniformly automated audit log for every decision — automated or human",
+    ),
+]
+
+
+class FundingCostItem(BaseModel):
+    category_ar: str
+    category_en: str
+    type: Literal["one_time", "recurring_monthly"]
+    note_ar: str
+    note_en: str
+
+
+FUNDING_COST_BREAKDOWN: List[FundingCostItem] = [
+    FundingCostItem(
+        category_ar="تطوير أولي (فريق تقني)",
+        category_en="Initial development (engineering team)",
+        type="one_time",
+        note_ar="بناء واختبار النسخة الأولى القابلة للنشر التجاري (Backend + Frontend + نموذج الذكاء الاصطناعي)",
+        note_en="Building and testing the first commercially deployable version (Backend + Frontend + AI model)",
+    ),
+    FundingCostItem(
+        category_ar="ترخيص واجهات الذكاء الاصطناعي الخارجية",
+        category_en="External AI API licensing",
+        type="recurring_monthly",
+        note_ar="استهلاك Gemini API أو ما يعادله حسب حجم استخدام الشات بوت",
+        note_en="Gemini API consumption (or equivalent), scaling with chatbot usage volume",
+    ),
+    FundingCostItem(
+        category_ar="استضافة سحابية مؤسسية",
+        category_en="Enterprise cloud hosting",
+        type="recurring_monthly",
+        note_ar="الانتقال من خطط مجانية (Render/Vercel) إلى بنية تحمّل بيانات مؤسسات مالية فعلية",
+        note_en="Moving from free-tier plans (Render/Vercel) to infrastructure that can hold real financial-institution data",
+    ),
+    FundingCostItem(
+        category_ar="الاستشارات والترخيص التنظيمي",
+        category_en="Regulatory advisory & licensing",
+        type="one_time",
+        note_ar="التسجيل ببيئة ساما التجريبية التنظيمية (Sandbox) ومتابعة متطلبات الترخيص",
+        note_en="Registering with SAMA's Regulatory Sandbox and following through on licensing requirements",
+    ),
+    FundingCostItem(
+        category_ar="الدعم الفني وتحديث قاعدة المعرفة التنظيمية",
+        category_en="Technical support & regulatory knowledge-base upkeep",
+        type="recurring_monthly",
+        note_ar="متابعة أي تعميم جديد من ساما وتحديث محرك التشريعات والشات بوت به",
+        note_en="Tracking any new SAMA circular and updating the regulatory engine and chatbot accordingly",
+    ),
+]
+
+
+class RoadmapPhase(BaseModel):
+    phase_ar: str
+    phase_en: str
+    timeframe_ar: str
+    timeframe_en: str
+    goals_ar: List[str]
+    goals_en: List[str]
+
+
+FUTURE_ROADMAP: List[RoadmapPhase] = [
+    RoadmapPhase(
+        phase_ar="المرحلة ١ — التأهيل التنظيمي",
+        phase_en="Phase 1 — Regulatory readiness",
+        timeframe_ar="٠–٣ أشهر",
+        timeframe_en="0–3 months",
+        goals_ar=["التسجيل ببيئة ساما التجريبية التنظيمية (Sandbox)", "تجهيز اتفاقيات تكامل تجريبية مع مؤسسة مالية واحدة أو أكثر"],
+        goals_en=["Register with SAMA's Regulatory Sandbox", "Prepare pilot integration agreements with one or more financial institutions"],
+    ),
+    RoadmapPhase(
+        phase_ar="المرحلة ٢ — الربط الحقيقي بالبيانات",
+        phase_en="Phase 2 — Real data integration",
+        timeframe_ar="٣–٦ أشهر",
+        timeframe_en="3–6 months",
+        goals_ar=["استبدال بيانات المعاملات العشوائية بربط فعلي عبر خدمة AIS", "إعادة تدريب نموذج المخاطرة على بيانات مُصنَّفة حقيقية من قائمة المراجعة"],
+        goals_en=["Replace random transaction data with a real AIS integration", "Retrain the risk model on real labeled data from the review queue"],
+    ),
+    RoadmapPhase(
+        phase_ar="المرحلة ٣ — الترخيص والتوسع بقاعدة البيانات",
+        phase_en="Phase 3 — Licensing & database scale-up",
+        timeframe_ar="٦–١٢ شهر",
+        timeframe_en="6–12 months",
+        goals_ar=["استكمال متطلبات الترخيص الرسمي من ساما", "الانتقال من SQLite إلى قاعدة بيانات مؤسسية (PostgreSQL) على بنية سحابية دائمة"],
+        goals_en=["Complete formal SAMA licensing requirements", "Migrate from SQLite to an enterprise database (PostgreSQL) on persistent cloud infrastructure"],
+    ),
+    RoadmapPhase(
+        phase_ar="المرحلة ٤ — التوسع التجاري",
+        phase_en="Phase 4 — Commercial scale-up",
+        timeframe_ar="١٢+ شهر",
+        timeframe_en="12+ months",
+        goals_ar=["توسيع قاعدة العملاء لمؤسسات مالية إضافية", "إضافة طبقة تقارير امتثال متقدمة كمصدر دخل إضافي"],
+        goals_en=["Expand the customer base to additional financial institutions", "Add the advanced compliance reporting layer as an additional revenue stream"],
+    ),
+]
+
+
+@app.get("/api/business-model")
+def get_business_model():
+    return {
+        "positioning_statement_ar": POSITIONING_STATEMENT_AR,
+        "positioning_statement_en": POSITIONING_STATEMENT_EN,
+        "differentiation_pillars": [p.model_dump() for p in DIFFERENTIATION_PILLARS],
+        "competitive_landscape": COMPETITIVE_LANDSCAPE.model_dump(),
+        "target_segments": [s.model_dump() for s in TARGET_SEGMENTS],
+        "revenue_streams": [r.model_dump() for r in REVENUE_STREAMS],
+        "cost_comparison_human_vs_system": [c.model_dump() for c in COST_COMPARISON_HUMAN_VS_SYSTEM],
+        "funding_cost_breakdown": [f.model_dump() for f in FUNDING_COST_BREAKDOWN],
+        "future_roadmap": [r.model_dump() for r in FUTURE_ROADMAP],
+        "sharia_advisory_illustrative": SHARIA_ADVISORY_ILLUSTRATIVE.model_dump(),
+    }
+
+
 if __name__ == "__main__":
     import os
     import uvicorn
