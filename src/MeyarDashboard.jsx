@@ -326,6 +326,7 @@ const STR = {
       title: "النموذج التجاري",
       subtitle: "من نموذج أولي بهاكاثون إلى منتج قابل للتسويق والتوسع",
       loading: "جارٍ تحميل بيانات النموذج التجاري...",
+      pillarsTitle: "زوايا التميّز عن المنافسين",
       competitiveTitle: "القيمة التنافسية",
       localLabel: "منافسون محليون",
       globalLabel: "منافسون عالميون",
@@ -342,6 +343,9 @@ const STR = {
       fundingOneTime: "تكلفة لمرة واحدة",
       fundingRecurring: "تكلفة شهرية متكررة",
       roadmapTitle: "خطة التطوير المستقبلية",
+      shariaTitle: "المجلس الشرعي الاستشاري (توضيحي)",
+      shariaBoardLabel: "أعضاء المجلس المقترح",
+      shariaProcessLabel: "مسار المراجعة المقترح",
       disclaimerLabel: "ملاحظة",
     },
     chart: {
@@ -594,6 +598,7 @@ const STR = {
       title: "Business Model",
       subtitle: "From a hackathon prototype to a scalable, marketable product",
       loading: "Loading business model data...",
+      pillarsTitle: "Points of Differentiation",
       competitiveTitle: "Competitive Value",
       localLabel: "Local competitors",
       globalLabel: "Global competitors",
@@ -610,6 +615,9 @@ const STR = {
       fundingOneTime: "One-time cost",
       fundingRecurring: "Recurring monthly cost",
       roadmapTitle: "Future Development Roadmap",
+      shariaTitle: "Sharia Advisory Board (illustrative)",
+      shariaBoardLabel: "Proposed board members",
+      shariaProcessLabel: "Proposed review process",
       disclaimerLabel: "Note",
     },
     chart: {
@@ -2626,51 +2634,62 @@ function LimitsTab({ t }) {
 
 function makeFallbackBusinessModel() {
   return {
+    positioning_statement_ar:
+      "معيار مو نظام كشف احتيال إضافي، هو أول نظام يحدد بوضوح متى يقرر الآلة ومتى يقرر الإنسان — بما يشمل الاجتهاد الشرعي — بتكلفة تناسب البنوك السعودية المتوسطة.",
+    positioning_statement_en:
+      "Meyar isn't another fraud-detection add-on. It's the first system that explicitly defines when the machine decides and when a human must — including Sharia judgment — at a cost that fits mid-sized Saudi banks.",
+    differentiation_pillars: [
+      { icon_key: "sharia", title_ar: "الزاوية الشرعية", title_en: "The Sharia angle", body_ar: "ولا منافس يصنّف «الشبهة الشرعية» كفئة مستقلة تُحال لهيئة شرعية مسمّاة — معيار الوحيد اللي يفعل هذا صراحة", body_en: "No competitor treats a Sharia concern as its own category routed to a named board — Meyar is the only one that does" },
+      { icon_key: "accountability", title_ar: "الفصل القانوني الصريح", title_en: "Explicit legal separation", body_ar: "المنافسون يعطون درجة خطورة رقمية فقط؛ معيار يحدد بالاسم الوظيفي مين المسؤول قانونياً عن كل قرار", body_en: "Competitors give a numeric risk score only; Meyar names by role who is legally accountable" },
+      { icon_key: "localization", title_ar: "توطين كامل من الصفر", title_en: "Built local, not translated", body_ar: "منتجات عالمية مبنية بالإنجليزي وموطَّنة جزئياً؛ معيار مبني بالعربي كلغة أساسية بواجهة RTL كاملة", body_en: "Global products are English-first with partial localization; Meyar is Arabic-native with full RTL" },
+      { icon_key: "explainability", title_ar: "شفافية كاملة بالقرار", title_en: "Full decision explainability", body_ar: "الحلول الكبيرة تعتمد نماذج يصعب تفسيرها؛ كل قرار بمعيار مربوط بسبب مكتوب ومادة نظامية", body_en: "Large solutions rely on hard-to-explain models; every Meyar decision is tied to a written reason" },
+      { icon_key: "pricing", title_ar: "فئة سعرية غير مخدومة", title_en: "An underserved price tier", body_ar: "الحلول العالمية موجَّهة للبنوك الكبرى فقط؛ معيار يستهدف البنوك المتوسطة وFintech الناشئة", body_en: "Large global solutions target only major banks; Meyar targets the mid-sized tier they underserve" },
+    ],
     competitive_landscape: {
       local_competitors: [
         {
-          name: "مزن (منصة FOCAL)",
-          scope: "مكافحة غسل الأموال وفحص العقوبات وKYC للمؤسسات المالية السعودية",
-          strength: "تكامل ناضج مع مزودي بيانات هوية سعوديين وقوائم عقوبات حية",
-          gap_vs_meyar: "لا يفصل صراحة بين قرار آلي نهائي وحالة تحتاج مراجعة بشرية موثّقة",
+          name: "FOCAL — من شركة Mozn",
+          scope: "مكافحة غسل الأموال وكشف الاحتيال وفحص العقوبات وKYC — الأقوى محلياً",
+          strength: "دقة عالية بمطابقة الأسماء العربية وتكامل ناضج مع مزودي هوية سعوديين",
+          gap_vs_meyar: "لا يذكر تصنيفاً مستقلاً لـ«الشبهة الشرعية» ولا يُسمّي المسؤول القانوني عن كل قرار",
         },
         {
-          name: "منصة عين",
-          scope: "أتمتة إفصاحات هيئة السوق المالية ومراقبة المعاملات",
-          strength: "تخصص عميق بمتطلبات هيئة السوق المالية",
-          gap_vs_meyar: "موجّهة للإفصاحات لا للمعاملات المصرفية اليومية عبر Open Banking",
+          name: "Fintor",
+          scope: "منصة امتثال رقمي سعودية ناشئة تستخدم تعلّم الآلة لكشف المعاملات المشبوهة",
+          strength: "حل خفيف وسريع الإعداد للمؤسسات الصغيرة والمتوسطة",
+          gap_vs_meyar: "محرك كشف عام بلا فصل صريح بين قرار آلي نهائي وحالة تحتاج مراجعة بشرية",
         },
         {
-          name: "ستامب",
-          scope: "رقمنة إجراءات التراخيص والامتثال للشركات الناشئة",
-          strength: "سهولة الإعداد للشركات الناشئة",
-          gap_vs_meyar: "حل إداري/توثيقي أكثر من كونه محرك قرار لحظي",
+          name: "STAMP",
+          scope: "منصة سعودية ناشئة تجمع التراخيص والموارد البشرية والامتثال بلوحة واحدة",
+          strength: "سهولة الإعداد وتغطية إدارية شاملة للشركات الناشئة",
+          gap_vs_meyar: "حل إداري/توثيقي أكثر من كونه محرك قرار لحظي على المعاملات نفسها",
         },
       ],
       global_competitors: [
         {
-          name: "NICE Actimize",
-          scope: "كشف الاحتيال ومكافحة غسل الأموال للبنوك الكبرى عالمياً",
-          strength: "نضج تقني عالي ونطاق تغطية عالمي واسع",
-          gap_vs_meyar: "تكلفة عالية جداً وغير مصمَّم لسياق تعاميم ساما أو الاجتهاد الشرعي",
+          name: "ComplyAdvantage",
+          scope: "منصة Mesh لكشف الجرائم المالية وفحص العقوبات، تخدم أكثر من 1000 عميل عالمياً",
+          strength: "تغطية بيانات عالمية واسعة وAPI سهل التكامل",
+          gap_vs_meyar: "منتج عالمي عام غير مصمَّم لتعاميم ساما ولا لسياق الاجتهاد الشرعي",
         },
         {
           name: "Oracle Financial Crime and Compliance",
-          scope: "حلول امتثال وجرائم مالية ضمن منظومة Oracle المصرفية",
-          strength: "تكامل عميق مع البنية التحتية القائمة على منتجات Oracle",
-          gap_vs_meyar: "حل ثقيل ومكلف وغير موجَّه للبنوك متوسطة الحجم",
+          scope: "جناح حلول ضخم لمكافحة الجرائم المالية ضمن منظومة Oracle المصرفية",
+          strength: "نضج تقني عالي وتكامل عميق مع البنية التحتية القائمة على منتجات Oracle",
+          gap_vs_meyar: "تكلفة وتعقيد تنفيذ عاليان، وغير موجَّه للبنوك متوسطة الحجم",
         },
         {
-          name: "ComplyAdvantage",
-          scope: "فحص عقوبات وأشخاص سياسيين معرَّضين للمخاطر عبر API عالمي",
-          strength: "تغطية بيانات عالمية واسعة",
-          gap_vs_meyar: "منتج فحص عام غير مصمَّم لنموذج المستويين الخاص بالمسؤولية المحلية",
+          name: "NICE Actimize",
+          scope: "من أقدم وأكبر حلول كشف الاحتيال ومكافحة غسل الأموال عالمياً",
+          strength: "نضج تقني وسجل حافل بالبنوك الكبرى حول العالم",
+          gap_vs_meyar: "مصمَّم للبنوك الضخمة، بلا توطين لسياق تعاميم ساما أو الاجتهاد الشرعي",
         },
       ],
       meyar_differentiator_ar:
-        "أغلب الحلول — محلياً وعالمياً — أنظمة كشف قوية، لكنها لا تُصرّح بوضوح متى يحق للنظام اتخاذ قرار نهائي بمفرده ومتى يجب إحالته لإنسان مسؤول. معيار يبني هذا الفصل كمبدأ تصميم أساسي.",
+        "معيار مو نظام كشف احتيال إضافي — هو أول نظام يحدد بوضوح متى يقرر الآلة ومتى يقرر الإنسان، بما يشمل الاجتهاد الشرعي، بتكلفة تناسب البنوك السعودية المتوسطة.",
       meyar_differentiator_en:
-        "Most solutions are strong detection engines, but none state explicitly when the system may decide alone versus when it must route to an accountable human. Meyar builds this separation as a core design principle.",
+        "Meyar isn't another fraud-detection add-on — it's the first system that explicitly defines when the machine decides and when a human must, including Sharia judgment, at a cost that fits mid-sized Saudi banks.",
       disclaimer_ar: "أسماء المنافسين حقيقية ومبنية على معلومات عامة متاحة؛ المقارنة توضيحية لأغراض العرض التجاري.",
       disclaimer_en: "Competitor names are real and based on public information; the comparison is illustrative for a business pitch.",
     },
@@ -2704,6 +2723,30 @@ function makeFallbackBusinessModel() {
       { phase_ar: "المرحلة ٣ — الترخيص والتوسع", phase_en: "Phase 3 — Licensing & scale-up", timeframe_ar: "٦–١٢ شهر", timeframe_en: "6–12 months", goals_ar: ["استكمال الترخيص الرسمي", "الانتقال لقاعدة بيانات مؤسسية"], goals_en: ["Complete formal licensing", "Migrate to an enterprise database"] },
       { phase_ar: "المرحلة ٤ — التوسع التجاري", phase_en: "Phase 4 — Commercial scale-up", timeframe_ar: "١٢+ شهر", timeframe_en: "12+ months", goals_ar: ["توسيع قاعدة العملاء", "إضافة تقارير امتثال متقدمة كدخل إضافي"], goals_en: ["Expand the customer base", "Add advanced reporting as extra revenue"] },
     ],
+    sharia_advisory_illustrative: {
+      disclaimer_ar: "هذا القسم توضيحي بالكامل لأغراض العرض — يمثّل شكل التكامل المستقبلي المقترح مع هيئة شرعية معتمدة، وليس مجلساً شرعياً فعلياً قائماً ولا فتوى معتمدة.",
+      disclaimer_en: "This section is entirely illustrative — it represents the proposed shape of future integration with a certified Sharia board, not an actual standing board.",
+      board_roles_ar: [
+        "رئيس الهيئة الشرعية للمؤسسة المالية (صلاحية القرار النهائي)",
+        "عضو هيئة شرعية متخصص بالمعاملات المالية المعاصرة",
+        "منسّق امتثال شرعي (يهيّئ الملف قبل عرضه على الهيئة)",
+      ],
+      board_roles_en: [
+        "Chair of the institution's Sharia board (final decision authority)",
+        "Sharia board member specialized in contemporary financial transactions",
+        "Sharia-compliance coordinator (prepares the case file before board review)",
+      ],
+      process_steps_ar: [
+        "النظام يصنّف المعاملة كـ«شبهة شرعية محتملة» (مستوى ٢) ويوقفها مؤقتاً بلا قرار نهائي",
+        "منسّق الامتثال الشرعي يجهّز ملف المعاملة بالسياق والمستندات ذات الصلة",
+        "الهيئة الشرعية تصدر قرارها النهائي (إجازة أو رفض)، ويُسجَّل بسجل التدقيق باسم متخذ القرار",
+      ],
+      process_steps_en: [
+        "The system classifies the transaction as a potential Sharia concern (Level 2) and holds it with no final decision",
+        "The Sharia-compliance coordinator prepares the case file with relevant context",
+        "The Sharia board issues its final ruling, logged in the audit trail under the deciding party's name",
+      ],
+    },
   };
 }
 
@@ -2735,6 +2778,14 @@ function BusinessModelTab({ lang, t }) {
 
   const pick = (obj, arKey, enKey) => (lang === "en" ? obj[enKey] : obj[arKey]);
 
+  const PILLAR_ICONS = {
+    sharia: BookOpenCheck,
+    accountability: Scale,
+    localization: Globe,
+    explainability: Info,
+    pricing: Wallet,
+  };
+
   return (
     <div className="space-y-6 animate-fade-up">
       <div>
@@ -2743,6 +2794,36 @@ function BusinessModelTab({ lang, t }) {
       </div>
 
       {loading && <p className="text-xs text-white/35">{bm.loading}</p>}
+
+      {/* Positioning statement — the single sentence to repeat in every pitch */}
+      <div className="aurora-border rounded-2xl p-5 md:p-6" style={{ background: "linear-gradient(120deg, rgba(228,160,255,0.08), rgba(157,78,221,0.08))" }}>
+        <div className="flex items-start gap-3">
+          <Sparkles size={20} className="text-[var(--orchid)] shrink-0 mt-0.5" />
+          <p className="font-display text-white text-lg md:text-xl font-bold leading-relaxed">
+            {pick(data, "positioning_statement_ar", "positioning_statement_en")}
+          </p>
+        </div>
+      </div>
+
+      {/* Differentiation pillars */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Gem size={18} className="text-[var(--gold)]" />
+          <h3 className="font-bold text-white text-base">{bm.pillarsTitle}</h3>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {data.differentiation_pillars.map((p, i) => {
+            const Icon = PILLAR_ICONS[p.icon_key] || Sparkles;
+            return (
+              <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+                <Icon size={18} className="text-[var(--orchid)] mb-2" />
+                <p className="font-bold text-white text-sm mb-1.5">{pick(p, "title_ar", "title_en")}</p>
+                <p className="text-[11px] text-white/50 leading-relaxed">{pick(p, "body_ar", "body_en")}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Competitive landscape */}
       <div className="glass-panel aurora-border rounded-2xl p-5">
@@ -2897,15 +2978,44 @@ function BusinessModelTab({ lang, t }) {
           ))}
         </div>
       </div>
+
+      {/* Sharia advisory board — illustrative future integration */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpenCheck size={18} className="text-[var(--gold)]" />
+          <h3 className="font-bold text-white text-base">{bm.shariaTitle}</h3>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-2">{bm.shariaBoardLabel}</p>
+            <ul className="space-y-2">
+              {(lang === "en" ? data.sharia_advisory_illustrative.board_roles_en : data.sharia_advisory_illustrative.board_roles_ar).map((role, i) => (
+                <li key={i} className="text-[12px] text-white/60 flex items-start gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+                  <UserCheck size={14} className="text-[var(--gold)] shrink-0 mt-0.5" />
+                  {role}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-2">{bm.shariaProcessLabel}</p>
+            <ol className="space-y-2">
+              {(lang === "en" ? data.sharia_advisory_illustrative.process_steps_en : data.sharia_advisory_illustrative.process_steps_ar).map((step, i) => (
+                <li key={i} className="text-[12px] text-white/60 flex items-start gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+                  <span className="shrink-0 w-4 h-4 rounded-full bg-[var(--gold)]/20 text-[var(--gold)] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+        <p className="text-[10px] text-white/30 mt-3">
+          {bm.disclaimerLabel}: {pick(data.sharia_advisory_illustrative, "disclaimer_ar", "disclaimer_en")}
+        </p>
+      </div>
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Chatbot — regulatory assistant scoped strictly to the local SAMA
-// knowledge base (mirrors the backend's retrieval so it also works when
-// the AI core is unreachable, consistent with the rest of the dashboard).
-// ---------------------------------------------------------------------------
 
 // Mirrors the backend's two-layer chatbot design for offline fallback:
 // Layer A (greetings/thanks/identity) gets a natural uncited reply; Layer B
