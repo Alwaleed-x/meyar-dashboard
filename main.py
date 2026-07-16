@@ -2058,6 +2058,12 @@ class RequestCodeBody(BaseModel):
     email: str
 
 
+class RegisterBody(BaseModel):
+    name: str
+    email: str
+    role: Literal["compliance_officer", "sharia_board"] = "compliance_officer"
+
+
 class VerifyCodeBody(BaseModel):
     email: str
     code: str
@@ -2076,16 +2082,45 @@ class AuthResponse(BaseModel):
 
 @app.post("/api/auth/request-code")
 def request_code(payload: RequestCodeBody):
-    user = _db_get_user_by_email(payload.email.strip().lower())
+    email = payload.email.strip().lower()
+    user = _db_get_user_by_email(email)
     if not user:
-        # Same generic response whether or not the email exists, so the
-        # endpoint can't be used to enumerate valid employee accounts.
-        return {"sent": True}
+        # Explicit "not registered" response (rather than a generic 200) so
+        # the frontend can offer to switch to the sign-up flow. This trades
+        # a small amount of account-enumeration protection for a much
+        # clearer user experience — an acceptable trade-off for an internal
+        # compliance tool with named employee accounts, not a public app.
+        raise HTTPException(status_code=404, detail="not_registered")
     code = _generate_otp()
     _db_store_otp(user["email"], code)
     # TODO(production): send `code` via a real email provider (e.g. Amazon
     # SES, SendGrid) instead of returning it. Left as a real integration
     # point, not a silent fake — see the module docstring above.
+    response = {"sent": True}
+    if DEMO_MODE:
+        response["demo_code"] = code
+        response["demo_notice"] = "MEYAR_DEMO_MODE is on: no real email is sent, so the code is returned here for testing."
+    return response
+
+
+@app.post("/api/auth/register")
+def register(payload: RegisterBody):
+    email = payload.email.strip().lower()
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name_required")
+    if _db_get_user_by_email(email):
+        raise HTTPException(status_code=409, detail="already_registered")
+    conn = _db_connect()
+    conn.execute(
+        "INSERT INTO users (email, name, role, created_at) VALUES (?, ?, ?, ?)",
+        (email, name, payload.role, _iso(_now())),
+    )
+    conn.commit()
+    conn.close()
+    code = _generate_otp()
+    _db_store_otp(email, code)
+    # Same real-email TODO as /api/auth/request-code above.
     response = {"sent": True}
     if DEMO_MODE:
         response["demo_code"] = code
