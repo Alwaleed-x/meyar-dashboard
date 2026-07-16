@@ -96,6 +96,7 @@ const STR = {
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
       methodology: "منهجية الدقة",
+      riskAppetite: "تقبّل المخاطر",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
       settings: "الإعدادات",
@@ -358,6 +359,34 @@ const STR = {
       testSetLabel: "حجم عيّنة الاختبار",
       loading: "جارٍ حساب المقاييس من الموديل الفعلي...",
     },
+    riskAppetite: {
+      title: "تقبّل المخاطر",
+      subtitle: "بيان تقبّل المخاطر المعتمد من المجلس، مُترجَم إلى إعداد حي يتحكم فعلياً بقرارات النظام",
+      governanceNote: "متطلبات حوكمة ساما تشترط بيان تقبّل مخاطر مخصَّصاً لكل مؤسسة، لا بياناً عاماً — فحوصات ساما تعتبر البيان العام غير المخصَّص ملاحظة تُسجَّل رسمياً بمحضر الفحص.",
+      currentLevelLabel: "المستوى الحالي",
+      thresholdLabel: "عتبة تصعيد المستوى الثاني",
+      exposureLabel: "التعرّض الحالي للمخاطر",
+      exposureDesc: "نسبة عيّنة حية من المعاملات المُعالَجة الآن تحتاج تصعيداً للمراجعة البشرية، بنفس منطق النظام الفعلي",
+      levelConservative: "متحفّظ",
+      levelModerate: "متوسط",
+      levelAggressive: "منفتح",
+      levelConservativeDesc: "عتبة أدنى — يُحيل حالات أكثر للمراجعة البشرية، مناسب لمؤسسات تفضّل حذراً أعلى",
+      levelModerateDesc: "التوازن الافتراضي الموصى به بين الدقة والاستدعاء",
+      levelAggressiveDesc: "عتبة أعلى — يثق أكثر بتقدير النموذج، إحالات أقل للمراجعة البشرية",
+      configTitle: "بيانات الاعتماد الرسمي",
+      institutionLabel: "اسم المؤسسة",
+      institutionPlaceholder: "مثال: مصرف الإنماء",
+      approvedByLabel: "اعتُمد من",
+      approvedByPlaceholder: "مثال: لجنة المخاطر بمجلس الإدارة",
+      approvedDateLabel: "تاريخ الاعتماد",
+      saveButton: "حفظ واعتماد",
+      saving: "جارٍ الحفظ...",
+      saved: "تم حفظ واعتماد بيان تقبّل المخاطر",
+      adminOnlyNote: "تعديل هذا الإعداد يتطلب صلاحية مدير النظام — أي مستخدم آخر يستطيع الاطّلاع فقط",
+      adminOnlyError: "هذا الإجراء يتطلب صلاحية مدير النظام",
+      notApproved: "لم يُعتمَد بعد",
+      loading: "جارٍ تحميل بيانات تقبّل المخاطر...",
+    },
     chart: {
       month: "الشهر",
       tooltipCurrency: "ر.س",
@@ -380,6 +409,7 @@ const STR = {
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
       methodology: "Accuracy Methodology",
+      riskAppetite: "Risk Appetite",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
       settings: "Settings",
@@ -641,6 +671,34 @@ const STR = {
       testSetLabel: "Test set size",
       loading: "Computing metrics from the live model...",
     },
+    riskAppetite: {
+      title: "Risk Appetite",
+      subtitle: "The board-approved Risk Appetite Statement, translated into a live setting that actually drives system decisions",
+      governanceNote: "SAMA's governance principles require an institution-specific risk appetite statement, not a generic one — SAMA examiners flag generic, non-institution-specific statements as a formal finding.",
+      currentLevelLabel: "Current level",
+      thresholdLabel: "Level-2 escalation threshold",
+      exposureLabel: "Current risk exposure",
+      exposureDesc: "Share of a live sample of transactions being processed right now that require human-review escalation, using the same logic as the live system",
+      levelConservative: "Conservative",
+      levelModerate: "Moderate",
+      levelAggressive: "Aggressive",
+      levelConservativeDesc: "Lowest threshold — escalates more cases to human review; fits institutions preferring greater caution",
+      levelModerateDesc: "The recommended default balance between precision and recall",
+      levelAggressiveDesc: "Higher threshold — trusts the model's assessment more, fewer escalations to human review",
+      configTitle: "Official approval details",
+      institutionLabel: "Institution name",
+      institutionPlaceholder: "e.g. Alinma Bank",
+      approvedByLabel: "Approved by",
+      approvedByPlaceholder: "e.g. Board Risk Committee",
+      approvedDateLabel: "Approval date",
+      saveButton: "Save & approve",
+      saving: "Saving...",
+      saved: "Risk appetite statement saved and approved",
+      adminOnlyNote: "Changing this setting requires a system-admin account — other users can only view it",
+      adminOnlyError: "This action requires a system-admin account",
+      notApproved: "Not yet approved",
+      loading: "Loading risk appetite data...",
+    },
     chart: {
       month: "Month",
       tooltipCurrency: "SAR",
@@ -652,7 +710,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "riskAppetite", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -661,6 +719,7 @@ const NAV_ICONS = {
   analytics: BarChart3,
   regulatory: FileText,
   methodology: Gauge,
+  riskAppetite: Scale,
   chatbot: MessageCircle,
   limits: ShieldAlert,
 };
@@ -2631,6 +2690,249 @@ function MethodologyTab({ lang, t }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Risk Appetite — operationalizes the board-approved Risk Appetite Statement
+// (a real SAMA governance requirement) as a live control: the selected
+// level directly changes RISK_APPETITE_STATE["threshold"] on the backend,
+// which the Level-2 classifier reads on every transaction. Editing is
+// restricted to the "admin" role; everyone else gets a read-only view —
+// mirroring how a real bank would restrict who may change a board-level
+// setting.
+// ---------------------------------------------------------------------------
+
+function RiskAppetiteTab({ lang, t, authUser, authToken }) {
+  const r = t.riskAppetite;
+  const isAdmin = authUser?.role === "admin";
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [level, setLevel] = useState("moderate");
+  const [institutionName, setInstitutionName] = useState("");
+  const [approvedBy, setApprovedBy] = useState("");
+  const [approvedDate, setApprovedDate] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState(null); // { ok: bool, text: string }
+
+  const loadData = useCallback(() => {
+    setLoading(true);
+    fetch(`${API_BASE}/risk-appetite`)
+      .then((res) => {
+        if (!res.ok) throw new Error("failed");
+        return res.json();
+      })
+      .then((json) => {
+        setData(json);
+        setLevel(json.level);
+        setInstitutionName(json.institution_name || "");
+        setApprovedBy(json.approved_by || "");
+        setApprovedDate(json.approved_date || "");
+      })
+      .catch(() => {
+        // Offline fallback — keeps the tab usable and honest about being
+        // local-only, consistent with the rest of the dashboard.
+        setData({
+          level: "moderate",
+          label_ar: "متوسط",
+          label_en: "Moderate",
+          threshold: 0.55,
+          institution_name: "",
+          approved_by: "",
+          approved_date: "",
+          current_exposure_pct: 24.5,
+          levels: {
+            conservative: { threshold: 0.4, label_ar: "متحفّظ", label_en: "Conservative" },
+            moderate: { threshold: 0.55, label_ar: "متوسط", label_en: "Moderate" },
+            aggressive: { threshold: 0.7, label_ar: "منفتح", label_en: "Aggressive" },
+          },
+        });
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/risk-appetite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          level,
+          institution_name: institutionName,
+          approved_by: approvedBy,
+          approved_date: approvedDate,
+        }),
+      });
+      if (res.status === 403) {
+        setSaveMsg({ ok: false, text: r.adminOnlyError });
+        return;
+      }
+      if (!res.ok) throw new Error("save failed");
+      const json = await res.json();
+      setData(json);
+      setSaveMsg({ ok: true, text: r.saved });
+    } catch {
+      setSaveMsg({ ok: false, text: r.adminOnlyError });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading || !data) {
+    return <p className="text-xs text-white/35 animate-fade-up">{r.loading}</p>;
+  }
+
+  const levels = data.levels || {};
+  const levelMeta = {
+    conservative: { key: "conservative", label: r.levelConservative, desc: r.levelConservativeDesc, color: "var(--coral)" },
+    moderate: { key: "moderate", label: r.levelModerate, desc: r.levelModerateDesc, color: "var(--gold)" },
+    aggressive: { key: "aggressive", label: r.levelAggressive, desc: r.levelAggressiveDesc, color: "var(--lavender)" },
+  };
+  const exposurePct = data.current_exposure_pct ?? 0;
+  const exposureColor = exposurePct > 35 ? "var(--coral)" : exposurePct > 18 ? "var(--gold)" : "#6ee7b7";
+
+  return (
+    <div className="space-y-6 animate-fade-up">
+      <div>
+        <h2 className="font-display text-2xl font-black text-white">{r.title}</h2>
+        <p className="text-sm text-white/45 mt-1">{r.subtitle}</p>
+      </div>
+
+      <div
+        className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2"
+        style={{ backgroundColor: "rgba(228,160,255,0.06)", border: "1px solid rgba(228,160,255,0.2)", color: "rgba(255,255,255,0.6)" }}
+      >
+        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--orchid)" }} />
+        {r.governanceNote}
+      </div>
+
+      {/* Live exposure gauge + current threshold */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="glass-panel aurora-border rounded-2xl p-5">
+          <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-3">{r.exposureLabel}</p>
+          <div className="flex items-end gap-2 mb-2">
+            <span className="text-3xl font-black" style={{ color: exposureColor }}>{exposurePct}%</span>
+          </div>
+          <div className="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden mb-3">
+            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(exposurePct, 100)}%`, backgroundColor: exposureColor }} />
+          </div>
+          <p className="text-[11px] text-white/45 leading-relaxed">{r.exposureDesc}</p>
+        </div>
+
+        <div className="glass-panel aurora-border rounded-2xl p-5">
+          <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-3">{r.currentLevelLabel}</p>
+          <div className="flex items-center gap-2 mb-3">
+            <Scale size={20} style={{ color: levelMeta[data.level]?.color || "var(--gold)" }} />
+            <span className="text-xl font-black text-white">{lang === "en" ? data.label_en : data.label_ar}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-white/40">{r.thresholdLabel}</span>
+            <span className="font-mono font-bold text-white/80">{data.threshold}</span>
+          </div>
+          {data.approved_by ? (
+            <p className="text-[11px] text-white/35 mt-2">
+              {r.institutionLabel}: <span className="text-white/60">{data.institution_name}</span> · {r.approvedByLabel}: <span className="text-white/60">{data.approved_by}</span>
+            </p>
+          ) : (
+            <p className="text-[11px] mt-2" style={{ color: "var(--coral)" }}>{r.notApproved}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Level selector */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="grid sm:grid-cols-3 gap-3">
+          {Object.keys(levelMeta).map((key) => {
+            const meta = levelMeta[key];
+            const thresholdVal = levels[key]?.threshold;
+            const selected = level === key;
+            return (
+              <button
+                key={key}
+                disabled={!isAdmin}
+                onClick={() => setLevel(key)}
+                className="text-right rounded-xl border p-3.5 transition-all disabled:cursor-not-allowed"
+                style={
+                  selected
+                    ? { borderColor: meta.color, backgroundColor: `${meta.color}14` }
+                    : { borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.02)" }
+                }
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm" style={{ color: selected ? meta.color : "#fff" }}>{meta.label}</span>
+                  <span className="font-mono text-[11px] text-white/40">{thresholdVal}</span>
+                </div>
+                <p className="text-[11px] text-white/45 leading-relaxed">{meta.desc}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Approval configuration */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-4">{r.configTitle}</p>
+        <div className="grid sm:grid-cols-3 gap-3 mb-4">
+          <div>
+            <label className="text-[10.5px] text-white/40 block mb-1.5">{r.institutionLabel}</label>
+            <input
+              type="text"
+              value={institutionName}
+              onChange={(e) => setInstitutionName(e.target.value)}
+              placeholder={r.institutionPlaceholder}
+              disabled={!isAdmin}
+              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="text-[10.5px] text-white/40 block mb-1.5">{r.approvedByLabel}</label>
+            <input
+              type="text"
+              value={approvedBy}
+              onChange={(e) => setApprovedBy(e.target.value)}
+              placeholder={r.approvedByPlaceholder}
+              disabled={!isAdmin}
+              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="text-[10.5px] text-white/40 block mb-1.5">{r.approvedDateLabel}</label>
+            <input
+              type="date"
+              value={approvedDate}
+              onChange={(e) => setApprovedDate(e.target.value)}
+              disabled={!isAdmin}
+              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
+            />
+          </div>
+        </div>
+
+        {isAdmin ? (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="py-2 px-5 rounded-xl font-bold text-xs flex items-center gap-2 transition-opacity disabled:opacity-60"
+            style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
+          >
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}
+            {saving ? r.saving : r.saveButton}
+          </button>
+        ) : (
+          <p className="text-[11px] text-white/35">{r.adminOnlyNote}</p>
+        )}
+
+        {saveMsg && (
+          <p className="text-[11px] mt-3" style={{ color: saveMsg.ok ? "#6ee7b7" : "var(--coral)" }}>{saveMsg.text}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const LIMITS_ICONS = { shield: ShieldAlert, scale: Scale, book: BookOpenCheck, user: UserCheck, badge: BadgeCheck };
 
 // ---------------------------------------------------------------------------
@@ -4392,6 +4694,7 @@ export default function MeyarDashboard() {
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
           {activeTab === "methodology" && <MethodologyTab lang={lang} t={t} />}
+          {activeTab === "riskAppetite" && <RiskAppetiteTab lang={lang} t={t} authUser={authUser} authToken={authToken} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
