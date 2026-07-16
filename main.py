@@ -35,6 +35,7 @@ import random
 import re
 import secrets
 import sqlite3
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -2208,15 +2209,30 @@ class RiskAppetiteUpdate(BaseModel):
     approved_date: str
 
 
+_EXPOSURE_CACHE = {"value": None, "computed_at": 0.0}
+EXPOSURE_CACHE_TTL_SECONDS = 20
+EXPOSURE_SAMPLE_SIZE = 25  # was 200 — each sample runs a real model inference,
+# and 200 of those in one request was the actual cause of the ~1-minute load
+# time on Render's free-tier CPU. 25 is still a statistically reasonable
+# live sample for a demo-scale gauge, at roughly 1/8th the cost.
+
+
 def _current_risk_exposure_pct() -> float:
-    """Samples a batch of live-simulated transactions through the SAME
+    """Samples a small batch of live-simulated transactions through the SAME
     generator and threshold used by /api/realtime-transactions, and reports
     what share would be escalated to Level 2 right now — i.e. the system's
     actual current risk posture, measured against the chosen appetite
-    boundary, not a cosmetic number."""
-    sample = [_generate_transaction(i, _now()) for i in range(200)]
+    boundary, not a cosmetic number. Cached briefly since this triggers real
+    model inference per sample and is called on every dashboard load."""
+    age = time.monotonic() - _EXPOSURE_CACHE["computed_at"]
+    if _EXPOSURE_CACHE["value"] is not None and age < EXPOSURE_CACHE_TTL_SECONDS:
+        return _EXPOSURE_CACHE["value"]
+    sample = [_generate_transaction(i, _now()) for i in range(EXPOSURE_SAMPLE_SIZE)]
     escalated = sum(1 for t in sample if t.status in ("flagged", "blocked"))
-    return round(escalated / len(sample) * 100, 1)
+    pct = round(escalated / len(sample) * 100, 1)
+    _EXPOSURE_CACHE["value"] = pct
+    _EXPOSURE_CACHE["computed_at"] = time.monotonic()
+    return pct
 
 
 @app.get("/api/risk-appetite")
