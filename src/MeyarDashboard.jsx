@@ -157,11 +157,21 @@ const STR = {
     auth: {
       appName: "معيار",
       tagline: "منظومة الرقابة المالية اللحظية",
+      loginTab: "تسجيل الدخول",
+      signupTab: "حساب جديد",
       emailStepTitle: "تسجيل الدخول",
       emailStepSubtitle: "أدخل بريدك الإلكتروني الوظيفي لإرسال رمز تحقق",
       emailPlaceholder: "name@meyar.demo",
       sendCode: "إرسال رمز التحقق",
       sending: "جارٍ الإرسال...",
+      signupStepTitle: "إنشاء حساب جديد",
+      signupStepSubtitle: "بيانات بسيطة، ثم نرسل لك رمز تحقق لتأكيد بريدك",
+      namePlaceholder: "الاسم الكامل",
+      roleLabel: "الدور الوظيفي",
+      roleCompliance: "موظف الامتثال",
+      roleSharia: "عضو الهيئة الشرعية",
+      createAccount: "إنشاء الحساب وإرسال الرمز",
+      creating: "جارٍ الإنشاء...",
       codeStepTitle: "أدخل رمز التحقق",
       codeStepSubtitle: (email) => `أرسلنا رمز مكوَّن من ٦ أرقام إلى ${email}`,
       codePlaceholder: "٠ ٠ ٠ ٠ ٠ ٠",
@@ -169,11 +179,15 @@ const STR = {
       verifying: "جارٍ التحقق...",
       changeEmail: "تغيير البريد الإلكتروني",
       demoNotice: (code) => `وضع تجريبي: لا يوجد إرسال بريد فعلي حالياً، رمزك هو ${code}`,
-      invalidEmail: "هذا البريد الإلكتروني غير مسجَّل بالنظام",
+      notRegistered: "هذا البريد غير مسجَّل بالنظام.",
+      goToSignup: "أنشئ حساباً جديداً",
+      alreadyRegistered: "هذا البريد مسجَّل بالفعل.",
+      goToLogin: "سجّل الدخول بدلاً من ذلك",
       invalidCode: "رمز غير صحيح أو منتهي الصلاحية",
-      genericError: "حدث خطأ، حاول مرة أخرى",
+      nameRequired: "الرجاء إدخال الاسم الكامل",
+      genericError: "حدث خطأ من الخادم، حاول مرة أخرى",
+      networkError: "تعذّر الوصول للخادم — تحقّق من اتصالك بالإنترنت أو حاول لاحقاً",
       sessionExpired: "انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً",
-      demoAccountsTitle: "حسابات تجريبية متاحة",
     },
     onboarding: {
       skip: "تخطّي",
@@ -430,11 +444,21 @@ const STR = {
     auth: {
       appName: "Meyar",
       tagline: "Real-time financial compliance system",
+      loginTab: "Sign in",
+      signupTab: "New account",
       emailStepTitle: "Sign in",
       emailStepSubtitle: "Enter your work email to receive a verification code",
       emailPlaceholder: "name@meyar.demo",
       sendCode: "Send verification code",
       sending: "Sending...",
+      signupStepTitle: "Create a new account",
+      signupStepSubtitle: "A few basic details, then we'll send a code to confirm your email",
+      namePlaceholder: "Full name",
+      roleLabel: "Role",
+      roleCompliance: "Compliance officer",
+      roleSharia: "Sharia board member",
+      createAccount: "Create account & send code",
+      creating: "Creating...",
       codeStepTitle: "Enter verification code",
       codeStepSubtitle: (email) => `We sent a 6-digit code to ${email}`,
       codePlaceholder: "0 0 0 0 0 0",
@@ -442,11 +466,15 @@ const STR = {
       verifying: "Verifying...",
       changeEmail: "Change email",
       demoNotice: (code) => `Demo mode: no real email is sent yet, your code is ${code}`,
-      invalidEmail: "This email is not registered in the system",
+      notRegistered: "This email is not registered.",
+      goToSignup: "Create a new account",
+      alreadyRegistered: "This email is already registered.",
+      goToLogin: "Sign in instead",
       invalidCode: "Invalid or expired code",
-      genericError: "Something went wrong, please try again",
+      nameRequired: "Please enter your full name",
+      genericError: "A server error occurred, please try again",
+      networkError: "Couldn't reach the server — check your connection or try again later",
       sessionExpired: "Your session has expired, please sign in again",
-      demoAccountsTitle: "Available demo accounts",
     },
     onboarding: {
       skip: "Skip",
@@ -696,7 +724,6 @@ const AR_EN_DICTIONARY = {
   "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما)": "the SAMA AML/CTF Guide",
   "نظام مكافحة غسل الأموال (م/20)": "the Anti-Money Laundering Law (Royal Decree M/20)",
   "إطار ساما للخدمات المصرفية المفتوحة": "the SAMA Open Banking Framework",
-  "قواعد المحافظ الإلكترونية": "the Electronic Wallets Rules",
   "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)": "the Payment Service Provider Regulations (PSPR)",
   "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة": "Customer identity verification controls in Open Banking services",
   "تحديث السقوف اليومية لمعاملات الدفع الفوري": "Update to daily limits for instant payment transactions",
@@ -3140,50 +3167,100 @@ function ToastStack({ toasts, onDismiss, onView, lang, t }) {
 }
 
 // ---------------------------------------------------------------------------
-// Login — real email-code (OTP) sign-in against the backend's auth
-// endpoints. Two steps: request a code for a registered work email, then
-// verify it to receive a signed session token. In MEYAR_DEMO_MODE (the
-// backend default while no real email provider is wired in) the generated
-// code is returned in the response so the flow can be tested end-to-end
-// without a live inbox — shown here plainly as a demo notice, not hidden.
+// Login / Sign-up — real email-code (OTP) verification against the
+// backend's auth endpoints. Two entry points (sign in to an existing
+// account, or register a new one) both end at the same code-verification
+// step. In MEYAR_DEMO_MODE (the backend default while no real email
+// provider is wired in) the generated code is returned in the response so
+// the flow can be tested end-to-end without a live inbox — shown here
+// plainly as a demo notice, not hidden.
 // ---------------------------------------------------------------------------
-
-const DEMO_ACCOUNTS = [
-  { email: "sara.alqahtani@meyar.demo", role_ar: "موظف الامتثال", role_en: "Compliance officer" },
-  { email: "abdulaziz.alharbi@meyar.demo", role_ar: "رئيس الهيئة الشرعية", role_en: "Sharia board chair" },
-  { email: "admin@meyar.demo", role_ar: "مدير النظام", role_en: "System admin" },
-];
 
 const ROLE_LABELS = {
   ar: { compliance_officer: "موظف الامتثال", sharia_board: "رئيس الهيئة الشرعية", admin: "مدير النظام" },
   en: { compliance_officer: "Compliance officer", sharia_board: "Sharia board chair", admin: "System admin" },
 };
 
+async function parseAuthError(res, a) {
+  // Surfaces the backend's actual reason instead of a single generic
+  // message, so a failed sign-in/sign-up is actually debuggable.
+  try {
+    const body = await res.json();
+    const detail = body?.detail;
+    if (detail === "not_registered") return { code: "not_registered", message: a.notRegistered };
+    if (detail === "already_registered") return { code: "already_registered", message: a.alreadyRegistered };
+    if (detail === "name_required") return { code: "generic", message: a.nameRequired };
+    if (res.status === 401) return { code: "generic", message: a.invalidCode };
+    return { code: "generic", message: typeof detail === "string" ? detail : a.genericError };
+  } catch {
+    return { code: "generic", message: a.genericError };
+  }
+}
+
 function LoginScreen({ onSuccess, lang, t }) {
   const a = t.auth;
-  const [step, setStep] = useState("email"); // "email" | "code"
+  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [step, setStep] = useState("form"); // "form" | "code"
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("compliance_officer");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null); // { code, message } | null
   const [demoCode, setDemoCode] = useState(null);
+
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setStep("form");
+    setError(null);
+    setDemoCode(null);
+    setCode("");
+  };
+
+  const handleAuthResponse = async (res) => {
+    if (!res.ok) {
+      setError(await parseAuthError(res, a));
+      return false;
+    }
+    const data = await res.json();
+    if (data.demo_code) setDemoCode(data.demo_code);
+    setStep("code");
+    return true;
+  };
 
   const requestCode = async (e) => {
     e?.preventDefault();
     if (!email.trim()) return;
     setBusy(true);
-    setError("");
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/auth/request-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
-      const data = await res.json();
-      if (data.demo_code) setDemoCode(data.demo_code);
-      setStep("code");
+      await handleAuthResponse(res);
     } catch {
-      setError(a.genericError);
+      setError({ code: "network", message: a.networkError });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const register = async (e) => {
+    e?.preventDefault();
+    if (!name.trim() || !email.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), role }),
+      });
+      await handleAuthResponse(res);
+    } catch {
+      setError({ code: "network", message: a.networkError });
     } finally {
       setBusy(false);
     }
@@ -3193,7 +3270,7 @@ function LoginScreen({ onSuccess, lang, t }) {
     e?.preventDefault();
     if (!code.trim()) return;
     setBusy(true);
-    setError("");
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/auth/verify-code`, {
         method: "POST",
@@ -3201,17 +3278,34 @@ function LoginScreen({ onSuccess, lang, t }) {
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
       });
       if (!res.ok) {
-        setError(a.invalidCode);
+        setError(await parseAuthError(res, a));
         setBusy(false);
         return;
       }
       const data = await res.json();
       onSuccess(data.token, data.user);
     } catch {
-      setError(a.genericError);
+      setError({ code: "network", message: a.networkError });
       setBusy(false);
     }
   };
+
+  const ErrorNote = () =>
+    error ? (
+      <div className="mb-3">
+        <p className="text-[11px]" style={{ color: "var(--coral)" }}>{error.message}</p>
+        {error.code === "not_registered" && (
+          <button type="button" onClick={() => switchMode("signup")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
+            {a.goToSignup}
+          </button>
+        )}
+        {error.code === "already_registered" && (
+          <button type="button" onClick={() => switchMode("login")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
+            {a.goToLogin}
+          </button>
+        )}
+      </div>
+    ) : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--bg-obsidian)" }}>
@@ -3223,7 +3317,26 @@ function LoginScreen({ onSuccess, lang, t }) {
         </div>
 
         <div className="aurora-border glass-panel-strong rounded-2xl p-6 animate-fade-up">
-          {step === "email" ? (
+          {step === "form" && (
+            <div className="flex mb-5 rounded-xl bg-white/[0.04] p-1">
+              <button
+                onClick={() => switchMode("login")}
+                className="flex-1 py-2 rounded-lg text-xs font-bold transition-colors"
+                style={mode === "login" ? { backgroundColor: "var(--orchid)", color: "#1a0b26" } : { color: "rgba(255,255,255,0.45)" }}
+              >
+                {a.loginTab}
+              </button>
+              <button
+                onClick={() => switchMode("signup")}
+                className="flex-1 py-2 rounded-lg text-xs font-bold transition-colors"
+                style={mode === "signup" ? { backgroundColor: "var(--orchid)", color: "#1a0b26" } : { color: "rgba(255,255,255,0.45)" }}
+              >
+                {a.signupTab}
+              </button>
+            </div>
+          )}
+
+          {step === "form" && mode === "login" && (
             <form onSubmit={requestCode}>
               <p className="text-white font-bold text-sm mb-1">{a.emailStepTitle}</p>
               <p className="text-[11px] text-white/45 mb-4">{a.emailStepSubtitle}</p>
@@ -3239,7 +3352,7 @@ function LoginScreen({ onSuccess, lang, t }) {
                   required
                 />
               </div>
-              {error && <p className="text-[11px] mb-3" style={{ color: "var(--coral)" }}>{error}</p>}
+              <ErrorNote />
               <button
                 type="submit"
                 disabled={busy}
@@ -3250,7 +3363,60 @@ function LoginScreen({ onSuccess, lang, t }) {
                 {busy ? a.sending : a.sendCode}
               </button>
             </form>
-          ) : (
+          )}
+
+          {step === "form" && mode === "signup" && (
+            <form onSubmit={register}>
+              <p className="text-white font-bold text-sm mb-1">{a.signupStepTitle}</p>
+              <p className="text-[11px] text-white/45 mb-4">{a.signupStepSubtitle}</p>
+              <div className="relative mb-2.5">
+                <UserCheck size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={a.namePlaceholder}
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
+                  required
+                />
+              </div>
+              <div className="relative mb-2.5">
+                <Mail size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={a.emailPlaceholder}
+                  dir="ltr"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
+                  required
+                />
+              </div>
+              <div className="mb-3">
+                <label className="text-[10.5px] text-white/40 block mb-1.5">{a.roleLabel}</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-[var(--orchid)]/50"
+                >
+                  <option value="compliance_officer">{a.roleCompliance}</option>
+                  <option value="sharia_board">{a.roleSharia}</option>
+                </select>
+              </div>
+              <ErrorNote />
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />}
+                {busy ? a.creating : a.createAccount}
+              </button>
+            </form>
+          )}
+
+          {step === "code" && (
             <form onSubmit={verifyCode}>
               <p className="text-white font-bold text-sm mb-1">{a.codeStepTitle}</p>
               <p className="text-[11px] text-white/45 mb-4">{a.codeStepSubtitle(email)}</p>
@@ -3274,7 +3440,7 @@ function LoginScreen({ onSuccess, lang, t }) {
                   <p className="text-[10.5px]" style={{ color: "var(--gold)" }}>{a.demoNotice(demoCode)}</p>
                 </div>
               )}
-              {error && <p className="text-[11px] mb-3" style={{ color: "var(--coral)" }}>{error}</p>}
+              <ErrorNote />
               <button
                 type="submit"
                 disabled={busy}
@@ -3286,29 +3452,13 @@ function LoginScreen({ onSuccess, lang, t }) {
               </button>
               <button
                 type="button"
-                onClick={() => { setStep("email"); setCode(""); setError(""); setDemoCode(null); }}
+                onClick={() => { setStep("form"); setCode(""); setError(null); setDemoCode(null); }}
                 className="w-full py-2 rounded-xl text-[11px] text-white/40 hover:text-white/70"
               >
                 {a.changeEmail}
               </button>
             </form>
           )}
-        </div>
-
-        <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <p className="text-[10px] font-bold text-white/35 uppercase tracking-wide mb-2">{a.demoAccountsTitle}</p>
-          <div className="space-y-1">
-            {DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                onClick={() => { setEmail(acc.email); setStep("email"); }}
-                className="w-full flex items-center justify-between text-[10.5px] text-white/45 hover:text-white/80 py-0.5"
-              >
-                <span dir="ltr">{acc.email}</span>
-                <span>{lang === "en" ? acc.role_en : acc.role_ar}</span>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>
