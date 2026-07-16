@@ -1916,7 +1916,7 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> dic
     return payload
 
 
-
+def _db_insert_review_item(tx: dict) -> None:
     conn = _db_connect()
     conn.execute(
         "INSERT OR REPLACE INTO review_queue (id, status, timestamp, data) VALUES (?, ?, ?, ?)",
