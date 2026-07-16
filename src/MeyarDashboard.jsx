@@ -58,6 +58,10 @@ import {
   Gauge,
   GitCompare,
   Bug,
+  Mail,
+  KeyRound,
+  LogOut,
+  Loader2,
   Wand2,
   Presentation,
 } from "lucide-react";
@@ -145,6 +149,31 @@ const STR = {
       presentationOn: "تفعيل وضع العرض التقديمي",
       presentationOff: "إيقاف وضع العرض التقديمي",
       close: "إغلاق",
+      profileTitle: "الملف الشخصي",
+      roleLabel: "الدور الوظيفي",
+      emailLabel: "البريد الإلكتروني",
+      logout: "تسجيل الخروج",
+    },
+    auth: {
+      appName: "معيار",
+      tagline: "منظومة الرقابة المالية اللحظية",
+      emailStepTitle: "تسجيل الدخول",
+      emailStepSubtitle: "أدخل بريدك الإلكتروني الوظيفي لإرسال رمز تحقق",
+      emailPlaceholder: "name@meyar.demo",
+      sendCode: "إرسال رمز التحقق",
+      sending: "جارٍ الإرسال...",
+      codeStepTitle: "أدخل رمز التحقق",
+      codeStepSubtitle: (email) => `أرسلنا رمز مكوَّن من ٦ أرقام إلى ${email}`,
+      codePlaceholder: "٠ ٠ ٠ ٠ ٠ ٠",
+      verify: "تحقق ودخول",
+      verifying: "جارٍ التحقق...",
+      changeEmail: "تغيير البريد الإلكتروني",
+      demoNotice: (code) => `وضع تجريبي: لا يوجد إرسال بريد فعلي حالياً، رمزك هو ${code}`,
+      invalidEmail: "هذا البريد الإلكتروني غير مسجَّل بالنظام",
+      invalidCode: "رمز غير صحيح أو منتهي الصلاحية",
+      genericError: "حدث خطأ، حاول مرة أخرى",
+      sessionExpired: "انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً",
+      demoAccountsTitle: "حسابات تجريبية متاحة",
     },
     onboarding: {
       skip: "تخطّي",
@@ -233,6 +262,8 @@ const STR = {
       reviewerLabel: "المراجع:",
       defaultReviewer: "موظف الامتثال (تجريبي)",
       decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
+      categoryFilterLabel: "تصنيف المخالفة",
+      categoryFilterAll: "كل التصنيفات",
       exportPdf: "تقرير PDF",
       exportDecisions: "تقرير القرارات (موافقة/رفض)",
       exportPending: "تصدير المعلَّقة فقط",
@@ -391,6 +422,31 @@ const STR = {
       presentationOn: "Enable presentation mode",
       presentationOff: "Disable presentation mode",
       close: "Close",
+      profileTitle: "Profile",
+      roleLabel: "Role",
+      emailLabel: "Email",
+      logout: "Log out",
+    },
+    auth: {
+      appName: "Meyar",
+      tagline: "Real-time financial compliance system",
+      emailStepTitle: "Sign in",
+      emailStepSubtitle: "Enter your work email to receive a verification code",
+      emailPlaceholder: "name@meyar.demo",
+      sendCode: "Send verification code",
+      sending: "Sending...",
+      codeStepTitle: "Enter verification code",
+      codeStepSubtitle: (email) => `We sent a 6-digit code to ${email}`,
+      codePlaceholder: "0 0 0 0 0 0",
+      verify: "Verify & sign in",
+      verifying: "Verifying...",
+      changeEmail: "Change email",
+      demoNotice: (code) => `Demo mode: no real email is sent yet, your code is ${code}`,
+      invalidEmail: "This email is not registered in the system",
+      invalidCode: "Invalid or expired code",
+      genericError: "Something went wrong, please try again",
+      sessionExpired: "Your session has expired, please sign in again",
+      demoAccountsTitle: "Available demo accounts",
     },
     onboarding: {
       skip: "Skip",
@@ -478,6 +534,8 @@ const STR = {
       reviewerLabel: "Reviewer:",
       defaultReviewer: "Compliance officer (demo)",
       decidedToast: "Decision recorded and added to the audit trail",
+      categoryFilterLabel: "Violation category",
+      categoryFilterAll: "All categories",
       exportPdf: "PDF Report",
       exportDecisions: "Decisions report (approved/rejected)",
       exportPending: "Export pending only",
@@ -2098,6 +2156,16 @@ function MiniStat({ icon: Icon, label, value, color }) {
 function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
   const decidedItems = useMemo(() => (auditLog || []).filter((e) => e.level === "human_review"), [auditLog]);
 
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(reviewQueue.map((tx) => tx.violation_category).filter(Boolean))),
+    [reviewQueue]
+  );
+  const filteredQueue = useMemo(
+    () => (categoryFilter === "all" ? reviewQueue : reviewQueue.filter((tx) => tx.violation_category === categoryFilter)),
+    [reviewQueue, categoryFilter]
+  );
+
   const formatExactTime = (isoString) => {
     const d = new Date(isoString);
     if (Number.isNaN(d.getTime())) return "";
@@ -2136,7 +2204,7 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
 
   const handleExportPending = () => {
     exportToExcel({
-      rows: reviewQueue,
+      rows: filteredQueue,
       sheetTitle: lang === "en" ? "Meyar — Pending Review Queue" : "معيار — المعاملات المعلَّقة بانتظار المراجعة",
       fileName: `meyar-pending-queue-${new Date().toISOString().slice(0, 10)}`,
       columns: [
@@ -2234,11 +2302,29 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
         <MiniStat icon={BadgeCheck} label={t.reviewQueue.approvalRate} value={`${stats.approval_rate_pct}%`} color="var(--orchid)" />
       </div>
 
+      <div className="flex items-center gap-2.5">
+        <Filter size={14} className="text-white/35 shrink-0" />
+        <label className="text-[11px] text-white/40 shrink-0">{t.reviewQueue.categoryFilterLabel}</label>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="bg-white/[0.04] border border-white/10 rounded-lg py-1.5 px-2.5 text-[11.5px] text-white focus:outline-none focus:border-[var(--orchid)]/50 max-w-[240px]"
+        >
+          <option value="all">{t.reviewQueue.categoryFilterAll}</option>
+          {categoryOptions.map((cat) => (
+            <option key={cat} value={cat}>{localize(cat, lang)}</option>
+          ))}
+        </select>
+        {categoryFilter !== "all" && (
+          <span className="text-[11px] text-white/35">({numberFmt.format(filteredQueue.length)})</span>
+        )}
+      </div>
+
       <div className="space-y-2.5">
-        {reviewQueue.length === 0 && (
+        {filteredQueue.length === 0 && (
           <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
         )}
-        {reviewQueue.map((tx, i) => (
+        {filteredQueue.map((tx, i) => (
           <div
             key={tx.id}
             style={{ animationDelay: `${i * 40}ms` }}
@@ -3053,7 +3139,184 @@ function ToastStack({ toasts, onDismiss, onView, lang, t }) {
   );
 }
 
-function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentationMode, onTogglePresentation, t }) {
+// ---------------------------------------------------------------------------
+// Login — real email-code (OTP) sign-in against the backend's auth
+// endpoints. Two steps: request a code for a registered work email, then
+// verify it to receive a signed session token. In MEYAR_DEMO_MODE (the
+// backend default while no real email provider is wired in) the generated
+// code is returned in the response so the flow can be tested end-to-end
+// without a live inbox — shown here plainly as a demo notice, not hidden.
+// ---------------------------------------------------------------------------
+
+const DEMO_ACCOUNTS = [
+  { email: "sara.alqahtani@meyar.demo", role_ar: "موظف الامتثال", role_en: "Compliance officer" },
+  { email: "abdulaziz.alharbi@meyar.demo", role_ar: "رئيس الهيئة الشرعية", role_en: "Sharia board chair" },
+  { email: "admin@meyar.demo", role_ar: "مدير النظام", role_en: "System admin" },
+];
+
+const ROLE_LABELS = {
+  ar: { compliance_officer: "موظف الامتثال", sharia_board: "رئيس الهيئة الشرعية", admin: "مدير النظام" },
+  en: { compliance_officer: "Compliance officer", sharia_board: "Sharia board chair", admin: "System admin" },
+};
+
+function LoginScreen({ onSuccess, lang, t }) {
+  const a = t.auth;
+  const [step, setStep] = useState("email"); // "email" | "code"
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [demoCode, setDemoCode] = useState(null);
+
+  const requestCode = async (e) => {
+    e?.preventDefault();
+    if (!email.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/auth/request-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (data.demo_code) setDemoCode(data.demo_code);
+      setStep("code");
+    } catch {
+      setError(a.genericError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyCode = async (e) => {
+    e?.preventDefault();
+    if (!code.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/auth/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+      });
+      if (!res.ok) {
+        setError(a.invalidCode);
+        setBusy(false);
+        return;
+      }
+      const data = await res.json();
+      onSuccess(data.token, data.user);
+    } catch {
+      setError(a.genericError);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--bg-obsidian)" }}>
+      <div className="w-full max-w-sm">
+        <div className="flex flex-col items-center mb-6">
+          <MeyarLogo size={48} />
+          <p className="text-white font-black text-lg mt-3">{a.appName}</p>
+          <p className="text-[11px] text-white/40">{a.tagline}</p>
+        </div>
+
+        <div className="aurora-border glass-panel-strong rounded-2xl p-6 animate-fade-up">
+          {step === "email" ? (
+            <form onSubmit={requestCode}>
+              <p className="text-white font-bold text-sm mb-1">{a.emailStepTitle}</p>
+              <p className="text-[11px] text-white/45 mb-4">{a.emailStepSubtitle}</p>
+              <div className="relative mb-3">
+                <Mail size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={a.emailPlaceholder}
+                  dir="ltr"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
+                  required
+                />
+              </div>
+              {error && <p className="text-[11px] mb-3" style={{ color: "var(--coral)" }}>{error}</p>}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />}
+                {busy ? a.sending : a.sendCode}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={verifyCode}>
+              <p className="text-white font-bold text-sm mb-1">{a.codeStepTitle}</p>
+              <p className="text-[11px] text-white/45 mb-4">{a.codeStepSubtitle(email)}</p>
+              <div className="relative mb-3">
+                <KeyRound size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder={a.codePlaceholder}
+                  dir="ltr"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-sm text-white text-center tracking-[6px] placeholder:text-white/20 focus:outline-none focus:border-[var(--orchid)]/50"
+                  required
+                  autoFocus
+                />
+              </div>
+              {demoCode && (
+                <div className="mb-3 rounded-lg border p-2.5" style={{ borderColor: "rgba(232,196,104,0.3)", backgroundColor: "rgba(232,196,104,0.08)" }}>
+                  <p className="text-[10.5px]" style={{ color: "var(--gold)" }}>{a.demoNotice(demoCode)}</p>
+                </div>
+              )}
+              {error && <p className="text-[11px] mb-3" style={{ color: "var(--coral)" }}>{error}</p>}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 mb-2 transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={13} />}
+                {busy ? a.verifying : a.verify}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStep("email"); setCode(""); setError(""); setDemoCode(null); }}
+                className="w-full py-2 rounded-xl text-[11px] text-white/40 hover:text-white/70"
+              >
+                {a.changeEmail}
+              </button>
+            </form>
+          )}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[10px] font-bold text-white/35 uppercase tracking-wide mb-2">{a.demoAccountsTitle}</p>
+          <div className="space-y-1">
+            {DEMO_ACCOUNTS.map((acc) => (
+              <button
+                key={acc.email}
+                onClick={() => { setEmail(acc.email); setStep("email"); }}
+                className="w-full flex items-center justify-between text-[10.5px] text-white/45 hover:text-white/80 py-0.5"
+              >
+                <span dir="ltr">{acc.email}</span>
+                <span>{lang === "en" ? acc.role_en : acc.role_ar}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentationMode, onTogglePresentation, authUser, onLogout, lang, t }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -3070,6 +3333,37 @@ function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentation
             <X size={14} />
           </button>
         </div>
+
+        {authUser && (
+          <div className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+            <p className="text-[10px] font-bold text-white/35 uppercase tracking-wide mb-2.5">{t.settingsModal.profileTitle}</p>
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
+              >
+                {authUser.name?.trim()?.[0] || "?"}
+              </div>
+              <div className="min-w-0">
+                <p className="text-white font-bold text-xs truncate">{authUser.name}</p>
+                <p className="text-[10.5px] text-white/40 truncate" dir="ltr">{authUser.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-[11px] mb-3">
+              <span className="text-white/40">{t.settingsModal.roleLabel}</span>
+              <span className="text-white/70 font-semibold">{ROLE_LABELS[lang]?.[authUser.role] || authUser.role}</span>
+            </div>
+            <button
+              onClick={onLogout}
+              className="w-full py-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+              style={{ backgroundColor: "rgba(255,107,129,0.08)", borderColor: "rgba(255,107,129,0.25)", color: "var(--coral)" }}
+            >
+              <LogOut size={12} />
+              {t.settingsModal.logout}
+            </button>
+          </div>
+        )}
+
         <p className="text-[12px] text-white/60 leading-relaxed mb-4">{t.settingsModal.description}</p>
 
         <div className="space-y-2">
@@ -3289,7 +3583,7 @@ function NotificationsPanel({ transactions, onViewAll, onClose, t }) {
 // Sidebar
 // ---------------------------------------------------------------------------
 
-function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettingsOpen, t }) {
+function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettingsOpen, authUser, t }) {
   return (
     <aside
       className={`aurora-border glass-panel-strong flex flex-col transition-all duration-300 shrink-0 ${
@@ -3335,6 +3629,25 @@ function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettings
       </nav>
 
       <div className="p-3 border-t border-white/5 space-y-1.5">
+        {authUser && (
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.04] transition-all"
+          >
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0"
+              style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
+            >
+              {authUser.name?.trim()?.[0] || "?"}
+            </div>
+            {!collapsed && (
+              <div className="min-w-0 text-right">
+                <p className="text-[11.5px] font-bold text-white truncate">{authUser.name}</p>
+                <p className="text-[9.5px] text-white/35 truncate">{ROLE_LABELS[t.dir === "ltr" ? "en" : "ar"]?.[authUser.role] || authUser.role}</p>
+              </div>
+            )}
+          </button>
+        )}
         <button
           onClick={() => setSettingsOpen(true)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/45 hover:bg-white/[0.04] hover:text-white transition-all"
@@ -3474,6 +3787,66 @@ const EMBEDDED_STYLE = `
 export default function MeyarDashboard() {
   const [lang, setLang] = useState("ar");
   const t = STR[lang];
+
+  const [authToken, setAuthToken] = useState(() => {
+    try {
+      return window.localStorage.getItem("meyar_auth_token");
+    } catch {
+      return null;
+    }
+  });
+  const [authUser, setAuthUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  const handleLoginSuccess = useCallback((token, user) => {
+    try {
+      window.localStorage.setItem("meyar_auth_token", token);
+    } catch {
+      /* private-browsing or storage disabled — session stays in-memory only */
+    }
+    setAuthToken(token);
+    setAuthUser(user);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    try {
+      window.localStorage.removeItem("meyar_auth_token");
+    } catch {
+      /* ignore */
+    }
+    setAuthToken(null);
+    setAuthUser(null);
+  }, []);
+
+  // Validate any stored token against the backend once on mount — a token
+  // surviving in localStorage from a previous session may have expired or
+  // been signed with a since-rotated secret, so it must be confirmed live
+  // rather than trusted at face value.
+  useEffect(() => {
+    if (!authToken) {
+      setAuthChecking(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${authToken}` } })
+      .then((res) => {
+        if (!res.ok) throw new Error("invalid session");
+        return res.json();
+      })
+      .then((user) => {
+        if (!cancelled) setAuthUser(user);
+      })
+      .catch(() => {
+        if (!cancelled) handleLogout();
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -3641,7 +4014,7 @@ export default function MeyarDashboard() {
       if (!tx) return;
 
       const decision = decisionWord === "approve" ? "approved" : "rejected";
-      const reviewerName = t.reviewQueue.defaultReviewer;
+      const reviewerName = authUser ? `${authUser.name} (${authUser.email})` : t.reviewQueue.defaultReviewer;
       const nextReviewQueue = reviewQueue.filter((t) => t.id !== transactionId);
 
       // Transactions whose IDs start with "TXN-LOCAL" were generated in the
@@ -3656,9 +4029,15 @@ export default function MeyarDashboard() {
         try {
           const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ decision: decisionWord, reviewer_name: reviewerName }),
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+            body: JSON.stringify({ decision: decisionWord }),
           });
+          if (res.status === 401) {
+            // Session expired mid-action — sign the person out rather than
+            // silently falling back to a local, unauthenticated decision.
+            handleLogout();
+            return;
+          }
           if (!res.ok) throw new Error("decide failed");
           const result = await res.json();
           if (result.decision === "not_found") {
@@ -3697,7 +4076,7 @@ export default function MeyarDashboard() {
       }
       setReviewStats(computeReviewStats(nextReviewQueue, nextAuditLog));
     },
-    [reviewQueue, auditLog, t, fetchJSON]
+    [reviewQueue, auditLog, t, fetchJSON, authUser, authToken, handleLogout]
   );
 
   const sparkSeeds = useMemo(() => {
@@ -3710,6 +4089,18 @@ export default function MeyarDashboard() {
       savings: seed(50, 20),
     };
   }, []);
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-obsidian)" }}>
+        <Loader2 size={22} className="animate-spin text-white/30" />
+      </div>
+    );
+  }
+
+  if (!authToken || !authUser) {
+    return <LoginScreen onSuccess={handleLoginSuccess} lang={lang} t={t} />;
+  }
 
   return (
     <div
@@ -3733,6 +4124,7 @@ export default function MeyarDashboard() {
           collapsed={sidebarCollapsed}
           setCollapsed={setSidebarCollapsed}
           setSettingsOpen={setSettingsOpen}
+          authUser={authUser}
           t={t}
         />
       </div>
@@ -3752,6 +4144,7 @@ export default function MeyarDashboard() {
                 setSettingsOpen(v);
                 setMobileNavOpen(false);
               }}
+              authUser={authUser}
               t={t}
             />
           </div>
@@ -3772,6 +4165,12 @@ export default function MeyarDashboard() {
           }}
           presentationMode={presentationMode}
           onTogglePresentation={() => setPresentationMode((p) => !p)}
+          authUser={authUser}
+          onLogout={() => {
+            setSettingsOpen(false);
+            handleLogout();
+          }}
+          lang={lang}
           t={t}
         />
       )}
