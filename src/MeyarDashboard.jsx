@@ -167,9 +167,6 @@ const STR = {
       signupStepTitle: "إنشاء حساب جديد",
       signupStepSubtitle: "بيانات بسيطة، ثم نرسل لك رمز تحقق لتأكيد بريدك",
       namePlaceholder: "الاسم الكامل",
-      roleLabel: "الدور الوظيفي",
-      roleCompliance: "موظف الامتثال",
-      roleSharia: "عضو الهيئة الشرعية",
       createAccount: "إنشاء الحساب وإرسال الرمز",
       creating: "جارٍ الإنشاء...",
       codeStepTitle: "أدخل رمز التحقق",
@@ -454,9 +451,6 @@ const STR = {
       signupStepTitle: "Create a new account",
       signupStepSubtitle: "A few basic details, then we'll send a code to confirm your email",
       namePlaceholder: "Full name",
-      roleLabel: "Role",
-      roleCompliance: "Compliance officer",
-      roleSharia: "Sharia board member",
       createAccount: "Create account & send code",
       creating: "Creating...",
       codeStepTitle: "Enter verification code",
@@ -3203,7 +3197,6 @@ function LoginScreen({ onSuccess, lang, t }) {
   const [step, setStep] = useState("form"); // "form" | "code"
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("compliance_officer");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null); // { code, message } | null
@@ -3240,8 +3233,9 @@ function LoginScreen({ onSuccess, lang, t }) {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
       await handleAuthResponse(res);
-    } catch {
-      setError({ code: "network", message: a.networkError });
+    } catch (err) {
+      console.error("Auth request-code network failure:", err);
+      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
     } finally {
       setBusy(false);
     }
@@ -3256,11 +3250,12 @@ function LoginScreen({ onSuccess, lang, t }) {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), role }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }),
       });
       await handleAuthResponse(res);
-    } catch {
-      setError({ code: "network", message: a.networkError });
+    } catch (err) {
+      console.error("Auth register network failure:", err);
+      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
     } finally {
       setBusy(false);
     }
@@ -3284,8 +3279,9 @@ function LoginScreen({ onSuccess, lang, t }) {
       }
       const data = await res.json();
       onSuccess(data.token, data.user);
-    } catch {
-      setError({ code: "network", message: a.networkError });
+    } catch (err) {
+      console.error("Auth verify-code network failure:", err);
+      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
       setBusy(false);
     }
   };
@@ -3294,6 +3290,9 @@ function LoginScreen({ onSuccess, lang, t }) {
     error ? (
       <div className="mb-3">
         <p className="text-[11px]" style={{ color: "var(--coral)" }}>{error.message}</p>
+        {error.detail && (
+          <p className="text-[10px] text-white/30 mt-0.5" dir="ltr">{error.detail}</p>
+        )}
         {error.code === "not_registered" && (
           <button type="button" onClick={() => switchMode("signup")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
             {a.goToSignup}
@@ -3392,17 +3391,6 @@ function LoginScreen({ onSuccess, lang, t }) {
                   required
                 />
               </div>
-              <div className="mb-3">
-                <label className="text-[10.5px] text-white/40 block mb-1.5">{a.roleLabel}</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white focus:outline-none focus:border-[var(--orchid)]/50"
-                >
-                  <option value="compliance_officer">{a.roleCompliance}</option>
-                  <option value="sharia_board">{a.roleSharia}</option>
-                </select>
-              </div>
               <ErrorNote />
               <button
                 type="submit"
@@ -3460,6 +3448,8 @@ function LoginScreen({ onSuccess, lang, t }) {
             </form>
           )}
         </div>
+
+        <p className="text-center text-[9.5px] text-white/20 mt-3" dir="ltr">API: {API_BASE}</p>
       </div>
     </div>
   );
