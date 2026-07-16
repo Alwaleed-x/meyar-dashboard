@@ -69,6 +69,15 @@ ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    # In addition to the explicit allow-list above, accept any Vercel or
+    # Render subdomain automatically. Vercel preview URLs (per branch/PR)
+    # and Render service URLs both contain unpredictable random suffixes,
+    # so requiring an exact string match in ALLOWED_ORIGINS is fragile in
+    # practice — a single missed hyphen or an unset env var silently
+    # blocks every request with a browser-side "Failed to fetch", with
+    # nothing useful in the server logs to diagnose it by. This regex
+    # covers the common case without resorting to a blanket wildcard.
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(vercel\.app|onrender\.com)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
