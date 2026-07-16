@@ -55,7 +55,6 @@ import {
   ThumbsDown,
   Download,
   Filter,
-  Gauge,
   GitCompare,
   Bug,
   Mail,
@@ -95,7 +94,6 @@ const STR = {
       audit: "سجل التدقيق",
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
-      methodology: "منهجية الدقة",
       riskAppetite: "تقبّل المخاطر",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
@@ -335,30 +333,6 @@ const STR = {
         "الأنظمة والتعاميم المذكورة هنا حقيقية ويمكن التحقق منها بشكل مستقل (المصادر الرسمية: laws.boe.gov.sa و rulebook.sama.gov.sa). الاستثناء الوحيد هو بعض الأرقام الدقيقة للسقوف المالية غير المنشورة تفصيلياً من ساما.",
       issuedOn: "تاريخ الإصدار:",
     },
-    methodology: {
-      title: "منهجية الدقة",
-      subtitle: "كيف نقيس دقة الموديل فعلياً، ولماذا اخترنا هذا الحد بالذات لتفعيل التنبيه",
-      currentOperating: "نقطة التشغيل الحالية",
-      threshold: "الحد المُفعَّل",
-      precision: "الدقة (Precision)",
-      recall: "الاستدعاء (Recall)",
-      f1: "F1 Score",
-      precisionExplain: "من كل المعاملات اللي صنّفها الموديل «تحتاج مراجعة»، كم نسبة منها كانت فعلاً كذلك؟ دقة منخفضة تعني إزعاج موظفين بمراجعات غير ضرورية كثيرة.",
-      recallExplain: "من كل المعاملات اللي فعلاً تحتاج مراجعة، كم نسبة قدر الموديل يمسكها؟ استدعاء منخفض يعني تفويت حالات حقيقية.",
-      confusionMatrix: "مصفوفة الالتباس",
-      truePositive: "إيجابية صحيحة",
-      truePositiveDesc: "احتاجت مراجعة، والموديل صنّفها صح",
-      falsePositive: "إيجابية خاطئة",
-      falsePositiveDesc: "ما احتاجت مراجعة، لكن الموديل رفعها بالخطأ",
-      trueNegative: "سلبية صحيحة",
-      trueNegativeDesc: "ما احتاجت مراجعة، والموديل صنّفها صح",
-      falseNegative: "سلبية خاطئة",
-      falseNegativeDesc: "احتاجت مراجعة، لكن الموديل فوّتها",
-      tradeoffTitle: "لماذا الحد ٠.٥٥ بالذات؟",
-      tradeoffBody: "رفع الحد يقلّل الإزعاج (دقة أعلى) لكن يفوّت حالات حقيقية أكثر (استدعاء أقل). خفضه يمسك حالات أكثر لكن يزيد المراجعات غير الضرورية. الرسم أدناه يعرض هذا التبادل فعلياً عبر حدود مختلفة، والحد الحالي هو نقطة توازن مقصودة لا رقم عشوائي.",
-      testSetLabel: "حجم عيّنة الاختبار",
-      loading: "جارٍ حساب المقاييس من الموديل الفعلي...",
-    },
     riskAppetite: {
       title: "تقبّل المخاطر",
       subtitle: "بيان تقبّل المخاطر المعتمد من المجلس، مُترجَم إلى إعداد حي يتحكم فعلياً بقرارات النظام",
@@ -408,7 +382,6 @@ const STR = {
       audit: "Audit trail",
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
-      methodology: "Accuracy Methodology",
       riskAppetite: "Risk Appetite",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
@@ -647,30 +620,6 @@ const STR = {
         "The laws and regulations cited here are real and independently verifiable (official sources: laws.boe.gov.sa and rulebook.sama.gov.sa). The one exception is certain precise financial caps not publicly detailed by SAMA.",
       issuedOn: "Issued:",
     },
-    methodology: {
-      title: "Accuracy Methodology",
-      subtitle: "How we actually measure model accuracy, and why this specific alert threshold was chosen",
-      currentOperating: "Current operating point",
-      threshold: "Active threshold",
-      precision: "Precision",
-      recall: "Recall",
-      f1: "F1 Score",
-      precisionExplain: "Of everything the model flagged as \"needs review\", what fraction actually did? Low precision means burdening staff with unnecessary reviews.",
-      recallExplain: "Of everything that actually needed review, what fraction did the model catch? Low recall means missing real cases.",
-      confusionMatrix: "Confusion Matrix",
-      truePositive: "True Positive",
-      truePositiveDesc: "Needed review, correctly flagged",
-      falsePositive: "False Positive",
-      falsePositiveDesc: "Didn't need review, wrongly flagged",
-      trueNegative: "True Negative",
-      trueNegativeDesc: "Didn't need review, correctly passed",
-      falseNegative: "False Negative",
-      falseNegativeDesc: "Needed review, but the model missed it",
-      tradeoffTitle: "Why threshold 0.55 specifically?",
-      tradeoffBody: "Raising the threshold reduces noise (higher precision) but misses more real cases (lower recall). Lowering it catches more but increases unnecessary reviews. The chart below shows this trade-off across different thresholds — the current one is a deliberate balance point, not an arbitrary number.",
-      testSetLabel: "Test set size",
-      loading: "Computing metrics from the live model...",
-    },
     riskAppetite: {
       title: "Risk Appetite",
       subtitle: "The board-approved Risk Appetite Statement, translated into a live setting that actually drives system decisions",
@@ -710,7 +659,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "riskAppetite", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "riskAppetite", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -718,7 +667,6 @@ const NAV_ICONS = {
   audit: History,
   analytics: BarChart3,
   regulatory: FileText,
-  methodology: Gauge,
   riskAppetite: Scale,
   chatbot: MessageCircle,
   limits: ShieldAlert,
@@ -2606,86 +2554,6 @@ function ConfusionCell({ value, label, desc, color }) {
       </p>
       <p className="text-[11px] font-bold text-white/70 mt-1">{label}</p>
       <p className="text-[9.5px] text-white/35 mt-1 leading-snug">{desc}</p>
-    </div>
-  );
-}
-
-function MethodologyTab({ lang, t }) {
-  const [metrics, setMetrics] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${API_BASE}/model-metrics`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => !cancelled && setMetrics(d))
-      .catch(() => !cancelled && setMetrics(FALLBACK_MODEL_METRICS));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!metrics) {
-    return (
-      <div className="aurora-border glass-panel rounded-2xl p-10 text-center text-white/40 text-sm animate-fade-up">{t.methodology.loading}</div>
-    );
-  }
-
-  const c = metrics.current;
-
-  return (
-    <div className="space-y-4">
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
-          <Gauge size={16} style={{ color: "var(--orchid)" }} />
-          {t.methodology.title}
-        </h3>
-        <p className="text-[11px] text-white/40">{t.methodology.subtitle}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard label={t.methodology.precision} value={c.precision} color="var(--lavender)" explain={t.methodology.precisionExplain} />
-        <MetricCard label={t.methodology.recall} value={c.recall} color="var(--gold)" explain={t.methodology.recallExplain} />
-        <MetricCard label={t.methodology.f1} value={c.f1} color="var(--orchid)" />
-      </div>
-
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-bold text-white">{t.methodology.confusionMatrix}</p>
-          <span className="text-[10px] text-white/35">
-            {t.methodology.threshold}: <b style={{ color: "var(--gold)" }}>{c.threshold}</b> · {t.methodology.testSetLabel}: {numberFmt.format(metrics.test_set_size)}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <ConfusionCell value={c.true_positive} label={t.methodology.truePositive} desc={t.methodology.truePositiveDesc} color="var(--lavender)" />
-          <ConfusionCell value={c.false_positive} label={t.methodology.falsePositive} desc={t.methodology.falsePositiveDesc} color="var(--coral)" />
-          <ConfusionCell value={c.false_negative} label={t.methodology.falseNegative} desc={t.methodology.falseNegativeDesc} color="var(--coral)" />
-          <ConfusionCell value={c.true_negative} label={t.methodology.trueNegative} desc={t.methodology.trueNegativeDesc} color="var(--lavender)" />
-        </div>
-      </div>
-
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <p className="text-xs font-bold text-white mb-1">{t.methodology.tradeoffTitle}</p>
-        <p className="text-[11px] text-white/40 mb-4 leading-relaxed">{t.methodology.tradeoffBody}</p>
-        <ResponsiveContainer width="100%" height={240}>
-          <ComposedChart data={metrics.threshold_sweep} margin={{ left: -20, right: 10, top: 5, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis dataKey="threshold" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
-            <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} domain={[0, 100]} />
-            <Tooltip contentStyle={{ backgroundColor: "#150c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="precision" name={t.methodology.precision} stroke="var(--lavender)" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="recall" name={t.methodology.recall} stroke="var(--gold)" strokeWidth={2} dot={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div
-        className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2 animate-fade-up"
-        style={{ backgroundColor: "rgba(232,196,104,0.06)", border: "1px solid rgba(232,196,104,0.2)", color: "rgba(255,255,255,0.55)" }}
-      >
-        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--gold)" }} />
-        {lang === "en" ? metrics.disclaimer_en : metrics.disclaimer_ar}
-      </div>
     </div>
   );
 }
@@ -4693,7 +4561,6 @@ export default function MeyarDashboard() {
 
           {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
-          {activeTab === "methodology" && <MethodologyTab lang={lang} t={t} />}
           {activeTab === "riskAppetite" && <RiskAppetiteTab lang={lang} t={t} authUser={authUser} authToken={authToken} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
