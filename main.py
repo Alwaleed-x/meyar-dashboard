@@ -1792,6 +1792,20 @@ def _db_count_review_queue() -> int:
     return n
 
 
+def _db_count_review_queue_by_reviewer(reviewer_required: str) -> int:
+    """Counts pending items routed to a specific reviewer role (e.g. the
+    Sharia board) — real, queryable separation of the two accountable
+    authorities, not just a UI label. json_extract reads straight from the
+    stored transaction JSON since review_queue has no dedicated column."""
+    conn = _db_connect()
+    n = conn.execute(
+        "SELECT COUNT(*) AS c FROM review_queue WHERE json_extract(data, '$.reviewer_required') = ?",
+        (reviewer_required,),
+    ).fetchone()["c"]
+    conn.close()
+    return n
+
+
 def _db_insert_audit(entry: dict) -> None:
     conn = _db_connect()
     conn.execute(
@@ -1915,6 +1929,8 @@ class AuditEntry(BaseModel):
 
 class ReviewStats(BaseModel):
     pending: int
+    pending_sharia: int
+    pending_compliance: int
     approved_today: int
     rejected_today: int
     approval_rate_pct: float
@@ -1958,8 +1974,12 @@ def review_stats():
     rejected_today = _db_count_audit_by_decision_today("rejected")
     total_decided = approved_today + rejected_today
     approval_rate = round((approved_today / total_decided) * 100, 1) if total_decided else 0.0
+    pending_sharia = _db_count_review_queue_by_reviewer("الهيئة الشرعية")
+    pending_total = _db_count_review_queue()
     return ReviewStats(
-        pending=_db_count_review_queue(),
+        pending=pending_total,
+        pending_sharia=pending_sharia,
+        pending_compliance=pending_total - pending_sharia,
         approved_today=approved_today,
         rejected_today=rejected_today,
         approval_rate_pct=approval_rate,
