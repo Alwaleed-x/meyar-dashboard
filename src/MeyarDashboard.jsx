@@ -232,6 +232,14 @@ const STR = {
       reject: "رفض",
       reviewerLabel: "المراجع:",
       defaultReviewer: "موظف الامتثال (تجريبي)",
+      defaultShariaReviewer: "رئيس الهيئة الشرعية (تجريبي)",
+      complianceSectionTitle: "قائمة مراجعة الامتثال",
+      complianceSectionSubtitle: "حالات اجتهادية (غسل أموال، نمط سلوكي) يراجعها موظف الامتثال",
+      shariaSectionTitle: "قائمة المراجعة الشرعية",
+      shariaSectionSubtitle: "حالات الشبهة الشرعية — تُحال حصراً للهيئة الشرعية، ولا يبتّ فيها موظف الامتثال",
+      shariaApprove: "إجازة شرعية",
+      shariaReject: "رفض شرعي",
+      pendingSharia: "معلَّقة شرعياً",
       decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
       exportPdf: "تقرير PDF",
       exportDecisions: "تقرير القرارات (موافقة/رفض)",
@@ -477,6 +485,14 @@ const STR = {
       reject: "Reject",
       reviewerLabel: "Reviewer:",
       defaultReviewer: "Compliance officer (demo)",
+      defaultShariaReviewer: "Sharia Board Chair (demo)",
+      complianceSectionTitle: "Compliance Review Queue",
+      complianceSectionSubtitle: "Interpretive cases (AML, behavioral pattern) reviewed by a compliance officer",
+      shariaSectionTitle: "Sharia Review Queue",
+      shariaSectionSubtitle: "Sharia-concern cases — routed exclusively to the Sharia board, never ruled on by a compliance officer",
+      shariaApprove: "Sharia approval",
+      shariaReject: "Sharia rejection",
+      pendingSharia: "Pending Sharia review",
       decidedToast: "Decision recorded and added to the audit trail",
       exportPdf: "PDF Report",
       exportDecisions: "Decisions report (approved/rejected)",
@@ -1199,8 +1215,11 @@ function computeReviewStats(reviewQueue, auditLog) {
   const approvedToday = auditLog.filter((e) => e.decision === "approved" && isToday(e.timestamp)).length;
   const rejectedToday = auditLog.filter((e) => e.decision === "rejected" && isToday(e.timestamp)).length;
   const total = approvedToday + rejectedToday;
+  const pendingSharia = reviewQueue.filter((tx) => tx.reviewer_required === "الهيئة الشرعية").length;
   return {
     pending: reviewQueue.length,
+    pending_sharia: pendingSharia,
+    pending_compliance: reviewQueue.length - pendingSharia,
     approved_today: approvedToday,
     rejected_today: rejectedToday,
     approval_rate_pct: total ? Math.round((approvedToday / total) * 1000) / 10 : 0,
@@ -2098,6 +2117,14 @@ function MiniStat({ icon: Icon, label, value, color }) {
 function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
   const decidedItems = useMemo(() => (auditLog || []).filter((e) => e.level === "human_review"), [auditLog]);
 
+  // Real functional split — not just a label. Sharia-concern cases are
+  // never mixed into the same queue or decided by the same reviewer role
+  // as ordinary compliance cases; this is the dashboard's actual
+  // enforcement of the "two accountable authorities" design principle,
+  // not only a claim made in slides.
+  const shariaQueue = useMemo(() => reviewQueue.filter((tx) => tx.reviewer_required === "الهيئة الشرعية"), [reviewQueue]);
+  const complianceQueue = useMemo(() => reviewQueue.filter((tx) => tx.reviewer_required !== "الهيئة الشرعية"), [reviewQueue]);
+
   const formatExactTime = (isoString) => {
     const d = new Date(isoString);
     if (Number.isNaN(d.getTime())) return "";
@@ -2227,18 +2254,25 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <MiniStat icon={ClipboardList} label={t.reviewQueue.pending} value={numberFmt.format(stats.pending)} color="var(--gold)" />
+        <MiniStat icon={BookOpenCheck} label={t.reviewQueue.pendingSharia} value={numberFmt.format(shariaQueue.length)} color="var(--gold-2)" />
         <MiniStat icon={ThumbsUp} label={t.reviewQueue.approvedToday} value={numberFmt.format(stats.approved_today)} color="var(--lavender)" />
         <MiniStat icon={ThumbsDown} label={t.reviewQueue.rejectedToday} value={numberFmt.format(stats.rejected_today)} color="var(--coral)" />
         <MiniStat icon={BadgeCheck} label={t.reviewQueue.approvalRate} value={`${stats.approval_rate_pct}%`} color="var(--orchid)" />
       </div>
 
+      {/* Compliance queue — ordinary Level-2 interpretive cases */}
       <div className="space-y-2.5">
-        {reviewQueue.length === 0 && (
-          <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
+        <div className="flex items-center gap-2 pt-1">
+          <UserCheck size={15} style={{ color: "var(--lavender)" }} />
+          <h4 className="text-white font-bold text-xs">{t.reviewQueue.complianceSectionTitle}</h4>
+          <span className="text-[10px] text-white/35">— {t.reviewQueue.complianceSectionSubtitle}</span>
+        </div>
+        {complianceQueue.length === 0 && (
+          <div className="aurora-border glass-panel rounded-2xl p-6 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
         )}
-        {reviewQueue.map((tx, i) => (
+        {complianceQueue.map((tx, i) => (
           <div
             key={tx.id}
             style={{ animationDelay: `${i * 40}ms` }}
@@ -2274,6 +2308,64 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
               >
                 <ThumbsDown size={13} />
                 {t.reviewQueue.reject}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sharia queue — kept structurally and visually separate. Never
+          rendered inside the same list as compliance cases, and never
+          decided by the same reviewer role — this is the actual
+          enforcement of the Sharia-angle differentiator, not a label. */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2 pt-2">
+          <BookOpenCheck size={15} style={{ color: "var(--gold-2)" }} />
+          <h4 className="text-white font-bold text-xs">{t.reviewQueue.shariaSectionTitle}</h4>
+          <span className="text-[10px] text-white/35">— {t.reviewQueue.shariaSectionSubtitle}</span>
+        </div>
+        {shariaQueue.length === 0 && (
+          <div className="aurora-border rounded-2xl p-6 text-center text-white/30 text-sm animate-fade-up" style={{ backgroundColor: "rgba(232,196,104,0.03)" }}>
+            {t.reviewQueue.empty}
+          </div>
+        )}
+        {shariaQueue.map((tx, i) => (
+          <div
+            key={tx.id}
+            style={{ animationDelay: `${i * 40}ms`, backgroundColor: "rgba(232,196,104,0.045)", borderColor: "rgba(232,196,104,0.22)" }}
+            className="animate-slide-in-row aurora-border rounded-2xl p-4 flex flex-col md:flex-row md:items-center gap-3 border"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <p className="text-xs font-bold text-white">{tx.id}</p>
+                <span className="text-[10px] text-white/35">{timeAgo(tx.timestamp, lang)}</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1" style={{ color: "var(--gold-2)", backgroundColor: "rgba(232,196,104,0.15)" }}>
+                  <BookOpenCheck size={10} />
+                  {t.reviewQueue.shariaSectionTitle}
+                </span>
+              </div>
+              <p className="text-xs text-white/70 leading-relaxed">{localize(tx.legal_reason, lang)}</p>
+              <p className="text-[10px] text-white/35 mt-1">
+                {localize(tx.institution, lang)} · {currencyFmt(tx.amount_sar, lang)} ·{" "}
+                <span style={{ color: "var(--gold-2)" }}>{t.level.reviewerPrefix} {localize(tx.reviewer_required, lang)}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => onDecide(tx.id, "approve")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
+                style={{ backgroundColor: "rgba(232,196,104,0.15)", borderColor: "rgba(232,196,104,0.4)", color: "var(--gold-2)" }}
+              >
+                <BookOpenCheck size={13} />
+                {t.reviewQueue.shariaApprove}
+              </button>
+              <button
+                onClick={() => onDecide(tx.id, "reject")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
+                style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
+              >
+                <ThumbsDown size={13} />
+                {t.reviewQueue.shariaReject}
               </button>
             </div>
           </div>
@@ -3503,7 +3595,7 @@ export default function MeyarDashboard() {
   const [regulatory, setRegulatory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
-  const [reviewStats, setReviewStats] = useState({ pending: 0, approved_today: 0, rejected_today: 0, approval_rate_pct: 0 });
+  const [reviewStats, setReviewStats] = useState({ pending: 0, pending_sharia: 0, pending_compliance: 0, approved_today: 0, rejected_today: 0, approval_rate_pct: 0 });
 
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
@@ -3641,7 +3733,8 @@ export default function MeyarDashboard() {
       if (!tx) return;
 
       const decision = decisionWord === "approve" ? "approved" : "rejected";
-      const reviewerName = t.reviewQueue.defaultReviewer;
+      const isShariaCase = tx.reviewer_required === "الهيئة الشرعية";
+      const reviewerName = isShariaCase ? t.reviewQueue.defaultShariaReviewer : t.reviewQueue.defaultReviewer;
       const nextReviewQueue = reviewQueue.filter((t) => t.id !== transactionId);
 
       // Transactions whose IDs start with "TXN-LOCAL" were generated in the
