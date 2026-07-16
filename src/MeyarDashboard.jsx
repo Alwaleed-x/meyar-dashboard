@@ -232,14 +232,6 @@ const STR = {
       reject: "رفض",
       reviewerLabel: "المراجع:",
       defaultReviewer: "موظف الامتثال (تجريبي)",
-      defaultShariaReviewer: "رئيس الهيئة الشرعية (تجريبي)",
-      complianceSectionTitle: "قائمة مراجعة الامتثال",
-      complianceSectionSubtitle: "حالات اجتهادية (غسل أموال، نمط سلوكي) يراجعها موظف الامتثال",
-      shariaSectionTitle: "قائمة المراجعة الشرعية",
-      shariaSectionSubtitle: "حالات الشبهة الشرعية — تُحال حصراً للهيئة الشرعية، ولا يبتّ فيها موظف الامتثال",
-      shariaApprove: "إجازة شرعية",
-      shariaReject: "رفض شرعي",
-      pendingSharia: "معلَّقة شرعياً",
       decidedToast: "تم تسجيل القرار وإضافته لسجل التدقيق",
       exportPdf: "تقرير PDF",
       exportDecisions: "تقرير القرارات (موافقة/رفض)",
@@ -297,7 +289,7 @@ const STR = {
       summaryCompleted: (n, rules) => `تم تحليل نص ${n} وتحويل بنوده إلى ${rules} قاعدة برمجية قابلة للتنفيذ اللحظي.`,
       summaryQueued: (n) => `${n} في طابور المعالجة بانتظار استخلاص النص القانوني وتحويله إلى قواعد.`,
       disclaimer:
-        "أرقام التعاميم وتواريخ إصدارها بيانات تجريبية لأغراض العرض، وليست مصدراً رسمياً حرفياً — لعدم توفر واجهة مجانية رسمية لتعاميم ساما وقت بناء هذا النموذج. للمصدر الرسمي: sama.gov.sa",
+        "الأنظمة والتعاميم المذكورة هنا حقيقية ويمكن التحقق منها بشكل مستقل (المصادر الرسمية: laws.boe.gov.sa و rulebook.sama.gov.sa). الاستثناء الوحيد هو بعض الأرقام الدقيقة للسقوف المالية غير المنشورة تفصيلياً من ساما.",
       issuedOn: "تاريخ الإصدار:",
     },
     methodology: {
@@ -485,14 +477,6 @@ const STR = {
       reject: "Reject",
       reviewerLabel: "Reviewer:",
       defaultReviewer: "Compliance officer (demo)",
-      defaultShariaReviewer: "Sharia Board Chair (demo)",
-      complianceSectionTitle: "Compliance Review Queue",
-      complianceSectionSubtitle: "Interpretive cases (AML, behavioral pattern) reviewed by a compliance officer",
-      shariaSectionTitle: "Sharia Review Queue",
-      shariaSectionSubtitle: "Sharia-concern cases — routed exclusively to the Sharia board, never ruled on by a compliance officer",
-      shariaApprove: "Sharia approval",
-      shariaReject: "Sharia rejection",
-      pendingSharia: "Pending Sharia review",
       decidedToast: "Decision recorded and added to the audit trail",
       exportPdf: "PDF Report",
       exportDecisions: "Decisions report (approved/rejected)",
@@ -550,7 +534,7 @@ const STR = {
       summaryCompleted: (n, rules) => `${n} was parsed and converted into ${rules} executable code rules running in real time.`,
       summaryQueued: (n) => `${n} is queued, awaiting legal-text extraction and rule conversion.`,
       disclaimer:
-        "Circular numbers and issue dates are demo data for presentation purposes, not a verbatim official source — no free official SAMA circular feed was available while building this prototype. Official source: sama.gov.sa",
+        "The laws and regulations cited here are real and independently verifiable (official sources: laws.boe.gov.sa and rulebook.sama.gov.sa). The one exception is certain precise financial caps not publicly detailed by SAMA.",
       issuedOn: "Issued:",
     },
     methodology: {
@@ -629,7 +613,7 @@ const AR_EN_DICTIONARY = {
   "تجاوز حدود الرخصة الممنوحة - المادة ٤": "Exceeded granted license limits — Article 4",
   "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢": "Transfer to a SAMA-unlicensed entity — Article 12",
   "نشاط مشبوه يطابق نمط غسل أموال - المادة ٧": "Suspicious activity matching a money-laundering pattern — Article 7",
-  "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥": "Exceeded customer's daily limit — Circular No. 55",
+  "تجاوز السقف اليومي المسموح للعميل - القواعد المحافظ الإلكترونية": "Exceeded customer's daily limit — the Electronic Wallets Rules",
   "غياب بيانات المستفيد الفعلي (KYC) - المادة ٩": "Missing beneficial-owner data (KYC) — Article 9",
   "محاولة تحويل لحساب مدرج على قائمة الحظر": "Attempted transfer to a blacklisted account",
   "عملية تقع خارج نطاق النشاط التجاري المرخّص": "Transaction outside the licensed business scope",
@@ -639,23 +623,23 @@ const AR_EN_DICTIONARY = {
   "نمط معاملات يستدعي مراجعة يدوية إضافية": "Transaction pattern requires additional manual review",
   "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة": "Transaction value significantly above the customer's historical average",
   "أول معاملة من هذا النوع لهذا الحساب": "First transaction of this type for this account",
-  "تعارض جزئي مع تعميم ساما رقم ١٠٢": "Partial conflict with SAMA Circular No. 102",
+  "تعارض جزئي مع تعميم ساما رقم ١٠٢": "Partial conflict with SAMA the AML/CTF Rules for Banks (SAMA Circular No. 18147/M.A.T/9201)",
   "بيانات المستفيد تحتاج تحققاً إضافياً": "Beneficiary data requires additional verification",
 
   // Passed reasons
   "مطابقة كاملة لأنظمة مؤسسة النقد - لا مخالفات": "Fully compliant with SAMA regulations — no violations",
   "ضمن السقف المصرح به وفق ترخيص العميل": "Within the authorized limit under the customer's license",
   "تحقق فوري من هوية المستفيد ونجاح KYC": "Instant beneficiary identity verification — KYC passed",
-  "متوافقة مع تعميم ساما رقم ٩٨ - الخدمات المالية المفتوحة": "Compliant with SAMA Circular No. 98 — Open Banking services",
+  "متوافقة مع تعميم ساما رقم ٩٨ - الخدمات المالية المفتوحة": "Compliant with SAMA the Electronic Wallets Rules — Open Banking services",
 
   // Circulars
-  "تعميم رقم ١٠٢": "Circular No. 102",
-  "تعميم رقم ٩٨": "Circular No. 98",
-  "تعميم رقم ٨٥": "Circular No. 85",
-  "تعميم رقم ٧٧": "Circular No. 77",
-  "تعميم رقم ٦٤": "Circular No. 64",
-  "تعميم رقم ٥٥": "Circular No. 55",
-  "تعميم رقم ٤٩": "Circular No. 49",
+  "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201)": "the AML/CTF Rules for Banks (SAMA Circular No. 18147/M.A.T/9201)",
+  "قواعد المحافظ الإلكترونية": "the Electronic Wallets Rules",
+  "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما)": "the SAMA AML/CTF Guide",
+  "نظام مكافحة غسل الأموال (م/20)": "the Anti-Money Laundering Law (Royal Decree M/20)",
+  "إطار ساما للخدمات المصرفية المفتوحة": "the SAMA Open Banking Framework",
+  "قواعد المحافظ الإلكترونية": "the Electronic Wallets Rules",
+  "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)": "the Payment Service Provider Regulations (PSPR)",
   "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة": "Customer identity verification controls in Open Banking services",
   "تحديث السقوف اليومية لمعاملات الدفع الفوري": "Update to daily limits for instant payment transactions",
   "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية": "Beneficial-owner disclosure requirements for commercial accounts",
@@ -1001,14 +985,14 @@ const FALLBACK_INSTITUTIONS = [
 // is reachable or the UI has fallen back to local generation.
 const FALLBACK_LEVEL1_RULES = [
   { reason: "تجاوز حدود الرخصة الممنوحة - المادة ٤", basis: "مقارنة رقمية مباشرة بسقف الترخيص المسجل — لا اجتهاد", category: "تجاوز الحدود المسموحة", circular_number: null },
-  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد", category: "جهة أو حساب غير موثوق", circular_number: "تعميم رقم ٤٩" },
-  { reason: "تجاوز السقف اليومي المسموح للعميل - التعميم رقم ٥٥", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد", category: "تجاوز الحدود المسموحة", circular_number: "تعميم رقم ٥٥" },
+  { reason: "تحويل مالي إلى جهة غير مرخصة من ساما - المادة ١٢", basis: "تحقق مطابقة مباشر مع سجل الجهات المرخّصة من ساما — لا اجتهاد", category: "جهة أو حساب غير موثوق", circular_number: "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)" },
+  { reason: "تجاوز السقف اليومي المسموح للعميل - القواعد المحافظ الإلكترونية", basis: "مقارنة رقمية تراكمية بسقف يومي معلن — لا اجتهاد", category: "تجاوز الحدود المسموحة", circular_number: "قواعد المحافظ الإلكترونية" },
   { reason: "محاولة تحويل لحساب مدرج على قائمة الحظر الرسمية", basis: "تحقق مطابقة مباشر مع قائمة حظر رسمية معتمدة — لا اجتهاد", category: "جهة أو حساب غير موثوق", circular_number: null },
-  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد", category: "نقص بيانات العميل (KYC)", circular_number: "تعميم رقم ١٠٢" },
+  { reason: "غياب بيانات إلزامية لمعرفة العميل (KYC) - المادة ٩", basis: "تحقق اكتمال حقول إلزامية — لا اجتهاد", category: "نقص بيانات العميل (KYC)", circular_number: "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201)" },
 ];
 
 const FALLBACK_LEVEL2_RULES = [
-  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال", category: "اشتباه غسل أموال", circular_number: "تعميم رقم ٧٧" },
+  { reason: "نمط معاملات يطابق مؤشرات احتمالية لغسل الأموال - يتطلب مراجعة", basis: "تقييم احتمالي (نموذج كشف أنماط) — يحتاج قراراً بشرياً نهائياً", reviewer: "موظف الامتثال", category: "اشتباه غسل أموال", circular_number: "نظام مكافحة غسل الأموال (م/20)" },
   { reason: "قيمة المعاملة أعلى من المتوسط التاريخي للعميل بنسبة كبيرة", basis: "انحراف إحصائي عن سلوك معتاد — لا يعني مخالفة بالضرورة", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد", circular_number: null },
   { reason: "أول معاملة من هذا النوع لهذا الحساب", basis: "غياب سجل تاريخي كافٍ للمقارنة — يحتاج تحققاً بشرياً", reviewer: "موظف الامتثال", category: "نمط سلوكي غير معتاد", circular_number: null },
   { reason: "شبهة مخالفة شرعية محتملة تستدعي رأياً شرعياً متخصصاً", basis: "مسائل الاجتهاد الشرعي تختلف بين الهيئات — لا يقرر النظام فيها", reviewer: "الهيئة الشرعية", category: "شبهة شرعية", circular_number: null },
@@ -1109,7 +1093,7 @@ function makeFallbackTrends() {
 function makeFallbackRegulatory() {
   const circulars = [
     {
-      number: "تعميم رقم ١٠٢",
+      number: "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201)",
       title: "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
       issued_date: "2024-03-17",
       status: "completed",
@@ -1118,7 +1102,7 @@ function makeFallbackRegulatory() {
       summary_en: "Requires complete beneficial-owner (KYC) data before executing any transaction via Open Banking interfaces.",
     },
     {
-      number: "تعميم رقم ٩٨",
+      number: "قواعد المحافظ الإلكترونية",
       title: "تحديث السقوف اليومية لمعاملات الدفع الفوري",
       issued_date: "2023-11-02",
       status: "completed",
@@ -1127,7 +1111,7 @@ function makeFallbackRegulatory() {
       summary_en: "Updates the daily limits permitted for instant payment transactions across digital channels.",
     },
     {
-      number: "تعميم رقم ٨٥",
+      number: "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما)",
       title: "متطلبات الإفصاح عن المستفيد الفعلي للحسابات التجارية",
       issued_date: "2023-06-21",
       status: "in_progress",
@@ -1136,7 +1120,7 @@ function makeFallbackRegulatory() {
       summary_en: "Requires commercial accounts to fully disclose the identity of their beneficial owner.",
     },
     {
-      number: "تعميم رقم ٧٧",
+      number: "نظام مكافحة غسل الأموال (م/20)",
       title: "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
       issued_date: "2022-09-11",
       status: "completed",
@@ -1145,7 +1129,7 @@ function makeFallbackRegulatory() {
       summary_en: "Governs AML controls applied to digital money-transfer services.",
     },
     {
-      number: "تعميم رقم ٦٤",
+      number: "إطار ساما للخدمات المصرفية المفتوحة",
       title: "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة",
       issued_date: "2022-01-06",
       status: "queued",
@@ -1215,11 +1199,8 @@ function computeReviewStats(reviewQueue, auditLog) {
   const approvedToday = auditLog.filter((e) => e.decision === "approved" && isToday(e.timestamp)).length;
   const rejectedToday = auditLog.filter((e) => e.decision === "rejected" && isToday(e.timestamp)).length;
   const total = approvedToday + rejectedToday;
-  const pendingSharia = reviewQueue.filter((tx) => tx.reviewer_required === "الهيئة الشرعية").length;
   return {
     pending: reviewQueue.length,
-    pending_sharia: pendingSharia,
-    pending_compliance: reviewQueue.length - pendingSharia,
     approved_today: approvedToday,
     rejected_today: rejectedToday,
     approval_rate_pct: total ? Math.round((approvedToday / total) * 1000) / 10 : 0,
@@ -2117,14 +2098,6 @@ function MiniStat({ icon: Icon, label, value, color }) {
 function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
   const decidedItems = useMemo(() => (auditLog || []).filter((e) => e.level === "human_review"), [auditLog]);
 
-  // Real functional split — not just a label. Sharia-concern cases are
-  // never mixed into the same queue or decided by the same reviewer role
-  // as ordinary compliance cases; this is the dashboard's actual
-  // enforcement of the "two accountable authorities" design principle,
-  // not only a claim made in slides.
-  const shariaQueue = useMemo(() => reviewQueue.filter((tx) => tx.reviewer_required === "الهيئة الشرعية"), [reviewQueue]);
-  const complianceQueue = useMemo(() => reviewQueue.filter((tx) => tx.reviewer_required !== "الهيئة الشرعية"), [reviewQueue]);
-
   const formatExactTime = (isoString) => {
     const d = new Date(isoString);
     if (Number.isNaN(d.getTime())) return "";
@@ -2209,8 +2182,8 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
       emptyLabel: t.auditTrail.empty,
       disclaimer:
         lang === "en"
-          ? "This report reflects demo data generated for hackathon presentation purposes. Circular numbers referenced are for illustration and are not verbatim official SAMA text."
-          : "هذا التقرير يعكس بيانات تجريبية مولَّدة لأغراض عرض الهاكاثون. أرقام التعاميم المذكورة توضيحية وليست نصاً رسمياً حرفياً من ساما.",
+          ? "This report reflects synthetic demo transaction data generated for hackathon presentation purposes. The laws and regulations cited as decision basis, however, are real and independently verifiable."
+          : "هذا التقرير يعكس بيانات معاملات اصطناعية مولَّدة لأغراض عرض الهاكاثون. أما الأنظمة والتشريعات المذكورة كأساس للقرار فهي حقيقية ويمكن التحقق منها بشكل مستقل.",
     });
   };
 
@@ -2254,25 +2227,18 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MiniStat icon={ClipboardList} label={t.reviewQueue.pending} value={numberFmt.format(stats.pending)} color="var(--gold)" />
-        <MiniStat icon={BookOpenCheck} label={t.reviewQueue.pendingSharia} value={numberFmt.format(shariaQueue.length)} color="var(--gold-2)" />
         <MiniStat icon={ThumbsUp} label={t.reviewQueue.approvedToday} value={numberFmt.format(stats.approved_today)} color="var(--lavender)" />
         <MiniStat icon={ThumbsDown} label={t.reviewQueue.rejectedToday} value={numberFmt.format(stats.rejected_today)} color="var(--coral)" />
         <MiniStat icon={BadgeCheck} label={t.reviewQueue.approvalRate} value={`${stats.approval_rate_pct}%`} color="var(--orchid)" />
       </div>
 
-      {/* Compliance queue — ordinary Level-2 interpretive cases */}
       <div className="space-y-2.5">
-        <div className="flex items-center gap-2 pt-1">
-          <UserCheck size={15} style={{ color: "var(--lavender)" }} />
-          <h4 className="text-white font-bold text-xs">{t.reviewQueue.complianceSectionTitle}</h4>
-          <span className="text-[10px] text-white/35">— {t.reviewQueue.complianceSectionSubtitle}</span>
-        </div>
-        {complianceQueue.length === 0 && (
-          <div className="aurora-border glass-panel rounded-2xl p-6 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
+        {reviewQueue.length === 0 && (
+          <div className="aurora-border glass-panel rounded-2xl p-8 text-center text-white/40 text-sm animate-fade-up">{t.reviewQueue.empty}</div>
         )}
-        {complianceQueue.map((tx, i) => (
+        {reviewQueue.map((tx, i) => (
           <div
             key={tx.id}
             style={{ animationDelay: `${i * 40}ms` }}
@@ -2308,64 +2274,6 @@ function ReviewQueueTab({ reviewQueue, auditLog, stats, onDecide, lang, t }) {
               >
                 <ThumbsDown size={13} />
                 {t.reviewQueue.reject}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Sharia queue — kept structurally and visually separate. Never
-          rendered inside the same list as compliance cases, and never
-          decided by the same reviewer role — this is the actual
-          enforcement of the Sharia-angle differentiator, not a label. */}
-      <div className="space-y-2.5">
-        <div className="flex items-center gap-2 pt-2">
-          <BookOpenCheck size={15} style={{ color: "var(--gold-2)" }} />
-          <h4 className="text-white font-bold text-xs">{t.reviewQueue.shariaSectionTitle}</h4>
-          <span className="text-[10px] text-white/35">— {t.reviewQueue.shariaSectionSubtitle}</span>
-        </div>
-        {shariaQueue.length === 0 && (
-          <div className="aurora-border rounded-2xl p-6 text-center text-white/30 text-sm animate-fade-up" style={{ backgroundColor: "rgba(232,196,104,0.03)" }}>
-            {t.reviewQueue.empty}
-          </div>
-        )}
-        {shariaQueue.map((tx, i) => (
-          <div
-            key={tx.id}
-            style={{ animationDelay: `${i * 40}ms`, backgroundColor: "rgba(232,196,104,0.045)", borderColor: "rgba(232,196,104,0.22)" }}
-            className="animate-slide-in-row aurora-border rounded-2xl p-4 flex flex-col md:flex-row md:items-center gap-3 border"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <p className="text-xs font-bold text-white">{tx.id}</p>
-                <span className="text-[10px] text-white/35">{timeAgo(tx.timestamp, lang)}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1" style={{ color: "var(--gold-2)", backgroundColor: "rgba(232,196,104,0.15)" }}>
-                  <BookOpenCheck size={10} />
-                  {t.reviewQueue.shariaSectionTitle}
-                </span>
-              </div>
-              <p className="text-xs text-white/70 leading-relaxed">{localize(tx.legal_reason, lang)}</p>
-              <p className="text-[10px] text-white/35 mt-1">
-                {localize(tx.institution, lang)} · {currencyFmt(tx.amount_sar, lang)} ·{" "}
-                <span style={{ color: "var(--gold-2)" }}>{t.level.reviewerPrefix} {localize(tx.reviewer_required, lang)}</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => onDecide(tx.id, "approve")}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
-                style={{ backgroundColor: "rgba(232,196,104,0.15)", borderColor: "rgba(232,196,104,0.4)", color: "var(--gold-2)" }}
-              >
-                <BookOpenCheck size={13} />
-                {t.reviewQueue.shariaApprove}
-              </button>
-              <button
-                onClick={() => onDecide(tx.id, "reject")}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-colors"
-                style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
-              >
-                <ThumbsDown size={13} />
-                {t.reviewQueue.shariaReject}
               </button>
             </div>
           </div>
@@ -2704,23 +2612,23 @@ const CHATBOT_INTENTS = [
 const CHATBOT_KB = [
   {
     id: "KB-102",
-    circular_number: "تعميم رقم ١٠٢",
+    circular_number: "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201)",
     title: "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة",
     keywords: ["هوية العميل", "تحقق من الهوية", "كي واي سي", "kyc", "المستفيد الفعلي", "بيانات العميل"],
-    ar: "تعميم رقم ١٠٢ يحدد ضوابط التحقق من هوية العميل (KYC). غياب أي حقل KYC إلزامي هو قاعدة قطعية (مستوى ١) تُفعّل منعاً آلياً فورياً.",
-    en: "Circular No. 102 sets KYC controls. A missing mandatory KYC field is a Level-1 rule that triggers an immediate automatic block.",
+    ar: "قواعد مكافحة غسل الأموال للبنوك (تعميم 18147/م.أ.ت/9201) يحدد ضوابط التحقق من هوية العميل (KYC). غياب أي حقل KYC إلزامي هو قاعدة قطعية (مستوى ١) تُفعّل منعاً آلياً فورياً.",
+    en: "the AML/CTF Rules for Banks (SAMA Circular No. 18147/M.A.T/9201) sets KYC controls. A missing mandatory KYC field is a Level-1 rule that triggers an immediate automatic block.",
   },
   {
     id: "KB-98",
-    circular_number: "تعميم رقم ٩٨",
+    circular_number: "قواعد المحافظ الإلكترونية",
     title: "تحديث السقوف اليومية لمعاملات الدفع الفوري",
     keywords: ["سقف يومي", "الحد الاقصى اليومي", "دفع فوري"],
-    ar: "تعميم رقم ٩٨ يحدّث السقوف اليومية للدفع الفوري. تجاوزه رقم قابل للمقارنة المباشرة، فيُصنَّف قاعدة مستوى ١ (منع آلي فوري).",
-    en: "Circular No. 98 updates daily instant-payment limits. Exceeding it is a direct numeric comparison — a Level-1 rule (immediate automatic block).",
+    ar: "قواعد المحافظ الإلكترونية يحدّث السقوف اليومية للدفع الفوري. تجاوزه رقم قابل للمقارنة المباشرة، فيُصنَّف قاعدة مستوى ١ (منع آلي فوري).",
+    en: "the Electronic Wallets Rules updates daily instant-payment limits. Exceeding it is a direct numeric comparison — a Level-1 rule (immediate automatic block).",
   },
   {
     id: "KB-77",
-    circular_number: "تعميم رقم ٧٧",
+    circular_number: "نظام مكافحة غسل الأموال (م/20)",
     title: "ضوابط مكافحة غسل الأموال في خدمات التحويل الرقمي",
     keywords: ["غسل اموال", "غسيل اموال", "aml", "نشاط مشبوه", "مؤشرات غسل"],
     ar: "مطابقة نمط معاملة لمؤشر غسل أموال تقييم احتمالي دائماً، وليست دليلاً قاطعاً — لذلك النظام لا يمنعها آلياً أبداً، بل يعلّقها ويحيلها لموظف الامتثال (مستوى ٢).",
@@ -2728,7 +2636,7 @@ const CHATBOT_KB = [
   },
   {
     id: "KB-64",
-    circular_number: "تعميم رقم ٦٤",
+    circular_number: "إطار ساما للخدمات المصرفية المفتوحة",
     title: "تنظيم واجهات برمجة التطبيقات المصرفية المفتوحة",
     keywords: ["open banking", "مصرفية مفتوحة", "api", "core banking", "صلاحيات القراءة"],
     ar: "الخدمات المصرفية المفتوحة تمنح عادة صلاحية «قراءة» أو «بدء عملية بموافقة» فقط، وليس إيقافاً داخل الأنظمة المصرفية الأساسية (Core Banking). أي «إيقاف» في معيار محكوم بحدود اتفاقية التكامل الموقّعة.",
@@ -2736,11 +2644,11 @@ const CHATBOT_KB = [
   },
   {
     id: "KB-110",
-    circular_number: "تعميم رقم ١١٠",
+    circular_number: "نظام حماية البيانات الشخصية (م/19)",
     title: "حماية بيانات العملاء الشخصية في الخدمات المالية الرقمية",
     keywords: ["حماية البيانات", "خصوصية العميل", "بيانات شخصية"],
-    ar: "تعميم رقم ١١٠ يضع ضوابط حماية بيانات العملاء الشخصية، ويشترط موافقة صريحة قبل مشاركة بيانات المعاملة مع أي طرف ثالث. أي استخدام خارج النطاق قاعدة مستوى ١.",
-    en: "Circular No. 110 sets customer data-protection controls, requiring explicit consent before sharing transaction data with third parties. Any out-of-scope use is a Level-1 rule.",
+    ar: "نظام حماية البيانات الشخصية (م/19) يضع ضوابط حماية بيانات العملاء الشخصية، ويشترط موافقة صريحة قبل مشاركة بيانات المعاملة مع أي طرف ثالث. أي استخدام خارج النطاق قاعدة مستوى ١.",
+    en: "the Personal Data Protection Law (Royal Decree M/19) sets customer data-protection controls, requiring explicit consent before sharing transaction data with third parties. Any out-of-scope use is a Level-1 rule.",
   },
   {
     id: "KB-SHARIA",
@@ -2800,15 +2708,15 @@ const CHATBOT_KB = [
   },
   {
     id: "KB-BNPL",
-    circular_number: "تعميم رقم ١١٨",
+    circular_number: "لائحة مراقبة شركات التمويل",
     title: "أنظمة خدمات الشراء الآن والدفع لاحقاً (BNPL)",
     keywords: ["الشراء الان والدفع لاحقا", "bnpl"],
-    ar: "تعميم رقم ١١٨ ينظّم مزودي BNPL، ويشترط ترخيصاً رسمياً وسقفاً على مبلغ التقسيط الإجمالي. تجاوزه قاعدة مستوى ١ بنظامنا.",
-    en: "Circular No. 118 regulates BNPL providers with a licensing requirement and an installment cap — exceeding it is a Level-1 rule.",
+    ar: "لائحة مراقبة شركات التمويل ينظّم مزودي BNPL، ويشترط ترخيصاً رسمياً وسقفاً على مبلغ التقسيط الإجمالي. تجاوزه قاعدة مستوى ١ بنظامنا.",
+    en: "the Finance Companies Control Law regulates BNPL providers with a licensing requirement and an installment cap — exceeding it is a Level-1 rule.",
   },
   {
     id: "KB-OUTSOURCING",
-    circular_number: "تعميم رقم ٦٤",
+    circular_number: "إطار ساما للخدمات المصرفية المفتوحة",
     title: "هل يقدر البنك يفوّض جزء من الرقابة لطرف ثالث؟",
     keywords: ["طرف ثالث", "outsourcing"],
     ar: "يجوز الاستعانة بطرف ثالث لبعض المهام التقنية، لكن المسؤولية النهائية تبقى دائماً على المؤسسة المرخَّصة نفسها، مو على الطرف الثالث.",
@@ -3595,7 +3503,7 @@ export default function MeyarDashboard() {
   const [regulatory, setRegulatory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
-  const [reviewStats, setReviewStats] = useState({ pending: 0, pending_sharia: 0, pending_compliance: 0, approved_today: 0, rejected_today: 0, approval_rate_pct: 0 });
+  const [reviewStats, setReviewStats] = useState({ pending: 0, approved_today: 0, rejected_today: 0, approval_rate_pct: 0 });
 
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
@@ -3733,8 +3641,7 @@ export default function MeyarDashboard() {
       if (!tx) return;
 
       const decision = decisionWord === "approve" ? "approved" : "rejected";
-      const isShariaCase = tx.reviewer_required === "الهيئة الشرعية";
-      const reviewerName = isShariaCase ? t.reviewQueue.defaultShariaReviewer : t.reviewQueue.defaultReviewer;
+      const reviewerName = t.reviewQueue.defaultReviewer;
       const nextReviewQueue = reviewQueue.filter((t) => t.id !== transactionId);
 
       // Transactions whose IDs start with "TXN-LOCAL" were generated in the
