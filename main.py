@@ -26,10 +26,14 @@ Run:
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
 import os
 import random
 import re
+import secrets
 import sqlite3
 import urllib.error
 import urllib.request
@@ -38,7 +42,7 @@ from typing import List, Literal, Optional
 
 import joblib
 import numpy as np
-from fastapi import FastAPI, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestClassifier
@@ -1757,11 +1761,162 @@ def _init_db() -> None:
         "CREATE TABLE IF NOT EXISTS audit_log ("
         "id TEXT PRIMARY KEY, decision TEXT, timestamp TEXT, data TEXT)"
     )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "email TEXT PRIMARY KEY, name TEXT, role TEXT, created_at TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS otp_codes ("
+        "email TEXT, code_hash TEXT, expires_at TEXT, used INTEGER DEFAULT 0)"
+    )
+    conn.commit()
+    conn.close()
+    _seed_demo_users()
+
+
+def _seed_demo_users() -> None:
+    """Seeds a handful of named accounts so the review queue can show a real
+    signed-in actor instead of a generic role label. In a production
+    deployment these would come from the bank's own identity provider
+    (e.g. SSO/Active Directory), not a hardcoded seed list."""
+    conn = _db_connect()
+    existing = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+    if existing == 0:
+        demo_users = [
+            ("sara.alqahtani@meyar.demo", "سارة القحطاني", "compliance_officer"),
+            ("abdulaziz.alharbi@meyar.demo", "عبدالعزيز الحربي", "sharia_board"),
+            ("admin@meyar.demo", "مدير النظام", "admin"),
+        ]
+        for email, name, role in demo_users:
+            conn.execute(
+                "INSERT INTO users (email, name, role, created_at) VALUES (?, ?, ?, ?)",
+                (email, name, role, _iso(_now())),
+            )
+        conn.commit()
+    conn.close()
+
+
+def _db_get_user_by_email(email: str) -> Optional[dict]:
+    conn = _db_connect()
+    row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def _db_store_otp(email: str, code: str) -> None:
+    conn = _db_connect()
+    conn.execute("DELETE FROM otp_codes WHERE email = ?", (email,))
+    expires_at = _iso(_now() + timedelta(minutes=OTP_TTL_MINUTES))
+    conn.execute(
+        "INSERT INTO otp_codes (email, code_hash, expires_at, used) VALUES (?, ?, ?, 0)",
+        (email, _hash_otp(email, code), expires_at),
+    )
     conn.commit()
     conn.close()
 
 
-def _db_insert_review_item(tx: dict) -> None:
+def _db_verify_and_consume_otp(email: str, code: str) -> bool:
+    conn = _db_connect()
+    row = conn.execute(
+        "SELECT * FROM otp_codes WHERE email = ? AND used = 0 ORDER BY expires_at DESC LIMIT 1", (email,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return False
+    expires_at = datetime.fromisoformat(row["expires_at"])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < _now():
+        conn.close()
+        return False
+    if not hmac.compare_digest(row["code_hash"], _hash_otp(email, code)):
+        conn.close()
+        return False
+    conn.execute("UPDATE otp_codes SET used = 1 WHERE email = ?", (email,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Authentication — real email-code (OTP) sign-in, so every review-queue
+# decision is attributable to a specific signed-in person, not a free-text
+# name typed by the client. No third-party auth provider is wired in for
+# this prototype, so the token is a self-contained, HMAC-signed credential
+# instead of a database-backed session — verifiable statelessly, same
+# security property as a JWT, without adding a new dependency.
+#
+# IMPORTANT — email delivery: sending the OTP by real email requires an
+# SMTP/email-API provider (e.g. Amazon SES, SendGrid) with real credentials,
+# which this environment does not have. MEYAR_DEMO_MODE therefore returns
+# the generated code directly in the API response so the flow can be tested
+# end-to-end. Wire in a real provider at the marked TODO below and set
+# MEYAR_DEMO_MODE=false before handling real customer data.
+# ---------------------------------------------------------------------------
+
+AUTH_SECRET_KEY = os.environ.get("MEYAR_AUTH_SECRET", "dev-only-insecure-secret-change-me")
+OTP_TTL_MINUTES = 10
+SESSION_TTL_HOURS = 12
+DEMO_MODE = os.environ.get("MEYAR_DEMO_MODE", "true").lower() == "true"
+
+
+def _hash_otp(email: str, code: str) -> str:
+    return hashlib.pbkdf2_hmac("sha256", code.encode(), email.encode(), 100_000).hex()
+
+
+def _generate_otp() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+def _b64url_decode(s: str) -> bytes:
+    padding = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + padding)
+
+
+def create_session_token(email: str, name: str, role: str) -> str:
+    payload = {
+        "email": email,
+        "name": name,
+        "role": role,
+        "exp": (_now() + timedelta(hours=SESSION_TTL_HOURS)).timestamp(),
+    }
+    body = _b64url_encode(json.dumps(payload).encode())
+    signature = hmac.new(AUTH_SECRET_KEY.encode(), body.encode(), hashlib.sha256).hexdigest()
+    return f"{body}.{signature}"
+
+
+def verify_session_token(token: str) -> Optional[dict]:
+    try:
+        body, signature = token.split(".", 1)
+    except ValueError:
+        return None
+    expected_signature = hmac.new(AUTH_SECRET_KEY.encode(), body.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected_signature):
+        return None
+    try:
+        payload = json.loads(_b64url_decode(body))
+    except Exception:
+        return None
+    if payload.get("exp", 0) < _now().timestamp():
+        return None
+    return payload
+
+
+def get_current_user(authorization: Optional[str] = Header(default=None)) -> dict:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header")
+    token = authorization.removeprefix("Bearer ").strip()
+    payload = verify_session_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    return payload
+
+
+
     conn = _db_connect()
     conn.execute(
         "INSERT OR REPLACE INTO review_queue (id, status, timestamp, data) VALUES (?, ?, ?, ?)",
@@ -1899,9 +2054,62 @@ def _seed_review_and_audit():
 _seed_review_and_audit()
 
 
+class RequestCodeBody(BaseModel):
+    email: str
+
+
+class VerifyCodeBody(BaseModel):
+    email: str
+    code: str
+
+
+class AuthUser(BaseModel):
+    email: str
+    name: str
+    role: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: AuthUser
+
+
+@app.post("/api/auth/request-code")
+def request_code(payload: RequestCodeBody):
+    user = _db_get_user_by_email(payload.email.strip().lower())
+    if not user:
+        # Same generic response whether or not the email exists, so the
+        # endpoint can't be used to enumerate valid employee accounts.
+        return {"sent": True}
+    code = _generate_otp()
+    _db_store_otp(user["email"], code)
+    # TODO(production): send `code` via a real email provider (e.g. Amazon
+    # SES, SendGrid) instead of returning it. Left as a real integration
+    # point, not a silent fake — see the module docstring above.
+    response = {"sent": True}
+    if DEMO_MODE:
+        response["demo_code"] = code
+        response["demo_notice"] = "MEYAR_DEMO_MODE is on: no real email is sent, so the code is returned here for testing."
+    return response
+
+
+@app.post("/api/auth/verify-code", response_model=AuthResponse)
+def verify_code(payload: VerifyCodeBody):
+    email = payload.email.strip().lower()
+    user = _db_get_user_by_email(email)
+    if not user or not _db_verify_and_consume_otp(email, payload.code.strip()):
+        raise HTTPException(status_code=401, detail="Invalid or expired code")
+    token = create_session_token(user["email"], user["name"], user["role"])
+    return AuthResponse(token=token, user=AuthUser(email=user["email"], name=user["name"], role=user["role"]))
+
+
+@app.get("/api/auth/me", response_model=AuthUser)
+def auth_me(current_user: dict = Depends(get_current_user)):
+    return AuthUser(email=current_user["email"], name=current_user["name"], role=current_user["role"])
+
+
 class ReviewDecisionRequest(BaseModel):
     decision: Literal["approve", "reject"]
-    reviewer_name: str
     note: Optional[str] = None
 
 
@@ -1933,7 +2141,8 @@ def get_review_queue():
 
 
 @app.post("/api/review-queue/{transaction_id}/decide", response_model=AuditEntry)
-def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
+def decide_review(transaction_id: str, payload: ReviewDecisionRequest, current_user: dict = Depends(get_current_user)):
+    reviewer_name = f'{current_user["name"]} ({current_user["email"]})'
     match = _db_get_review_item(transaction_id)
     if not match:
         return AuditEntry(
@@ -1945,12 +2154,12 @@ def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
             reason="",
             amount_sar=0,
             institution="",
-            actor=payload.reviewer_name,
+            actor=reviewer_name,
             note="Transaction not found in queue (may have already been decided).",
         )
     _db_remove_review_item(transaction_id)
     decision_label = "approved" if payload.decision == "approve" else "rejected"
-    entry = _log_audit(match, "human_review", decision_label, payload.reviewer_name, payload.note)
+    entry = _log_audit(match, "human_review", decision_label, reviewer_name, payload.note)
     return AuditEntry(**entry)
 
 
