@@ -2061,7 +2061,6 @@ class RequestCodeBody(BaseModel):
 class RegisterBody(BaseModel):
     name: str
     email: str
-    role: Literal["compliance_officer", "sharia_board"] = "compliance_officer"
 
 
 class VerifyCodeBody(BaseModel):
@@ -2114,7 +2113,7 @@ def register(payload: RegisterBody):
     conn = _db_connect()
     conn.execute(
         "INSERT INTO users (email, name, role, created_at) VALUES (?, ?, ?, ?)",
-        (email, name, payload.role, _iso(_now())),
+        (email, name, "compliance_officer", _iso(_now())),
     )
     conn.commit()
     conn.close()
