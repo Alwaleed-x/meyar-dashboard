@@ -60,6 +60,11 @@ import {
   Bug,
   Wand2,
   Presentation,
+  Briefcase,
+  Users,
+  Coins,
+  TrendingUp,
+  Map,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -94,6 +99,7 @@ const STR = {
       methodology: "منهجية الدقة",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
+      businessModel: "النموذج التجاري",
       settings: "الإعدادات",
       collapse: "طي القائمة",
     },
@@ -316,6 +322,28 @@ const STR = {
       testSetLabel: "حجم عيّنة الاختبار",
       loading: "جارٍ حساب المقاييس من الموديل الفعلي...",
     },
+    businessModel: {
+      title: "النموذج التجاري",
+      subtitle: "من نموذج أولي بهاكاثون إلى منتج قابل للتسويق والتوسع",
+      loading: "جارٍ تحميل بيانات النموذج التجاري...",
+      competitiveTitle: "القيمة التنافسية",
+      localLabel: "منافسون محليون",
+      globalLabel: "منافسون عالميون",
+      strengthLabel: "نقطة قوتهم",
+      gapLabel: "الفجوة مقارنة بمعيار",
+      differentiatorTitle: "أين يتميّز معيار",
+      segmentsTitle: "الفئات المستهدفة",
+      whyFitLabel: "لماذا تناسبها",
+      revenueTitle: "مصادر الدخل",
+      costTitle: "مقارنة العامل البشري والتكاليف — قبل وبعد",
+      costBefore: "قبل معيار",
+      costAfter: "بعد معيار",
+      fundingTitle: "تكلفة تمويل المشروع",
+      fundingOneTime: "تكلفة لمرة واحدة",
+      fundingRecurring: "تكلفة شهرية متكررة",
+      roadmapTitle: "خطة التطوير المستقبلية",
+      disclaimerLabel: "ملاحظة",
+    },
     chart: {
       month: "الشهر",
       tooltipCurrency: "ر.س",
@@ -340,6 +368,7 @@ const STR = {
       methodology: "Accuracy Methodology",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
+      businessModel: "Business Model",
       settings: "Settings",
       collapse: "Collapse menu",
     },
@@ -561,6 +590,28 @@ const STR = {
       testSetLabel: "Test set size",
       loading: "Computing metrics from the live model...",
     },
+    businessModel: {
+      title: "Business Model",
+      subtitle: "From a hackathon prototype to a scalable, marketable product",
+      loading: "Loading business model data...",
+      competitiveTitle: "Competitive Value",
+      localLabel: "Local competitors",
+      globalLabel: "Global competitors",
+      strengthLabel: "Their strength",
+      gapLabel: "Gap vs. Meyar",
+      differentiatorTitle: "Where Meyar stands out",
+      segmentsTitle: "Target Segments",
+      whyFitLabel: "Why it fits",
+      revenueTitle: "Revenue Streams",
+      costTitle: "Human Effort & Cost — Before vs. After",
+      costBefore: "Before Meyar",
+      costAfter: "After Meyar",
+      fundingTitle: "Project Funding Cost",
+      fundingOneTime: "One-time cost",
+      fundingRecurring: "Recurring monthly cost",
+      roadmapTitle: "Future Development Roadmap",
+      disclaimerLabel: "Note",
+    },
     chart: {
       month: "Month",
       tooltipCurrency: "SAR",
@@ -572,7 +623,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "chatbot", "limits", "businessModel"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -583,6 +634,7 @@ const NAV_ICONS = {
   methodology: Gauge,
   chatbot: MessageCircle,
   limits: ShieldAlert,
+  businessModel: Briefcase,
 };
 
 // ---------------------------------------------------------------------------
@@ -2565,6 +2617,291 @@ function LimitsTab({ t }) {
 }
 
 // ---------------------------------------------------------------------------
+// Business Model — commercial-pitch data (competitive landscape, target
+// segments, revenue streams, human-vs-system cost comparison, funding
+// breakdown, and roadmap). Fetched from /api/business-model with a local
+// fallback so the tab always renders something, consistent with the rest
+// of the dashboard's offline-first philosophy.
+// ---------------------------------------------------------------------------
+
+function makeFallbackBusinessModel() {
+  return {
+    competitive_landscape: {
+      local_competitors: [
+        {
+          name: "مزن (منصة FOCAL)",
+          scope: "مكافحة غسل الأموال وفحص العقوبات وKYC للمؤسسات المالية السعودية",
+          strength: "تكامل ناضج مع مزودي بيانات هوية سعوديين وقوائم عقوبات حية",
+          gap_vs_meyar: "لا يفصل صراحة بين قرار آلي نهائي وحالة تحتاج مراجعة بشرية موثّقة",
+        },
+        {
+          name: "منصة عين",
+          scope: "أتمتة إفصاحات هيئة السوق المالية ومراقبة المعاملات",
+          strength: "تخصص عميق بمتطلبات هيئة السوق المالية",
+          gap_vs_meyar: "موجّهة للإفصاحات لا للمعاملات المصرفية اليومية عبر Open Banking",
+        },
+        {
+          name: "ستامب",
+          scope: "رقمنة إجراءات التراخيص والامتثال للشركات الناشئة",
+          strength: "سهولة الإعداد للشركات الناشئة",
+          gap_vs_meyar: "حل إداري/توثيقي أكثر من كونه محرك قرار لحظي",
+        },
+      ],
+      global_competitors: [
+        {
+          name: "NICE Actimize",
+          scope: "كشف الاحتيال ومكافحة غسل الأموال للبنوك الكبرى عالمياً",
+          strength: "نضج تقني عالي ونطاق تغطية عالمي واسع",
+          gap_vs_meyar: "تكلفة عالية جداً وغير مصمَّم لسياق تعاميم ساما أو الاجتهاد الشرعي",
+        },
+        {
+          name: "Oracle Financial Crime and Compliance",
+          scope: "حلول امتثال وجرائم مالية ضمن منظومة Oracle المصرفية",
+          strength: "تكامل عميق مع البنية التحتية القائمة على منتجات Oracle",
+          gap_vs_meyar: "حل ثقيل ومكلف وغير موجَّه للبنوك متوسطة الحجم",
+        },
+        {
+          name: "ComplyAdvantage",
+          scope: "فحص عقوبات وأشخاص سياسيين معرَّضين للمخاطر عبر API عالمي",
+          strength: "تغطية بيانات عالمية واسعة",
+          gap_vs_meyar: "منتج فحص عام غير مصمَّم لنموذج المستويين الخاص بالمسؤولية المحلية",
+        },
+      ],
+      meyar_differentiator_ar:
+        "أغلب الحلول — محلياً وعالمياً — أنظمة كشف قوية، لكنها لا تُصرّح بوضوح متى يحق للنظام اتخاذ قرار نهائي بمفرده ومتى يجب إحالته لإنسان مسؤول. معيار يبني هذا الفصل كمبدأ تصميم أساسي.",
+      meyar_differentiator_en:
+        "Most solutions are strong detection engines, but none state explicitly when the system may decide alone versus when it must route to an accountable human. Meyar builds this separation as a core design principle.",
+      disclaimer_ar: "أسماء المنافسين حقيقية ومبنية على معلومات عامة متاحة؛ المقارنة توضيحية لأغراض العرض التجاري.",
+      disclaimer_en: "Competitor names are real and based on public information; the comparison is illustrative for a business pitch.",
+    },
+    target_segments: [
+      { name_ar: "البنوك المحلية الصغيرة والمتوسطة", name_en: "Small & mid-sized local banks", description_ar: "بنوك بلا فريق هندسي كبير لبناء محرك امتثال خاص", description_en: "Banks without a large in-house engineering team", why_fit_ar: "تحتاج حلاً جاهزاً بتكلفة معقولة", why_fit_en: "Need a ready-made solution at reasonable cost" },
+      { name_ar: "شركات التقنية المالية الناشئة", name_en: "Fintech startups", description_ar: "شركات دفع ومحافظ رقمية تحتاج طبقة امتثال دون تأخير الإطلاق", description_en: "Payment/wallet companies needing compliance without delaying launch", why_fit_ar: "التكامل عبر Open Banking API يناسب بنيتها الحالية", why_fit_en: "Open Banking API integration fits their existing stack" },
+      { name_ar: "مزودو خدمات الدفع الصغرى", name_en: "Micro-payment providers", description_ar: "جهات مرخّصة بتعميم ٤٩ تحتاج إثبات امتثال مستمر", description_en: "Entities licensed under Circular No. 49 needing continuous compliance evidence", why_fit_ar: "سجل تدقيق جاهز يسهّل إثبات الالتزام", why_fit_en: "A ready audit trail simplifies proving compliance" },
+      { name_ar: "شركات الشراء الآن والدفع لاحقاً", name_en: "BNPL providers", description_ar: "مزودون منظَّمون بسقوف تقسيط تحتاج مراقبة لحظية", description_en: "Providers with installment caps needing live monitoring", why_fit_ar: "قواعد المستوى ١ الرقمية تلائم سقوف BNPL", why_fit_en: "Numeric Level-1 rules fit BNPL caps well" },
+    ],
+    revenue_streams: [
+      { name_ar: "اشتراك شهري حسب حجم المعاملات", name_en: "Monthly volume-based subscription", model_ar: "رسم شهري يتدرّج حسب عدد المعاملات المراقَبة", model_en: "A monthly fee scaling with monitored transaction volume" },
+      { name_ar: "رسوم تنفيذ وتكامل أولي", name_en: "One-time setup & integration fee", model_ar: "رسم مرة واحدة عند الربط بقنوات Open Banking", model_en: "A one-time charge when connecting Open Banking channels" },
+      { name_ar: "طبقة تقارير امتثال متقدمة", name_en: "Advanced compliance reporting add-on", model_ar: "اشتراك إضافي اختياري لتقارير وتحليلات متقدمة", model_en: "An optional add-on for advanced reports and analytics" },
+    ],
+    cost_comparison_human_vs_system: [
+      { metric_ar: "ساعات المراجعة اليدوية شهرياً", metric_en: "Monthly manual review hours", before_ar: "١٢٠٠ ساعة (فريق امتثال بشري كامل)", before_en: "1200 hours (full human compliance team)", after_ar: "٣٦٠ ساعة (مراجعة المستوى ٢ فقط)", after_en: "360 hours (Level-2 review only)" },
+      { metric_ar: "نطاق عمل موظف الامتثال", metric_en: "Compliance officer's scope", before_ar: "مراجعة كل معاملة يدوياً بلا تصنيف مسبق", before_en: "Manually reviewing every transaction", after_ar: "مراجعة الحالات المُصنَّفة آلياً فقط", after_en: "Reviewing only pre-classified cases" },
+      { metric_ar: "زمن اتخاذ القرار للمعاملة", metric_en: "Decision time per transaction", before_ar: "دقائق إلى ساعات", before_en: "Minutes to hours", after_ar: "أجزاء من الثانية لمستوى ١", after_en: "Fractions of a second for Level 1" },
+      { metric_ar: "قابلية التوثيق لأي قرار", metric_en: "Documentability of decisions", before_ar: "تدوين يدوي متفاوت الجودة", before_en: "Inconsistent manual notes", after_ar: "سجل تدقيق آلي موحّد", after_en: "A uniform automated audit log" },
+    ],
+    funding_cost_breakdown: [
+      { category_ar: "تطوير أولي (فريق تقني)", category_en: "Initial development", type: "one_time", note_ar: "بناء واختبار النسخة الأولى القابلة للنشر التجاري", note_en: "Building and testing the first commercial version" },
+      { category_ar: "ترخيص واجهات الذكاء الاصطناعي", category_en: "AI API licensing", type: "recurring_monthly", note_ar: "استهلاك Gemini API حسب حجم استخدام الشات بوت", note_en: "Gemini API usage scaling with chatbot volume" },
+      { category_ar: "استضافة سحابية مؤسسية", category_en: "Enterprise cloud hosting", type: "recurring_monthly", note_ar: "الانتقال من خطط مجانية إلى بنية تحمّل بيانات حقيقية", note_en: "Moving from free tiers to infrastructure for real data" },
+      { category_ar: "الاستشارات والترخيص التنظيمي", category_en: "Regulatory advisory & licensing", type: "one_time", note_ar: "التسجيل ببيئة ساما التجريبية ومتابعة الترخيص", note_en: "Registering with SAMA's Sandbox and licensing" },
+      { category_ar: "الدعم الفني وتحديث المعرفة", category_en: "Support & knowledge-base upkeep", type: "recurring_monthly", note_ar: "متابعة أي تعميم جديد وتحديث النظام به", note_en: "Tracking new circulars and updating the system" },
+    ],
+    future_roadmap: [
+      { phase_ar: "المرحلة ١ — التأهيل التنظيمي", phase_en: "Phase 1 — Regulatory readiness", timeframe_ar: "٠–٣ أشهر", timeframe_en: "0–3 months", goals_ar: ["التسجيل ببيئة ساما التجريبية", "اتفاقيات تكامل تجريبية"], goals_en: ["Register with SAMA's Sandbox", "Pilot integration agreements"] },
+      { phase_ar: "المرحلة ٢ — الربط الحقيقي بالبيانات", phase_en: "Phase 2 — Real data integration", timeframe_ar: "٣–٦ أشهر", timeframe_en: "3–6 months", goals_ar: ["ربط فعلي عبر خدمة AIS", "إعادة تدريب النموذج على بيانات حقيقية"], goals_en: ["Real AIS integration", "Retrain the model on real data"] },
+      { phase_ar: "المرحلة ٣ — الترخيص والتوسع", phase_en: "Phase 3 — Licensing & scale-up", timeframe_ar: "٦–١٢ شهر", timeframe_en: "6–12 months", goals_ar: ["استكمال الترخيص الرسمي", "الانتقال لقاعدة بيانات مؤسسية"], goals_en: ["Complete formal licensing", "Migrate to an enterprise database"] },
+      { phase_ar: "المرحلة ٤ — التوسع التجاري", phase_en: "Phase 4 — Commercial scale-up", timeframe_ar: "١٢+ شهر", timeframe_en: "12+ months", goals_ar: ["توسيع قاعدة العملاء", "إضافة تقارير امتثال متقدمة كدخل إضافي"], goals_en: ["Expand the customer base", "Add advanced reporting as extra revenue"] },
+    ],
+  };
+}
+
+function BusinessModelTab({ lang, t }) {
+  const bm = t.businessModel;
+  const [data, setData] = useState(() => makeFallbackBusinessModel());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/business-model`)
+      .then((res) => {
+        if (!res.ok) throw new Error("failed");
+        return res.json();
+      })
+      .then((json) => {
+        if (!cancelled) setData(json);
+      })
+      .catch(() => {
+        /* keep the fallback already on screen */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const pick = (obj, arKey, enKey) => (lang === "en" ? obj[enKey] : obj[arKey]);
+
+  return (
+    <div className="space-y-6 animate-fade-up">
+      <div>
+        <h2 className="font-display text-2xl font-black text-white">{bm.title}</h2>
+        <p className="text-sm text-white/45 mt-1">{bm.subtitle}</p>
+      </div>
+
+      {loading && <p className="text-xs text-white/35">{bm.loading}</p>}
+
+      {/* Competitive landscape */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <GitCompare size={18} className="text-[var(--orchid)]" />
+          <h3 className="font-bold text-white text-base">{bm.competitiveTitle}</h3>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {[
+            { label: bm.localLabel, list: data.competitive_landscape.local_competitors },
+            { label: bm.globalLabel, list: data.competitive_landscape.global_competitors },
+          ].map((group, gi) => (
+            <div key={gi} className="space-y-3">
+              <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide">{group.label}</p>
+              {group.list.map((c, i) => (
+                <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+                  <p className="font-bold text-white text-sm mb-1">{c.name}</p>
+                  <p className="text-[12px] text-white/50 leading-relaxed mb-2">{c.scope}</p>
+                  <p className="text-[11px] text-white/40 mb-1">
+                    <span className="text-emerald-400/80 font-semibold">{bm.strengthLabel}: </span>
+                    {c.strength}
+                  </p>
+                  <p className="text-[11px] text-white/40">
+                    <span className="text-[var(--coral)] font-semibold">{bm.gapLabel}: </span>
+                    {c.gap_vs_meyar}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-xl border border-[var(--orchid)]/20 bg-[var(--orchid)]/[0.06] p-4">
+          <p className="text-[11px] font-bold text-[var(--orchid)] mb-1.5">{bm.differentiatorTitle}</p>
+          <p className="text-[12px] text-white/60 leading-relaxed">
+            {pick(data.competitive_landscape, "meyar_differentiator_ar", "meyar_differentiator_en")}
+          </p>
+        </div>
+        <p className="text-[10px] text-white/30 mt-3">
+          {bm.disclaimerLabel}: {pick(data.competitive_landscape, "disclaimer_ar", "disclaimer_en")}
+        </p>
+      </div>
+
+      {/* Target segments */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={18} className="text-[var(--lavender)]" />
+          <h3 className="font-bold text-white text-base">{bm.segmentsTitle}</h3>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {data.target_segments.map((s, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+              <p className="font-bold text-white text-sm mb-1">{pick(s, "name_ar", "name_en")}</p>
+              <p className="text-[12px] text-white/50 leading-relaxed mb-2">{pick(s, "description_ar", "description_en")}</p>
+              <p className="text-[11px] text-[var(--lavender)]/80">{bm.whyFitLabel}: {pick(s, "why_fit_ar", "why_fit_en")}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Revenue streams */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Coins size={18} className="text-[var(--gold)]" />
+          <h3 className="font-bold text-white text-base">{bm.revenueTitle}</h3>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {data.revenue_streams.map((r, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+              <p className="font-bold text-white text-sm mb-1.5">{pick(r, "name_ar", "name_en")}</p>
+              <p className="text-[12px] text-white/50 leading-relaxed">{pick(r, "model_ar", "model_en")}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Cost comparison */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={18} className="text-emerald-400" />
+          <h3 className="font-bold text-white text-base">{bm.costTitle}</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-[11px] text-white/40 uppercase tracking-wide">
+                <th className="text-start py-2 px-2 font-semibold"></th>
+                <th className="text-start py-2 px-2 font-semibold">{bm.costBefore}</th>
+                <th className="text-start py-2 px-2 font-semibold">{bm.costAfter}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.cost_comparison_human_vs_system.map((row, i) => (
+                <tr key={i} className="border-t border-white/[0.05]">
+                  <td className="py-2.5 px-2 text-white/70 font-semibold">{pick(row, "metric_ar", "metric_en")}</td>
+                  <td className="py-2.5 px-2 text-[var(--coral)]/80">{pick(row, "before_ar", "before_en")}</td>
+                  <td className="py-2.5 px-2 text-emerald-400/80">{pick(row, "after_ar", "after_en")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Funding cost */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Wallet size={18} className="text-[var(--gold-2)]" />
+          <h3 className="font-bold text-white text-base">{bm.fundingTitle}</h3>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {data.funding_cost_breakdown.map((f, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 flex items-start justify-between gap-3">
+              <div>
+                <p className="font-bold text-white text-sm mb-1">{pick(f, "category_ar", "category_en")}</p>
+                <p className="text-[12px] text-white/50 leading-relaxed">{pick(f, "note_ar", "note_en")}</p>
+              </div>
+              <span
+                className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap"
+                style={
+                  f.type === "one_time"
+                    ? { color: "var(--lavender)", backgroundColor: "rgba(166,172,255,0.1)" }
+                    : { color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.1)" }
+                }
+              >
+                {f.type === "one_time" ? bm.fundingOneTime : bm.fundingRecurring}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Roadmap */}
+      <div className="glass-panel aurora-border rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Map size={18} className="text-[var(--violet)]" />
+          <h3 className="font-bold text-white text-base">{bm.roadmapTitle}</h3>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {data.future_roadmap.map((phase, i) => (
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+              <p className="font-bold text-white text-sm mb-1">{pick(phase, "phase_ar", "phase_en")}</p>
+              <p className="text-[10px] text-[var(--violet)]/80 font-semibold mb-2">{pick(phase, "timeframe_ar", "timeframe_en")}</p>
+              <ul className="space-y-1.5">
+                {(lang === "en" ? phase.goals_en : phase.goals_ar).map((g, gi) => (
+                  <li key={gi} className="text-[11px] text-white/50 flex items-start gap-1.5">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-white/30 shrink-0" />
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Chatbot — regulatory assistant scoped strictly to the local SAMA
 // knowledge base (mirrors the backend's retrieval so it also works when
 // the AI core is unreachable, consistent with the rest of the dashboard).
@@ -3862,6 +4199,7 @@ export default function MeyarDashboard() {
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
           {activeTab === "limits" && <LimitsTab t={t} />}
+          {activeTab === "businessModel" && <BusinessModelTab lang={lang} t={t} />}
 
           <footer className="pt-6 pb-2 text-center text-[11px] text-white/30">{t.footer(new Date().getFullYear())}</footer>
         </div>
