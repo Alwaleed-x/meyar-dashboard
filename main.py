@@ -160,7 +160,31 @@ def _load_or_train_risk_model() -> tuple:
 
 RISK_MODEL, RISK_MODEL_LOADED_FROM_DISK = _load_or_train_risk_model()
 RISK_MODEL_TRAINED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-RISK_FLAG_THRESHOLD = 0.55
+
+# ---------------------------------------------------------------------------
+# Risk Appetite — operationalizes the board-approved Risk Appetite Statement
+# that SAMA's Corporate Governance principles require every regulated
+# institution to maintain (and to keep institution-specific, not generic —
+# SAMA examiners flag generic risk appetite statements as a finding). Rather
+# than a static document, the selected appetite level here directly drives
+# the Level-2 AI decision threshold used below, so the governance choice has
+# a real, live effect on the system instead of sitting in a PDF nobody reads.
+# ---------------------------------------------------------------------------
+
+RISK_APPETITE_LEVELS = {
+    "conservative": {"threshold": 0.40, "label_ar": "متحفّظ", "label_en": "Conservative"},
+    "moderate": {"threshold": 0.55, "label_ar": "متوسط", "label_en": "Moderate"},
+    "aggressive": {"threshold": 0.70, "label_ar": "منفتح", "label_en": "Aggressive"},
+}
+DEFAULT_RISK_APPETITE_LEVEL = "moderate"
+
+# Mutable at runtime via POST /api/risk-appetite — a plain module-level dict
+# (not a constant) precisely because it must change without a redeploy.
+RISK_APPETITE_STATE = {
+    "level": DEFAULT_RISK_APPETITE_LEVEL,
+    "threshold": RISK_APPETITE_LEVELS[DEFAULT_RISK_APPETITE_LEVEL]["threshold"],
+}
+RISK_FLAG_THRESHOLD = RISK_APPETITE_STATE["threshold"]  # kept for any legacy reference
 
 # ---------------------------------------------------------------------------
 # Model evaluation — REAL metrics computed from the actual trained model
@@ -673,7 +697,7 @@ def _generate_transaction(idx: int, base_time: datetime) -> Transaction:
 
     risk = _score_transaction_risk(amount, hour, deviation, freq_last_hour, is_first_time)
 
-    if risk["probability"] > RISK_FLAG_THRESHOLD:
+    if risk["probability"] > RISK_APPETITE_STATE["threshold"]:
         candidates = [r for r in LEVEL2_FLAGGED_RULES if r["feature_tag"] == risk["dominant_feature"]]
         rule = RNG.choice(candidates) if candidates else RNG.choice(LEVEL2_FLAGGED_RULES)
         return Transaction(
@@ -844,7 +868,7 @@ def get_violation_categories():
 
 @app.get("/api/model-metrics")
 def get_model_metrics():
-    current = _evaluate_at_threshold(RISK_FLAG_THRESHOLD)
+    current = _evaluate_at_threshold(RISK_APPETITE_STATE["threshold"])
     sweep = [_evaluate_at_threshold(t / 100) for t in range(30, 81, 5)]
     return {
         "current": current,
@@ -1778,9 +1802,35 @@ def _init_db() -> None:
         "CREATE TABLE IF NOT EXISTS otp_codes ("
         "email TEXT, code_hash TEXT, expires_at TEXT, used INTEGER DEFAULT 0)"
     )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS risk_appetite_config ("
+        "id INTEGER PRIMARY KEY CHECK (id = 1), level TEXT, institution_name TEXT, "
+        "approved_by TEXT, approved_date TEXT, updated_at TEXT)"
+    )
     conn.commit()
     conn.close()
     _seed_demo_users()
+    _seed_risk_appetite()
+
+
+def _seed_risk_appetite() -> None:
+    conn = _db_connect()
+    row = conn.execute("SELECT * FROM risk_appetite_config WHERE id = 1").fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO risk_appetite_config (id, level, institution_name, approved_by, approved_date, updated_at) "
+            "VALUES (1, ?, ?, ?, ?, ?)",
+            (DEFAULT_RISK_APPETITE_LEVEL, "", "", "", _iso(_now())),
+        )
+        conn.commit()
+    else:
+        # A server restart loses the in-memory RISK_APPETITE_STATE mutation
+        # from any earlier POST — restore it from the persisted row so a
+        # previously chosen appetite level survives a redeploy.
+        level = row["level"] if row["level"] in RISK_APPETITE_LEVELS else DEFAULT_RISK_APPETITE_LEVEL
+        RISK_APPETITE_STATE["level"] = level
+        RISK_APPETITE_STATE["threshold"] = RISK_APPETITE_LEVELS[level]["threshold"]
+    conn.close()
 
 
 def _seed_demo_users() -> None:
@@ -2151,6 +2201,69 @@ def auth_me(current_user: dict = Depends(get_current_user)):
     return AuthUser(email=current_user["email"], name=current_user["name"], role=current_user["role"])
 
 
+class RiskAppetiteUpdate(BaseModel):
+    level: Literal["conservative", "moderate", "aggressive"]
+    institution_name: str
+    approved_by: str
+    approved_date: str
+
+
+def _current_risk_exposure_pct() -> float:
+    """Samples a batch of live-simulated transactions through the SAME
+    generator and threshold used by /api/realtime-transactions, and reports
+    what share would be escalated to Level 2 right now — i.e. the system's
+    actual current risk posture, measured against the chosen appetite
+    boundary, not a cosmetic number."""
+    sample = [_generate_transaction(i, _now()) for i in range(200)]
+    escalated = sum(1 for t in sample if t.status in ("flagged", "blocked"))
+    return round(escalated / len(sample) * 100, 1)
+
+
+@app.get("/api/risk-appetite")
+def get_risk_appetite():
+    conn = _db_connect()
+    row = conn.execute("SELECT * FROM risk_appetite_config WHERE id = 1").fetchone()
+    conn.close()
+    level = RISK_APPETITE_STATE["level"]
+    level_info = RISK_APPETITE_LEVELS[level]
+    return {
+        "level": level,
+        "label_ar": level_info["label_ar"],
+        "label_en": level_info["label_en"],
+        "threshold": RISK_APPETITE_STATE["threshold"],
+        "institution_name": (row["institution_name"] if row else "") or "",
+        "approved_by": (row["approved_by"] if row else "") or "",
+        "approved_date": (row["approved_date"] if row else "") or "",
+        "updated_at": (row["updated_at"] if row else None),
+        "current_exposure_pct": _current_risk_exposure_pct(),
+        "levels": {
+            key: {"threshold": v["threshold"], "label_ar": v["label_ar"], "label_en": v["label_en"]}
+            for key, v in RISK_APPETITE_LEVELS.items()
+        },
+    }
+
+
+@app.post("/api/risk-appetite")
+def update_risk_appetite(payload: RiskAppetiteUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        # Risk appetite is a board-level governance decision — restricting
+        # who may change it is the point, not an incidental detail. Any
+        # signed-in user may VIEW the current appetite (GET above requires
+        # no role check), but only an admin account may change it.
+        raise HTTPException(status_code=403, detail="admin_only")
+    RISK_APPETITE_STATE["level"] = payload.level
+    RISK_APPETITE_STATE["threshold"] = RISK_APPETITE_LEVELS[payload.level]["threshold"]
+    conn = _db_connect()
+    conn.execute(
+        "UPDATE risk_appetite_config SET level = ?, institution_name = ?, approved_by = ?, "
+        "approved_date = ?, updated_at = ? WHERE id = 1",
+        (payload.level, payload.institution_name.strip(), payload.approved_by.strip(), payload.approved_date.strip(), _iso(_now())),
+    )
+    conn.commit()
+    conn.close()
+    return get_risk_appetite()
+
+
 class ReviewDecisionRequest(BaseModel):
     decision: Literal["approve", "reject"]
     note: Optional[str] = None
@@ -2284,7 +2397,7 @@ def _classify_transaction(payload: WebhookTransactionRequest) -> Transaction:
 
     risk = _score_transaction_risk(payload.amount_sar, hour, deviation, freq_last_hour, is_first_time)
 
-    if risk["probability"] > RISK_FLAG_THRESHOLD:
+    if risk["probability"] > RISK_APPETITE_STATE["threshold"]:
         candidates = [r for r in LEVEL2_FLAGGED_RULES if r["feature_tag"] == risk["dominant_feature"]]
         rule = RNG.choice(candidates) if candidates else RNG.choice(LEVEL2_FLAGGED_RULES)
         tx = Transaction(
