@@ -2147,15 +2147,20 @@ function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
   const handleCheckNow = async () => {
     setChecking(true);
     try {
+      // The endpoint now responds immediately ({status: "started"}) and
+      // runs the actual check (concurrent fetches, ~5s worst case) in the
+      // background — so this click must never sit waiting on that. Poll
+      // shortly after instead of blocking on the original request.
       await fetch(`${API_BASE}/regulatory-monitor/check-now`, {
         method: "POST",
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      loadMonitorData();
+      setTimeout(loadMonitorData, 3000);
+      setTimeout(loadMonitorData, 6500);
     } catch {
       /* offline — monitor section simply stays as last loaded */
     } finally {
-      setChecking(false);
+      setTimeout(() => setChecking(false), 3000);
     }
   };
 
