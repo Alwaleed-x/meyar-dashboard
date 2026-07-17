@@ -27,6 +27,7 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import base64
 import hashlib
 import hmac
@@ -44,7 +45,7 @@ from typing import List, Literal, Optional
 
 import joblib
 import numpy as np
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestClassifier
@@ -1666,6 +1667,7 @@ REGULATORY_WATCH_SOURCES = [
 # Default 6 hours; overridable so a demo can use a much shorter interval
 # (e.g. MEYAR_REGWATCH_INTERVAL_SECONDS=60) to show the loop actually firing.
 REGWATCH_INTERVAL_SECONDS = int(os.environ.get("MEYAR_REGWATCH_INTERVAL_SECONDS", 21600))
+REGWATCH_STARTUP_DELAY_SECONDS = int(os.environ.get("MEYAR_REGWATCH_STARTUP_DELAY_SECONDS", 60))
 REGWATCH_ENABLED = os.environ.get("MEYAR_REGWATCH_ENABLED", "true").lower() == "true"
 
 
@@ -1683,7 +1685,7 @@ def _strip_html(raw_html: str) -> str:
     return text
 
 
-def _fetch_source_text(url: str, timeout: int = 15) -> Optional[str]:
+def _fetch_source_text(url: str, timeout: int = 5) -> Optional[str]:
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Meyar-Regulatory-Monitor/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -1721,12 +1723,27 @@ def _init_regulatory_watch_db() -> None:
 def run_regulatory_check() -> dict:
     """One full check cycle across all watched sources. Never raises —
     a fetch failure for one source is recorded and skipped, it never
-    crashes the loop or blocks the other sources."""
+    crashes the loop or blocks the other sources.
+
+    Fetches all sources CONCURRENTLY (thread pool) rather than one after
+    another — with 3 sources at a 5s timeout each, sequential fetching had
+    a worst case of 15s (used to be 45s before the timeout was also cut
+    from 15s to 5s); concurrent fetching caps the worst case at ~5s
+    regardless of source count, which is what actually matters for a
+    demo-day "check now" click feeling instant rather than frozen."""
+    now = _iso(_now())
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(REGULATORY_WATCH_SOURCES)) as pool:
+        fetched_texts = dict(
+            zip(
+                (src["key"] for src in REGULATORY_WATCH_SOURCES),
+                pool.map(lambda src: _fetch_source_text(src["url"]), REGULATORY_WATCH_SOURCES),
+            )
+        )
+
     results = []
     conn = _db_connect()
-    now = _iso(_now())
     for src in REGULATORY_WATCH_SOURCES:
-        text = _fetch_source_text(src["url"])
+        text = fetched_texts[src["key"]]
         row = conn.execute(
             "SELECT * FROM regulatory_watch WHERE source_key = ?", (src["key"],)
         ).fetchone()
@@ -1779,12 +1796,19 @@ def run_regulatory_check() -> dict:
 async def _regulatory_watch_loop():
     """Background loop started at app startup. Runs forever at
     REGWATCH_INTERVAL_SECONDS, never lets one bad cycle kill the loop.
+
+    Waits REGWATCH_STARTUP_DELAY_SECONDS before the very FIRST check, so a
+    fresh deploy or a free-tier host waking from sleep doesn't immediately
+    spend its first moments doing 3 outbound fetches — exactly the window
+    where a judge or teammate is most likely to be live-testing the app.
+
     NOTE: this keeps the process itself alive as the scheduler — reliable
     while the app is running, but a free-tier host that spins the service
     down on inactivity will pause the loop too. Production should also
     register an external scheduler (e.g. Render Cron Job / GitHub Actions)
     hitting POST /api/regulatory-monitor/check-now, so checks still happen
     on a schedule independent of whether the app happens to be awake."""
+    await asyncio.sleep(REGWATCH_STARTUP_DELAY_SECONDS)
     while True:
         try:
             await asyncio.to_thread(run_regulatory_check)
@@ -1958,7 +1982,20 @@ DB_PATH = os.environ.get("MEYAR_DB_PATH", "meyar.db")
 
 
 def _db_connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=3 (seconds) + WAL journal mode together are what actually
+    # matter here: SQLite's default rollback-journal mode takes an
+    # exclusive lock for the whole duration of any write, so a background
+    # write (e.g. the regulatory monitor updating its table) could make a
+    # concurrent user-facing write (e.g. registering, or approving a
+    # review-queue item) sit blocked for the full default 5s timeout —
+    # exactly the kind of multi-second "hang" reported during sign-up.
+    # WAL mode lets reads proceed without blocking on a writer, and keeps
+    # the exclusive-lock window down to just the final commit instead of
+    # the whole transaction, so this contention becomes rare and brief
+    # instead of routine and multi-second.
+    conn = sqlite3.connect(DB_PATH, timeout=3)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout=3000;")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -2389,11 +2426,13 @@ class RiskAppetiteUpdate(BaseModel):
 
 
 _EXPOSURE_CACHE = {"value": None, "computed_at": 0.0}
-EXPOSURE_CACHE_TTL_SECONDS = 20
-EXPOSURE_SAMPLE_SIZE = 25  # was 200 — each sample runs a real model inference,
-# and 200 of those in one request was the actual cause of the ~1-minute load
-# time on Render's free-tier CPU. 25 is still a statistically reasonable
-# live sample for a demo-scale gauge, at roughly 1/8th the cost.
+EXPOSURE_CACHE_TTL_SECONDS = 45
+EXPOSURE_SAMPLE_SIZE = 15  # was 200, then 25 — each sample runs a real model
+# inference, and this endpoint was slowing down (alongside the regulatory
+# monitor) whenever both competed for the same limited request-handling
+# capacity on Render's free tier. 15 is still a reasonable live sample for
+# a demo-scale gauge, and the longer 45s cache means most tab opens hit the
+# cache instead of recomputing at all.
 
 
 def _current_risk_exposure_pct() -> float:
@@ -2477,11 +2516,20 @@ def decide_regulatory_update(
 
 
 @app.post("/api/regulatory-monitor/check-now")
-def trigger_regulatory_check(current_user: dict = Depends(get_current_user)):
+def trigger_regulatory_check(background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Manual trigger — also the endpoint an external scheduler (Render Cron
     Job, GitHub Actions, etc.) should call on a schedule in production, so
-    checks keep happening even if the app process itself has been idle."""
-    return run_regulatory_check()
+    checks keep happening even if the app process itself has been idle.
+
+    Returns immediately with "started": the actual check (which fetches 3
+    external pages and can legitimately take a few seconds even with the
+    concurrent-fetch + short-timeout fixes) runs in the background instead
+    of holding the HTTP response open. The frontend re-polls
+    /api/regulatory-monitor/sources shortly after to pick up the result —
+    a "check now" click should never feel frozen in front of a live
+    audience, even if SAMA's site itself is slow to respond that moment."""
+    background_tasks.add_task(run_regulatory_check)
+    return {"status": "started"}
 
 
 @app.get("/api/risk-appetite")
