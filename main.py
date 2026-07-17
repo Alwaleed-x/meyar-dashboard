@@ -26,8 +26,6 @@ Run:
 
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 import base64
 import hashlib
 import hmac
@@ -37,7 +35,6 @@ import random
 import re
 import secrets
 import sqlite3
-import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -45,7 +42,7 @@ from typing import List, Literal, Optional
 
 import joblib
 import numpy as np
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestClassifier
@@ -72,31 +69,12 @@ ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    # In addition to the explicit allow-list above, accept any Vercel or
-    # Render subdomain automatically. Vercel preview URLs (per branch/PR)
-    # and Render service URLs both contain unpredictable random suffixes,
-    # so requiring an exact string match in ALLOWED_ORIGINS is fragile in
-    # practice — a single missed hyphen or an unset env var silently
-    # blocks every request with a browser-side "Failed to fetch", with
-    # nothing useful in the server logs to diagnose it by. This regex
-    # covers the common case without resorting to a blanket wildcard.
-    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(vercel\.app|onrender\.com)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 RNG = random.Random(42)
-
-
-@app.on_event("startup")
-async def _launch_regulatory_watch():
-    """Starts the background regulatory-monitor loop once the app is up.
-    Disabled via MEYAR_REGWATCH_ENABLED=false (e.g. for a quick local test
-    run where you don't want a background task firing network calls)."""
-    if REGWATCH_ENABLED:
-        asyncio.create_task(_regulatory_watch_loop())
-
 
 # ---------------------------------------------------------------------------
 # Risk-scoring model — a real, trained classifier (not a lookup table).
@@ -173,31 +151,7 @@ def _load_or_train_risk_model() -> tuple:
 
 RISK_MODEL, RISK_MODEL_LOADED_FROM_DISK = _load_or_train_risk_model()
 RISK_MODEL_TRAINED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-# ---------------------------------------------------------------------------
-# Risk Appetite — operationalizes the board-approved Risk Appetite Statement
-# that SAMA's Corporate Governance principles require every regulated
-# institution to maintain (and to keep institution-specific, not generic —
-# SAMA examiners flag generic risk appetite statements as a finding). Rather
-# than a static document, the selected appetite level here directly drives
-# the Level-2 AI decision threshold used below, so the governance choice has
-# a real, live effect on the system instead of sitting in a PDF nobody reads.
-# ---------------------------------------------------------------------------
-
-RISK_APPETITE_LEVELS = {
-    "conservative": {"threshold": 0.40, "label_ar": "متحفّظ", "label_en": "Conservative"},
-    "moderate": {"threshold": 0.55, "label_ar": "متوسط", "label_en": "Moderate"},
-    "aggressive": {"threshold": 0.70, "label_ar": "منفتح", "label_en": "Aggressive"},
-}
-DEFAULT_RISK_APPETITE_LEVEL = "moderate"
-
-# Mutable at runtime via POST /api/risk-appetite — a plain module-level dict
-# (not a constant) precisely because it must change without a redeploy.
-RISK_APPETITE_STATE = {
-    "level": DEFAULT_RISK_APPETITE_LEVEL,
-    "threshold": RISK_APPETITE_LEVELS[DEFAULT_RISK_APPETITE_LEVEL]["threshold"],
-}
-RISK_FLAG_THRESHOLD = RISK_APPETITE_STATE["threshold"]  # kept for any legacy reference
+RISK_FLAG_THRESHOLD = 0.55
 
 # ---------------------------------------------------------------------------
 # Model evaluation — REAL metrics computed from the actual trained model
@@ -710,7 +664,7 @@ def _generate_transaction(idx: int, base_time: datetime) -> Transaction:
 
     risk = _score_transaction_risk(amount, hour, deviation, freq_last_hour, is_first_time)
 
-    if risk["probability"] > RISK_APPETITE_STATE["threshold"]:
+    if risk["probability"] > RISK_FLAG_THRESHOLD:
         candidates = [r for r in LEVEL2_FLAGGED_RULES if r["feature_tag"] == risk["dominant_feature"]]
         rule = RNG.choice(candidates) if candidates else RNG.choice(LEVEL2_FLAGGED_RULES)
         return Transaction(
@@ -881,7 +835,7 @@ def get_violation_categories():
 
 @app.get("/api/model-metrics")
 def get_model_metrics():
-    current = _evaluate_at_threshold(RISK_APPETITE_STATE["threshold"])
+    current = _evaluate_at_threshold(RISK_FLAG_THRESHOLD)
     sweep = [_evaluate_at_threshold(t / 100) for t in range(30, 81, 5)]
     return {
         "current": current,
@@ -1627,196 +1581,6 @@ def _call_gemini(prompt: str, timeout: int = 9, max_tokens: int = 180) -> Option
         return None
 
 
-# ---------------------------------------------------------------------------
-# Regulatory monitor — watches SAMA's real, public Rulebook pages
-# (rulebook.sama.gov.sa) for content changes on a schedule, and queues any
-# detected change for MANDATORY human review before it ever affects the
-# system. This is the same "machine alerts, human decides" principle
-# applied earlier to transactions and to Sharia questions — now applied to
-# the regulatory text itself. The monitor never auto-applies a change; it
-# only shortens the time between a real update and a human noticing it.
-#
-# IMPORTANT — this sandbox has no outbound network access, so the fetch
-# calls below cannot be exercised end-to-end here. The code is written to
-# run for real once deployed on Render (which does have internet access).
-# The hashing/queueing/review pipeline itself is tested independently of
-# the live fetch — see the accompanying test additions.
-# ---------------------------------------------------------------------------
-
-REGULATORY_WATCH_SOURCES = [
-    {
-        "key": "laws_and_implementing_regs",
-        "title_ar": "الأنظمة ولوائحها التنفيذية",
-        "title_en": "Laws and Implementing Regulations",
-        "url": "https://rulebook.sama.gov.sa/en/laws-and-implementing-regulations",
-    },
-    {
-        "key": "regulations_and_instructions",
-        "title_ar": "اللوائح والتعليمات التنظيمية",
-        "title_en": "Regulations and Instructions",
-        "url": "https://rulebook.sama.gov.sa/en/regulations-and-instructions",
-    },
-    {
-        "key": "sama_circulars",
-        "title_ar": "تعاميم ساما (بالترتيب الزمني)",
-        "title_en": "SAMA Circulars (chronological)",
-        "url": "https://rulebook.sama.gov.sa/en/node/6259",
-    },
-]
-
-# Default 6 hours; overridable so a demo can use a much shorter interval
-# (e.g. MEYAR_REGWATCH_INTERVAL_SECONDS=60) to show the loop actually firing.
-REGWATCH_INTERVAL_SECONDS = int(os.environ.get("MEYAR_REGWATCH_INTERVAL_SECONDS", 21600))
-REGWATCH_STARTUP_DELAY_SECONDS = int(os.environ.get("MEYAR_REGWATCH_STARTUP_DELAY_SECONDS", 60))
-REGWATCH_ENABLED = os.environ.get("MEYAR_REGWATCH_ENABLED", "true").lower() == "true"
-
-
-def _strip_html(raw_html: str) -> str:
-    """Dependency-free tag stripper used to normalize a fetched page before
-    hashing. Not a full HTML parser — deliberately simple, so it survives
-    minor markup changes (attribute order, added classes) without treating
-    them as a content change. Scripts/styles are dropped first since their
-    content is not visible regulatory text."""
-    text = re.sub(r"<script.*?</script>", " ", raw_html, flags=re.S | re.I)
-    text = re.sub(r"<style.*?</style>", " ", text, flags=re.S | re.I)
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"&nbsp;|&amp;|&quot;|&#39;", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def _fetch_source_text(url: str, timeout: int = 5) -> Optional[str]:
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Meyar-Regulatory-Monitor/1.0"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read().decode("utf-8", errors="ignore")
-        return _strip_html(raw)
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError):
-        return None
-
-
-def _hash_text(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def _init_regulatory_watch_db() -> None:
-    conn = _db_connect()
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS regulatory_watch ("
-        "source_key TEXT PRIMARY KEY, content_hash TEXT, last_checked_at TEXT, last_changed_at TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS regulatory_update_queue ("
-        "id TEXT PRIMARY KEY, source_key TEXT, detected_at TEXT, old_hash TEXT, new_hash TEXT, "
-        "new_excerpt TEXT, status TEXT DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT)"
-    )
-    for src in REGULATORY_WATCH_SOURCES:
-        conn.execute(
-            "INSERT OR IGNORE INTO regulatory_watch (source_key, content_hash, last_checked_at, last_changed_at) "
-            "VALUES (?, NULL, NULL, NULL)",
-            (src["key"],),
-        )
-    conn.commit()
-    conn.close()
-
-
-def run_regulatory_check() -> dict:
-    """One full check cycle across all watched sources. Never raises —
-    a fetch failure for one source is recorded and skipped, it never
-    crashes the loop or blocks the other sources.
-
-    Fetches all sources CONCURRENTLY (thread pool) rather than one after
-    another — with 3 sources at a 5s timeout each, sequential fetching had
-    a worst case of 15s (used to be 45s before the timeout was also cut
-    from 15s to 5s); concurrent fetching caps the worst case at ~5s
-    regardless of source count, which is what actually matters for a
-    demo-day "check now" click feeling instant rather than frozen."""
-    now = _iso(_now())
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(REGULATORY_WATCH_SOURCES)) as pool:
-        fetched_texts = dict(
-            zip(
-                (src["key"] for src in REGULATORY_WATCH_SOURCES),
-                pool.map(lambda src: _fetch_source_text(src["url"]), REGULATORY_WATCH_SOURCES),
-            )
-        )
-
-    results = []
-    conn = _db_connect()
-    for src in REGULATORY_WATCH_SOURCES:
-        text = fetched_texts[src["key"]]
-        row = conn.execute(
-            "SELECT * FROM regulatory_watch WHERE source_key = ?", (src["key"],)
-        ).fetchone()
-        if text is None:
-            conn.execute(
-                "UPDATE regulatory_watch SET last_checked_at = ? WHERE source_key = ?", (now, src["key"])
-            )
-            results.append({"source_key": src["key"], "status": "fetch_failed"})
-            continue
-
-        new_hash = _hash_text(text)
-        old_hash = row["content_hash"] if row else None
-
-        if old_hash is None:
-            # First-ever check for this source: establishes the baseline to
-            # compare future checks against — not itself a "change", since
-            # there was nothing prior to compare it with.
-            conn.execute(
-                "UPDATE regulatory_watch SET content_hash = ?, last_checked_at = ? WHERE source_key = ?",
-                (new_hash, now, src["key"]),
-            )
-            results.append({"source_key": src["key"], "status": "baseline_established"})
-        elif new_hash != old_hash:
-            # Real change detected. Queued for human review — content_hash
-            # is deliberately NOT updated here, so a pending or rejected
-            # change keeps surfacing on every future cycle instead of
-            # silently vanishing.
-            entry_id = f"REG-{secrets.token_hex(4).upper()}"
-            conn.execute(
-                "INSERT INTO regulatory_update_queue "
-                "(id, source_key, detected_at, old_hash, new_hash, new_excerpt, status) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'pending')",
-                (entry_id, src["key"], now, old_hash, new_hash, text[:500]),
-            )
-            conn.execute(
-                "UPDATE regulatory_watch SET last_checked_at = ? WHERE source_key = ?", (now, src["key"])
-            )
-            results.append({"source_key": src["key"], "status": "change_detected", "queue_id": entry_id})
-        else:
-            conn.execute(
-                "UPDATE regulatory_watch SET last_checked_at = ? WHERE source_key = ?", (now, src["key"])
-            )
-            results.append({"source_key": src["key"], "status": "unchanged"})
-
-    conn.commit()
-    conn.close()
-    return {"checked_at": now, "results": results}
-
-
-async def _regulatory_watch_loop():
-    """Background loop started at app startup. Runs forever at
-    REGWATCH_INTERVAL_SECONDS, never lets one bad cycle kill the loop.
-
-    Waits REGWATCH_STARTUP_DELAY_SECONDS before the very FIRST check, so a
-    fresh deploy or a free-tier host waking from sleep doesn't immediately
-    spend its first moments doing 3 outbound fetches — exactly the window
-    where a judge or teammate is most likely to be live-testing the app.
-
-    NOTE: this keeps the process itself alive as the scheduler — reliable
-    while the app is running, but a free-tier host that spins the service
-    down on inactivity will pause the loop too. Production should also
-    register an external scheduler (e.g. Render Cron Job / GitHub Actions)
-    hitting POST /api/regulatory-monitor/check-now, so checks still happen
-    on a schedule independent of whether the app happens to be awake."""
-    await asyncio.sleep(REGWATCH_STARTUP_DELAY_SECONDS)
-    while True:
-        try:
-            await asyncio.to_thread(run_regulatory_check)
-        except Exception:
-            pass
-        await asyncio.sleep(REGWATCH_INTERVAL_SECONDS)
-
-
 def _rag_prompt(question: str, facts: str, lang: str) -> str:
     language_name = "English" if lang == "en" else "Arabic"
     return (
@@ -1982,20 +1746,7 @@ DB_PATH = os.environ.get("MEYAR_DB_PATH", "meyar.db")
 
 
 def _db_connect() -> sqlite3.Connection:
-    # timeout=3 (seconds) + WAL journal mode together are what actually
-    # matter here: SQLite's default rollback-journal mode takes an
-    # exclusive lock for the whole duration of any write, so a background
-    # write (e.g. the regulatory monitor updating its table) could make a
-    # concurrent user-facing write (e.g. registering, or approving a
-    # review-queue item) sit blocked for the full default 5s timeout —
-    # exactly the kind of multi-second "hang" reported during sign-up.
-    # WAL mode lets reads proceed without blocking on a writer, and keeps
-    # the exclusive-lock window down to just the final commit instead of
-    # the whole transaction, so this contention becomes rare and brief
-    # instead of routine and multi-second.
-    conn = sqlite3.connect(DB_PATH, timeout=3)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout=3000;")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -2018,35 +1769,9 @@ def _init_db() -> None:
         "CREATE TABLE IF NOT EXISTS otp_codes ("
         "email TEXT, code_hash TEXT, expires_at TEXT, used INTEGER DEFAULT 0)"
     )
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS risk_appetite_config ("
-        "id INTEGER PRIMARY KEY CHECK (id = 1), level TEXT, institution_name TEXT, "
-        "approved_by TEXT, approved_date TEXT, updated_at TEXT)"
-    )
     conn.commit()
     conn.close()
     _seed_demo_users()
-    _seed_risk_appetite()
-
-
-def _seed_risk_appetite() -> None:
-    conn = _db_connect()
-    row = conn.execute("SELECT * FROM risk_appetite_config WHERE id = 1").fetchone()
-    if row is None:
-        conn.execute(
-            "INSERT INTO risk_appetite_config (id, level, institution_name, approved_by, approved_date, updated_at) "
-            "VALUES (1, ?, ?, ?, ?, ?)",
-            (DEFAULT_RISK_APPETITE_LEVEL, "", "", "", _iso(_now())),
-        )
-        conn.commit()
-    else:
-        # A server restart loses the in-memory RISK_APPETITE_STATE mutation
-        # from any earlier POST — restore it from the persisted row so a
-        # previously chosen appetite level survives a redeploy.
-        level = row["level"] if row["level"] in RISK_APPETITE_LEVELS else DEFAULT_RISK_APPETITE_LEVEL
-        RISK_APPETITE_STATE["level"] = level
-        RISK_APPETITE_STATE["threshold"] = RISK_APPETITE_LEVELS[level]["threshold"]
-    conn.close()
 
 
 def _seed_demo_users() -> None:
@@ -2191,7 +1916,7 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> dic
     return payload
 
 
-def _db_insert_review_item(tx: dict) -> None:
+
     conn = _db_connect()
     conn.execute(
         "INSERT OR REPLACE INTO review_queue (id, status, timestamp, data) VALUES (?, ?, ?, ?)",
@@ -2264,7 +1989,6 @@ def _db_count_audit_by_decision_today(decision: str) -> int:
 
 
 _init_db()
-_init_regulatory_watch_db()
 
 _audit_counter = 0
 
@@ -2334,11 +2058,6 @@ class RequestCodeBody(BaseModel):
     email: str
 
 
-class RegisterBody(BaseModel):
-    name: str
-    email: str
-
-
 class VerifyCodeBody(BaseModel):
     email: str
     code: str
@@ -2357,45 +2076,16 @@ class AuthResponse(BaseModel):
 
 @app.post("/api/auth/request-code")
 def request_code(payload: RequestCodeBody):
-    email = payload.email.strip().lower()
-    user = _db_get_user_by_email(email)
+    user = _db_get_user_by_email(payload.email.strip().lower())
     if not user:
-        # Explicit "not registered" response (rather than a generic 200) so
-        # the frontend can offer to switch to the sign-up flow. This trades
-        # a small amount of account-enumeration protection for a much
-        # clearer user experience — an acceptable trade-off for an internal
-        # compliance tool with named employee accounts, not a public app.
-        raise HTTPException(status_code=404, detail="not_registered")
+        # Same generic response whether or not the email exists, so the
+        # endpoint can't be used to enumerate valid employee accounts.
+        return {"sent": True}
     code = _generate_otp()
     _db_store_otp(user["email"], code)
     # TODO(production): send `code` via a real email provider (e.g. Amazon
     # SES, SendGrid) instead of returning it. Left as a real integration
     # point, not a silent fake — see the module docstring above.
-    response = {"sent": True}
-    if DEMO_MODE:
-        response["demo_code"] = code
-        response["demo_notice"] = "MEYAR_DEMO_MODE is on: no real email is sent, so the code is returned here for testing."
-    return response
-
-
-@app.post("/api/auth/register")
-def register(payload: RegisterBody):
-    email = payload.email.strip().lower()
-    name = payload.name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="name_required")
-    if _db_get_user_by_email(email):
-        raise HTTPException(status_code=409, detail="already_registered")
-    conn = _db_connect()
-    conn.execute(
-        "INSERT INTO users (email, name, role, created_at) VALUES (?, ?, ?, ?)",
-        (email, name, "compliance_officer", _iso(_now())),
-    )
-    conn.commit()
-    conn.close()
-    code = _generate_otp()
-    _db_store_otp(email, code)
-    # Same real-email TODO as /api/auth/request-code above.
     response = {"sent": True}
     if DEMO_MODE:
         response["demo_code"] = code
@@ -2416,165 +2106,6 @@ def verify_code(payload: VerifyCodeBody):
 @app.get("/api/auth/me", response_model=AuthUser)
 def auth_me(current_user: dict = Depends(get_current_user)):
     return AuthUser(email=current_user["email"], name=current_user["name"], role=current_user["role"])
-
-
-class RiskAppetiteUpdate(BaseModel):
-    level: Literal["conservative", "moderate", "aggressive"]
-    institution_name: str
-    approved_by: str
-    approved_date: str
-
-
-_EXPOSURE_CACHE = {"value": None, "computed_at": 0.0}
-EXPOSURE_CACHE_TTL_SECONDS = 45
-EXPOSURE_SAMPLE_SIZE = 15  # was 200, then 25 — each sample runs a real model
-# inference, and this endpoint was slowing down (alongside the regulatory
-# monitor) whenever both competed for the same limited request-handling
-# capacity on Render's free tier. 15 is still a reasonable live sample for
-# a demo-scale gauge, and the longer 45s cache means most tab opens hit the
-# cache instead of recomputing at all.
-
-
-def _current_risk_exposure_pct() -> float:
-    """Samples a small batch of live-simulated transactions through the SAME
-    generator and threshold used by /api/realtime-transactions, and reports
-    what share would be escalated to Level 2 right now — i.e. the system's
-    actual current risk posture, measured against the chosen appetite
-    boundary, not a cosmetic number. Cached briefly since this triggers real
-    model inference per sample and is called on every dashboard load."""
-    age = time.monotonic() - _EXPOSURE_CACHE["computed_at"]
-    if _EXPOSURE_CACHE["value"] is not None and age < EXPOSURE_CACHE_TTL_SECONDS:
-        return _EXPOSURE_CACHE["value"]
-    sample = [_generate_transaction(i, _now()) for i in range(EXPOSURE_SAMPLE_SIZE)]
-    escalated = sum(1 for t in sample if t.status in ("flagged", "blocked"))
-    pct = round(escalated / len(sample) * 100, 1)
-    _EXPOSURE_CACHE["value"] = pct
-    _EXPOSURE_CACHE["computed_at"] = time.monotonic()
-    return pct
-
-
-@app.get("/api/regulatory-monitor/sources")
-def get_regulatory_sources():
-    conn = _db_connect()
-    rows = {r["source_key"]: dict(r) for r in conn.execute("SELECT * FROM regulatory_watch").fetchall()}
-    conn.close()
-    out = []
-    for src in REGULATORY_WATCH_SOURCES:
-        row = rows.get(src["key"], {})
-        out.append(
-            {
-                **src,
-                "last_checked_at": row.get("last_checked_at"),
-                "last_changed_at": row.get("last_changed_at"),
-                "has_baseline": row.get("content_hash") is not None,
-            }
-        )
-    return {"sources": out, "check_interval_seconds": REGWATCH_INTERVAL_SECONDS}
-
-
-@app.get("/api/regulatory-monitor/pending")
-def get_regulatory_pending():
-    conn = _db_connect()
-    rows = conn.execute(
-        "SELECT * FROM regulatory_update_queue WHERE status = 'pending' ORDER BY detected_at DESC"
-    ).fetchall()
-    conn.close()
-    return {"items": [dict(r) for r in rows]}
-
-
-class RegulatoryDecisionRequest(BaseModel):
-    decision: Literal["approve", "reject"]
-
-
-@app.post("/api/regulatory-monitor/pending/{item_id}/decide")
-def decide_regulatory_update(
-    item_id: str, payload: RegulatoryDecisionRequest, current_user: dict = Depends(get_current_user)
-):
-    conn = _db_connect()
-    row = conn.execute("SELECT * FROM regulatory_update_queue WHERE id = ?", (item_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="not_found")
-    reviewer = f'{current_user["name"]} ({current_user["email"]})'
-    now = _iso(_now())
-    status = "approved" if payload.decision == "approve" else "rejected"
-    conn.execute(
-        "UPDATE regulatory_update_queue SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?",
-        (status, reviewer, now, item_id),
-    )
-    if status == "approved":
-        # Only a human-approved change ever updates the stored baseline —
-        # a rejected change leaves the old hash in place, so the (still
-        # different) live page keeps getting flagged on the next cycle.
-        conn.execute(
-            "UPDATE regulatory_watch SET content_hash = ?, last_changed_at = ? WHERE source_key = ?",
-            (row["new_hash"], now, row["source_key"]),
-        )
-    conn.commit()
-    conn.close()
-    return {"id": item_id, "status": status, "reviewed_by": reviewer}
-
-
-@app.post("/api/regulatory-monitor/check-now")
-def trigger_regulatory_check(background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Manual trigger — also the endpoint an external scheduler (Render Cron
-    Job, GitHub Actions, etc.) should call on a schedule in production, so
-    checks keep happening even if the app process itself has been idle.
-
-    Returns immediately with "started": the actual check (which fetches 3
-    external pages and can legitimately take a few seconds even with the
-    concurrent-fetch + short-timeout fixes) runs in the background instead
-    of holding the HTTP response open. The frontend re-polls
-    /api/regulatory-monitor/sources shortly after to pick up the result —
-    a "check now" click should never feel frozen in front of a live
-    audience, even if SAMA's site itself is slow to respond that moment."""
-    background_tasks.add_task(run_regulatory_check)
-    return {"status": "started"}
-
-
-@app.get("/api/risk-appetite")
-def get_risk_appetite():
-    conn = _db_connect()
-    row = conn.execute("SELECT * FROM risk_appetite_config WHERE id = 1").fetchone()
-    conn.close()
-    level = RISK_APPETITE_STATE["level"]
-    level_info = RISK_APPETITE_LEVELS[level]
-    return {
-        "level": level,
-        "label_ar": level_info["label_ar"],
-        "label_en": level_info["label_en"],
-        "threshold": RISK_APPETITE_STATE["threshold"],
-        "institution_name": (row["institution_name"] if row else "") or "",
-        "approved_by": (row["approved_by"] if row else "") or "",
-        "approved_date": (row["approved_date"] if row else "") or "",
-        "updated_at": (row["updated_at"] if row else None),
-        "current_exposure_pct": _current_risk_exposure_pct(),
-        "levels": {
-            key: {"threshold": v["threshold"], "label_ar": v["label_ar"], "label_en": v["label_en"]}
-            for key, v in RISK_APPETITE_LEVELS.items()
-        },
-    }
-
-
-@app.post("/api/risk-appetite")
-def update_risk_appetite(payload: RiskAppetiteUpdate, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
-        # Risk appetite is a board-level governance decision — restricting
-        # who may change it is the point, not an incidental detail. Any
-        # signed-in user may VIEW the current appetite (GET above requires
-        # no role check), but only an admin account may change it.
-        raise HTTPException(status_code=403, detail="admin_only")
-    RISK_APPETITE_STATE["level"] = payload.level
-    RISK_APPETITE_STATE["threshold"] = RISK_APPETITE_LEVELS[payload.level]["threshold"]
-    conn = _db_connect()
-    conn.execute(
-        "UPDATE risk_appetite_config SET level = ?, institution_name = ?, approved_by = ?, "
-        "approved_date = ?, updated_at = ? WHERE id = 1",
-        (payload.level, payload.institution_name.strip(), payload.approved_by.strip(), payload.approved_date.strip(), _iso(_now())),
-    )
-    conn.commit()
-    conn.close()
-    return get_risk_appetite()
 
 
 class ReviewDecisionRequest(BaseModel):
@@ -2710,7 +2241,7 @@ def _classify_transaction(payload: WebhookTransactionRequest) -> Transaction:
 
     risk = _score_transaction_risk(payload.amount_sar, hour, deviation, freq_last_hour, is_first_time)
 
-    if risk["probability"] > RISK_APPETITE_STATE["threshold"]:
+    if risk["probability"] > RISK_FLAG_THRESHOLD:
         candidates = [r for r in LEVEL2_FLAGGED_RULES if r["feature_tag"] == risk["dominant_feature"]]
         rule = RNG.choice(candidates) if candidates else RNG.choice(LEVEL2_FLAGGED_RULES)
         tx = Transaction(
