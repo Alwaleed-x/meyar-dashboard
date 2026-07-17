@@ -28,9 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
-import base64
 import hashlib
-import hmac
 import json
 import os
 import random
@@ -45,7 +43,7 @@ from typing import List, Literal, Optional
 
 import joblib
 import numpy as np
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestClassifier
@@ -96,6 +94,7 @@ async def _launch_regulatory_watch():
     run where you don't want a background task firing network calls)."""
     if REGWATCH_ENABLED:
         asyncio.create_task(_regulatory_watch_loop())
+    asyncio.create_task(_exposure_refresh_loop())
 
 
 # ---------------------------------------------------------------------------
@@ -2011,21 +2010,12 @@ def _init_db() -> None:
         "id TEXT PRIMARY KEY, decision TEXT, timestamp TEXT, data TEXT)"
     )
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS users ("
-        "email TEXT PRIMARY KEY, name TEXT, role TEXT, created_at TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS otp_codes ("
-        "email TEXT, code_hash TEXT, expires_at TEXT, used INTEGER DEFAULT 0)"
-    )
-    conn.execute(
         "CREATE TABLE IF NOT EXISTS risk_appetite_config ("
         "id INTEGER PRIMARY KEY CHECK (id = 1), level TEXT, institution_name TEXT, "
         "approved_by TEXT, approved_date TEXT, updated_at TEXT)"
     )
     conn.commit()
     conn.close()
-    _seed_demo_users()
     _seed_risk_appetite()
 
 
@@ -2049,70 +2039,6 @@ def _seed_risk_appetite() -> None:
     conn.close()
 
 
-def _seed_demo_users() -> None:
-    """Seeds a handful of named accounts so the review queue can show a real
-    signed-in actor instead of a generic role label. In a production
-    deployment these would come from the bank's own identity provider
-    (e.g. SSO/Active Directory), not a hardcoded seed list."""
-    conn = _db_connect()
-    existing = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
-    if existing == 0:
-        demo_users = [
-            ("sara.alqahtani@meyar.demo", "سارة القحطاني", "compliance_officer"),
-            ("abdulaziz.alharbi@meyar.demo", "عبدالعزيز الحربي", "sharia_board"),
-            ("admin@meyar.demo", "مدير النظام", "admin"),
-        ]
-        for email, name, role in demo_users:
-            conn.execute(
-                "INSERT INTO users (email, name, role, created_at) VALUES (?, ?, ?, ?)",
-                (email, name, role, _iso(_now())),
-            )
-        conn.commit()
-    conn.close()
-
-
-def _db_get_user_by_email(email: str) -> Optional[dict]:
-    conn = _db_connect()
-    row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-    conn.close()
-    return dict(row) if row else None
-
-
-def _db_store_otp(email: str, code: str) -> None:
-    conn = _db_connect()
-    conn.execute("DELETE FROM otp_codes WHERE email = ?", (email,))
-    expires_at = _iso(_now() + timedelta(minutes=OTP_TTL_MINUTES))
-    conn.execute(
-        "INSERT INTO otp_codes (email, code_hash, expires_at, used) VALUES (?, ?, ?, 0)",
-        (email, _hash_otp(email, code), expires_at),
-    )
-    conn.commit()
-    conn.close()
-
-
-def _db_verify_and_consume_otp(email: str, code: str) -> bool:
-    conn = _db_connect()
-    row = conn.execute(
-        "SELECT * FROM otp_codes WHERE email = ? AND used = 0 ORDER BY expires_at DESC LIMIT 1", (email,)
-    ).fetchone()
-    if not row:
-        conn.close()
-        return False
-    expires_at = datetime.fromisoformat(row["expires_at"])
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < _now():
-        conn.close()
-        return False
-    if not hmac.compare_digest(row["code_hash"], _hash_otp(email, code)):
-        conn.close()
-        return False
-    conn.execute("UPDATE otp_codes SET used = 1 WHERE email = ?", (email,))
-    conn.commit()
-    conn.close()
-    return True
-
-
 # ---------------------------------------------------------------------------
 # Authentication — real email-code (OTP) sign-in, so every review-queue
 # decision is attributable to a specific signed-in person, not a free-text
@@ -2128,68 +2054,6 @@ def _db_verify_and_consume_otp(email: str, code: str) -> bool:
 # end-to-end. Wire in a real provider at the marked TODO below and set
 # MEYAR_DEMO_MODE=false before handling real customer data.
 # ---------------------------------------------------------------------------
-
-AUTH_SECRET_KEY = os.environ.get("MEYAR_AUTH_SECRET", "dev-only-insecure-secret-change-me")
-OTP_TTL_MINUTES = 10
-SESSION_TTL_HOURS = 12
-DEMO_MODE = os.environ.get("MEYAR_DEMO_MODE", "true").lower() == "true"
-
-
-def _hash_otp(email: str, code: str) -> str:
-    return hashlib.pbkdf2_hmac("sha256", code.encode(), email.encode(), 100_000).hex()
-
-
-def _generate_otp() -> str:
-    return f"{secrets.randbelow(1_000_000):06d}"
-
-
-def _b64url_encode(raw: bytes) -> str:
-    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
-
-
-def _b64url_decode(s: str) -> bytes:
-    padding = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode(s + padding)
-
-
-def create_session_token(email: str, name: str, role: str) -> str:
-    payload = {
-        "email": email,
-        "name": name,
-        "role": role,
-        "exp": (_now() + timedelta(hours=SESSION_TTL_HOURS)).timestamp(),
-    }
-    body = _b64url_encode(json.dumps(payload).encode())
-    signature = hmac.new(AUTH_SECRET_KEY.encode(), body.encode(), hashlib.sha256).hexdigest()
-    return f"{body}.{signature}"
-
-
-def verify_session_token(token: str) -> Optional[dict]:
-    try:
-        body, signature = token.split(".", 1)
-    except ValueError:
-        return None
-    expected_signature = hmac.new(AUTH_SECRET_KEY.encode(), body.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(signature, expected_signature):
-        return None
-    try:
-        payload = json.loads(_b64url_decode(body))
-    except Exception:
-        return None
-    if payload.get("exp", 0) < _now().timestamp():
-        return None
-    return payload
-
-
-def get_current_user(authorization: Optional[str] = Header(default=None)) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header")
-    token = authorization.removeprefix("Bearer ").strip()
-    payload = verify_session_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
-    return payload
-
 
 def _db_insert_review_item(tx: dict) -> None:
     conn = _db_connect()
@@ -2330,93 +2194,6 @@ def _seed_review_and_audit():
 _seed_review_and_audit()
 
 
-class RequestCodeBody(BaseModel):
-    email: str
-
-
-class RegisterBody(BaseModel):
-    name: str
-    email: str
-
-
-class VerifyCodeBody(BaseModel):
-    email: str
-    code: str
-
-
-class AuthUser(BaseModel):
-    email: str
-    name: str
-    role: str
-
-
-class AuthResponse(BaseModel):
-    token: str
-    user: AuthUser
-
-
-@app.post("/api/auth/request-code")
-def request_code(payload: RequestCodeBody):
-    email = payload.email.strip().lower()
-    user = _db_get_user_by_email(email)
-    if not user:
-        # Explicit "not registered" response (rather than a generic 200) so
-        # the frontend can offer to switch to the sign-up flow. This trades
-        # a small amount of account-enumeration protection for a much
-        # clearer user experience — an acceptable trade-off for an internal
-        # compliance tool with named employee accounts, not a public app.
-        raise HTTPException(status_code=404, detail="not_registered")
-    code = _generate_otp()
-    _db_store_otp(user["email"], code)
-    # TODO(production): send `code` via a real email provider (e.g. Amazon
-    # SES, SendGrid) instead of returning it. Left as a real integration
-    # point, not a silent fake — see the module docstring above.
-    response = {"sent": True}
-    if DEMO_MODE:
-        response["demo_code"] = code
-        response["demo_notice"] = "MEYAR_DEMO_MODE is on: no real email is sent, so the code is returned here for testing."
-    return response
-
-
-@app.post("/api/auth/register")
-def register(payload: RegisterBody):
-    email = payload.email.strip().lower()
-    name = payload.name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="name_required")
-    if _db_get_user_by_email(email):
-        raise HTTPException(status_code=409, detail="already_registered")
-    conn = _db_connect()
-    conn.execute(
-        "INSERT INTO users (email, name, role, created_at) VALUES (?, ?, ?, ?)",
-        (email, name, "compliance_officer", _iso(_now())),
-    )
-    conn.commit()
-    conn.close()
-    code = _generate_otp()
-    _db_store_otp(email, code)
-    # Same real-email TODO as /api/auth/request-code above.
-    response = {"sent": True}
-    if DEMO_MODE:
-        response["demo_code"] = code
-        response["demo_notice"] = "MEYAR_DEMO_MODE is on: no real email is sent, so the code is returned here for testing."
-    return response
-
-
-@app.post("/api/auth/verify-code", response_model=AuthResponse)
-def verify_code(payload: VerifyCodeBody):
-    email = payload.email.strip().lower()
-    user = _db_get_user_by_email(email)
-    if not user or not _db_verify_and_consume_otp(email, payload.code.strip()):
-        raise HTTPException(status_code=401, detail="Invalid or expired code")
-    token = create_session_token(user["email"], user["name"], user["role"])
-    return AuthResponse(token=token, user=AuthUser(email=user["email"], name=user["name"], role=user["role"]))
-
-
-@app.get("/api/auth/me", response_model=AuthUser)
-def auth_me(current_user: dict = Depends(get_current_user)):
-    return AuthUser(email=current_user["email"], name=current_user["name"], role=current_user["role"])
-
 
 class RiskAppetiteUpdate(BaseModel):
     level: Literal["conservative", "moderate", "aggressive"]
@@ -2425,32 +2202,42 @@ class RiskAppetiteUpdate(BaseModel):
     approved_date: str
 
 
-_EXPOSURE_CACHE = {"value": None, "computed_at": 0.0}
-EXPOSURE_CACHE_TTL_SECONDS = 45
-EXPOSURE_SAMPLE_SIZE = 15  # was 200, then 25 — each sample runs a real model
-# inference, and this endpoint was slowing down (alongside the regulatory
-# monitor) whenever both competed for the same limited request-handling
-# capacity on Render's free tier. 15 is still a reasonable live sample for
-# a demo-scale gauge, and the longer 45s cache means most tab opens hit the
-# cache instead of recomputing at all.
+_EXPOSURE_CACHE = {"value": 0.0, "computed_at": 0.0}
+EXPOSURE_SAMPLE_SIZE = 15  # each sample runs a real model inference
+EXPOSURE_REFRESH_INTERVAL_SECONDS = int(os.environ.get("MEYAR_EXPOSURE_REFRESH_SECONDS", 30))
+# Computation is fully decoupled from the request path (see
+# _refresh_exposure_cache + the background loop below): GET
+# /api/risk-appetite must never block on model inference — it only ever
+# reads whatever is already sitting in _EXPOSURE_CACHE. Earlier versions
+# computed on-demand within the request (even cached, the very first hit
+# or a cache-miss still ran inference inline), which was slow enough on
+# Render's free-tier CPU, compounded by competing with other background
+# work, to make the Risk Appetite tab feel frozen. Precomputing removes
+# that possibility entirely: worst case the number is a few seconds stale,
+# never that the request waits on it.
+
+
+def _refresh_exposure_cache() -> None:
+    sample = [_generate_transaction(i, _now()) for i in range(EXPOSURE_SAMPLE_SIZE)]
+    escalated = sum(1 for t in sample if t.status in ("flagged", "blocked"))
+    _EXPOSURE_CACHE["value"] = round(escalated / len(sample) * 100, 1)
+    _EXPOSURE_CACHE["computed_at"] = time.monotonic()
 
 
 def _current_risk_exposure_pct() -> float:
-    """Samples a small batch of live-simulated transactions through the SAME
-    generator and threshold used by /api/realtime-transactions, and reports
-    what share would be escalated to Level 2 right now — i.e. the system's
-    actual current risk posture, measured against the chosen appetite
-    boundary, not a cosmetic number. Cached briefly since this triggers real
-    model inference per sample and is called on every dashboard load."""
-    age = time.monotonic() - _EXPOSURE_CACHE["computed_at"]
-    if _EXPOSURE_CACHE["value"] is not None and age < EXPOSURE_CACHE_TTL_SECONDS:
-        return _EXPOSURE_CACHE["value"]
-    sample = [_generate_transaction(i, _now()) for i in range(EXPOSURE_SAMPLE_SIZE)]
-    escalated = sum(1 for t in sample if t.status in ("flagged", "blocked"))
-    pct = round(escalated / len(sample) * 100, 1)
-    _EXPOSURE_CACHE["value"] = pct
-    _EXPOSURE_CACHE["computed_at"] = time.monotonic()
-    return pct
+    """Reads the precomputed exposure figure — never computes inline. See
+    _refresh_exposure_cache (run once at startup, then on a background
+    loop) for where the actual number comes from."""
+    return _EXPOSURE_CACHE["value"]
+
+
+async def _exposure_refresh_loop():
+    while True:
+        try:
+            await asyncio.to_thread(_refresh_exposure_cache)
+        except Exception:
+            pass
+        await asyncio.sleep(EXPOSURE_REFRESH_INTERVAL_SECONDS)
 
 
 @app.get("/api/regulatory-monitor/sources")
@@ -2484,18 +2271,17 @@ def get_regulatory_pending():
 
 class RegulatoryDecisionRequest(BaseModel):
     decision: Literal["approve", "reject"]
+    reviewer_name: str = "موظف الامتثال (تجريبي)"
 
 
 @app.post("/api/regulatory-monitor/pending/{item_id}/decide")
-def decide_regulatory_update(
-    item_id: str, payload: RegulatoryDecisionRequest, current_user: dict = Depends(get_current_user)
-):
+def decide_regulatory_update(item_id: str, payload: RegulatoryDecisionRequest):
     conn = _db_connect()
     row = conn.execute("SELECT * FROM regulatory_update_queue WHERE id = ?", (item_id,)).fetchone()
     if not row:
         conn.close()
         raise HTTPException(status_code=404, detail="not_found")
-    reviewer = f'{current_user["name"]} ({current_user["email"]})'
+    reviewer = payload.reviewer_name
     now = _iso(_now())
     status = "approved" if payload.decision == "approve" else "rejected"
     conn.execute(
@@ -2516,7 +2302,7 @@ def decide_regulatory_update(
 
 
 @app.post("/api/regulatory-monitor/check-now")
-def trigger_regulatory_check(background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+def trigger_regulatory_check(background_tasks: BackgroundTasks):
     """Manual trigger — also the endpoint an external scheduler (Render Cron
     Job, GitHub Actions, etc.) should call on a schedule in production, so
     checks keep happening even if the app process itself has been idle.
@@ -2557,13 +2343,7 @@ def get_risk_appetite():
 
 
 @app.post("/api/risk-appetite")
-def update_risk_appetite(payload: RiskAppetiteUpdate, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
-        # Risk appetite is a board-level governance decision — restricting
-        # who may change it is the point, not an incidental detail. Any
-        # signed-in user may VIEW the current appetite (GET above requires
-        # no role check), but only an admin account may change it.
-        raise HTTPException(status_code=403, detail="admin_only")
+def update_risk_appetite(payload: RiskAppetiteUpdate):
     RISK_APPETITE_STATE["level"] = payload.level
     RISK_APPETITE_STATE["threshold"] = RISK_APPETITE_LEVELS[payload.level]["threshold"]
     conn = _db_connect()
@@ -2579,6 +2359,7 @@ def update_risk_appetite(payload: RiskAppetiteUpdate, current_user: dict = Depen
 
 class ReviewDecisionRequest(BaseModel):
     decision: Literal["approve", "reject"]
+    reviewer_name: str = "موظف الامتثال (تجريبي)"
     note: Optional[str] = None
 
 
@@ -2610,8 +2391,8 @@ def get_review_queue():
 
 
 @app.post("/api/review-queue/{transaction_id}/decide", response_model=AuditEntry)
-def decide_review(transaction_id: str, payload: ReviewDecisionRequest, current_user: dict = Depends(get_current_user)):
-    reviewer_name = f'{current_user["name"]} ({current_user["email"]})'
+def decide_review(transaction_id: str, payload: ReviewDecisionRequest):
+    reviewer_name = payload.reviewer_name
     match = _db_get_review_item(transaction_id)
     if not match:
         return AuditEntry(
