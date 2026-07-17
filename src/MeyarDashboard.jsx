@@ -55,6 +55,7 @@ import {
   ThumbsDown,
   Download,
   Filter,
+  Gauge,
   GitCompare,
   Bug,
   Mail,
@@ -94,7 +95,7 @@ const STR = {
       audit: "سجل التدقيق",
       analytics: "التحليلات",
       regulatory: "محرك التشريعات",
-      riskAppetite: "تقبّل المخاطر",
+      methodology: "منهجية الدقة",
       chatbot: "مساعد التشريعات",
       limits: "الحدود والمسؤولية",
       settings: "الإعدادات",
@@ -156,18 +157,11 @@ const STR = {
     auth: {
       appName: "معيار",
       tagline: "منظومة الرقابة المالية اللحظية",
-      loginTab: "تسجيل الدخول",
-      signupTab: "حساب جديد",
       emailStepTitle: "تسجيل الدخول",
       emailStepSubtitle: "أدخل بريدك الإلكتروني الوظيفي لإرسال رمز تحقق",
       emailPlaceholder: "name@meyar.demo",
       sendCode: "إرسال رمز التحقق",
       sending: "جارٍ الإرسال...",
-      signupStepTitle: "إنشاء حساب جديد",
-      signupStepSubtitle: "بيانات بسيطة، ثم نرسل لك رمز تحقق لتأكيد بريدك",
-      namePlaceholder: "الاسم الكامل",
-      createAccount: "إنشاء الحساب وإرسال الرمز",
-      creating: "جارٍ الإنشاء...",
       codeStepTitle: "أدخل رمز التحقق",
       codeStepSubtitle: (email) => `أرسلنا رمز مكوَّن من ٦ أرقام إلى ${email}`,
       codePlaceholder: "٠ ٠ ٠ ٠ ٠ ٠",
@@ -175,15 +169,11 @@ const STR = {
       verifying: "جارٍ التحقق...",
       changeEmail: "تغيير البريد الإلكتروني",
       demoNotice: (code) => `وضع تجريبي: لا يوجد إرسال بريد فعلي حالياً، رمزك هو ${code}`,
-      notRegistered: "هذا البريد غير مسجَّل بالنظام.",
-      goToSignup: "أنشئ حساباً جديداً",
-      alreadyRegistered: "هذا البريد مسجَّل بالفعل.",
-      goToLogin: "سجّل الدخول بدلاً من ذلك",
+      invalidEmail: "هذا البريد الإلكتروني غير مسجَّل بالنظام",
       invalidCode: "رمز غير صحيح أو منتهي الصلاحية",
-      nameRequired: "الرجاء إدخال الاسم الكامل",
-      genericError: "حدث خطأ من الخادم، حاول مرة أخرى",
-      networkError: "تعذّر الوصول للخادم — تحقّق من اتصالك بالإنترنت أو حاول لاحقاً",
+      genericError: "حدث خطأ، حاول مرة أخرى",
       sessionExpired: "انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً",
+      demoAccountsTitle: "حسابات تجريبية متاحة",
     },
     onboarding: {
       skip: "تخطّي",
@@ -332,49 +322,30 @@ const STR = {
       disclaimer:
         "الأنظمة والتعاميم المذكورة هنا حقيقية ويمكن التحقق منها بشكل مستقل (المصادر الرسمية: laws.boe.gov.sa و rulebook.sama.gov.sa). الاستثناء الوحيد هو بعض الأرقام الدقيقة للسقوف المالية غير المنشورة تفصيلياً من ساما.",
       issuedOn: "تاريخ الإصدار:",
-      monitorTitle: "المراقبة الحية لبوابة ساما الرسمية",
-      monitorSubtitle: "يفحص النظام هذي المصادر دورياً، ويحيل أي تغيير مكتشف وجوباً لمراجعة بشرية — لا يُعتمد شي تلقائياً",
-      lastChecked: "آخر فحص:",
-      neverChecked: "لم يُفحص بعد",
-      statusSynced: "متزامن",
-      statusPending: "تحديث مكتشف — بانتظار المراجعة",
-      checkNow: "افحص الآن",
-      checking: "جارٍ الفحص...",
-      pendingTitle: "تحديثات بانتظار الاعتماد البشري",
-      pendingEmpty: "لا توجد تحديثات معلَّقة حالياً",
-      detectedAt: "اكتُشف بتاريخ:",
-      excerptLabel: "مقتطف من المحتوى الجديد:",
-      approve: "اعتماد",
-      reject: "رفض",
-      decidedBy: "قرار:",
     },
-    riskAppetite: {
-      title: "تقبّل المخاطر",
-      subtitle: "بيان تقبّل المخاطر المعتمد من المجلس، مُترجَم إلى إعداد حي يتحكم فعلياً بقرارات النظام",
-      governanceNote: "متطلبات حوكمة ساما تشترط بيان تقبّل مخاطر مخصَّصاً لكل مؤسسة، لا بياناً عاماً — فحوصات ساما تعتبر البيان العام غير المخصَّص ملاحظة تُسجَّل رسمياً بمحضر الفحص.",
-      currentLevelLabel: "المستوى الحالي",
-      thresholdLabel: "عتبة تصعيد المستوى الثاني",
-      exposureLabel: "التعرّض الحالي للمخاطر",
-      exposureDesc: "نسبة عيّنة حية من المعاملات المُعالَجة الآن تحتاج تصعيداً للمراجعة البشرية، بنفس منطق النظام الفعلي",
-      levelConservative: "متحفّظ",
-      levelModerate: "متوسط",
-      levelAggressive: "منفتح",
-      levelConservativeDesc: "عتبة أدنى — يُحيل حالات أكثر للمراجعة البشرية، مناسب لمؤسسات تفضّل حذراً أعلى",
-      levelModerateDesc: "التوازن الافتراضي الموصى به بين الدقة والاستدعاء",
-      levelAggressiveDesc: "عتبة أعلى — يثق أكثر بتقدير النموذج، إحالات أقل للمراجعة البشرية",
-      configTitle: "بيانات الاعتماد الرسمي",
-      institutionLabel: "اسم المؤسسة",
-      institutionPlaceholder: "مثال: مصرف الإنماء",
-      approvedByLabel: "اعتُمد من",
-      approvedByPlaceholder: "مثال: لجنة المخاطر بمجلس الإدارة",
-      approvedDateLabel: "تاريخ الاعتماد",
-      saveButton: "حفظ واعتماد",
-      saving: "جارٍ الحفظ...",
-      saved: "تم حفظ واعتماد بيان تقبّل المخاطر",
-      adminOnlyNote: "تعديل هذا الإعداد يتطلب صلاحية مدير النظام — أي مستخدم آخر يستطيع الاطّلاع فقط",
-      adminOnlyError: "هذا الإجراء يتطلب صلاحية مدير النظام",
-      notApproved: "لم يُعتمَد بعد",
-      loading: "جارٍ تحميل بيانات تقبّل المخاطر...",
+    methodology: {
+      title: "منهجية الدقة",
+      subtitle: "كيف نقيس دقة الموديل فعلياً، ولماذا اخترنا هذا الحد بالذات لتفعيل التنبيه",
+      currentOperating: "نقطة التشغيل الحالية",
+      threshold: "الحد المُفعَّل",
+      precision: "الدقة (Precision)",
+      recall: "الاستدعاء (Recall)",
+      f1: "F1 Score",
+      precisionExplain: "من كل المعاملات اللي صنّفها الموديل «تحتاج مراجعة»، كم نسبة منها كانت فعلاً كذلك؟ دقة منخفضة تعني إزعاج موظفين بمراجعات غير ضرورية كثيرة.",
+      recallExplain: "من كل المعاملات اللي فعلاً تحتاج مراجعة، كم نسبة قدر الموديل يمسكها؟ استدعاء منخفض يعني تفويت حالات حقيقية.",
+      confusionMatrix: "مصفوفة الالتباس",
+      truePositive: "إيجابية صحيحة",
+      truePositiveDesc: "احتاجت مراجعة، والموديل صنّفها صح",
+      falsePositive: "إيجابية خاطئة",
+      falsePositiveDesc: "ما احتاجت مراجعة، لكن الموديل رفعها بالخطأ",
+      trueNegative: "سلبية صحيحة",
+      trueNegativeDesc: "ما احتاجت مراجعة، والموديل صنّفها صح",
+      falseNegative: "سلبية خاطئة",
+      falseNegativeDesc: "احتاجت مراجعة، لكن الموديل فوّتها",
+      tradeoffTitle: "لماذا الحد ٠.٥٥ بالذات؟",
+      tradeoffBody: "رفع الحد يقلّل الإزعاج (دقة أعلى) لكن يفوّت حالات حقيقية أكثر (استدعاء أقل). خفضه يمسك حالات أكثر لكن يزيد المراجعات غير الضرورية. الرسم أدناه يعرض هذا التبادل فعلياً عبر حدود مختلفة، والحد الحالي هو نقطة توازن مقصودة لا رقم عشوائي.",
+      testSetLabel: "حجم عيّنة الاختبار",
+      loading: "جارٍ حساب المقاييس من الموديل الفعلي...",
     },
     chart: {
       month: "الشهر",
@@ -397,7 +368,7 @@ const STR = {
       audit: "Audit trail",
       analytics: "Analytics",
       regulatory: "Regulatory Engine",
-      riskAppetite: "Risk Appetite",
+      methodology: "Accuracy Methodology",
       chatbot: "Legislation Assistant",
       limits: "Limits & Liability",
       settings: "Settings",
@@ -459,18 +430,11 @@ const STR = {
     auth: {
       appName: "Meyar",
       tagline: "Real-time financial compliance system",
-      loginTab: "Sign in",
-      signupTab: "New account",
       emailStepTitle: "Sign in",
       emailStepSubtitle: "Enter your work email to receive a verification code",
       emailPlaceholder: "name@meyar.demo",
       sendCode: "Send verification code",
       sending: "Sending...",
-      signupStepTitle: "Create a new account",
-      signupStepSubtitle: "A few basic details, then we'll send a code to confirm your email",
-      namePlaceholder: "Full name",
-      createAccount: "Create account & send code",
-      creating: "Creating...",
       codeStepTitle: "Enter verification code",
       codeStepSubtitle: (email) => `We sent a 6-digit code to ${email}`,
       codePlaceholder: "0 0 0 0 0 0",
@@ -478,15 +442,11 @@ const STR = {
       verifying: "Verifying...",
       changeEmail: "Change email",
       demoNotice: (code) => `Demo mode: no real email is sent yet, your code is ${code}`,
-      notRegistered: "This email is not registered.",
-      goToSignup: "Create a new account",
-      alreadyRegistered: "This email is already registered.",
-      goToLogin: "Sign in instead",
+      invalidEmail: "This email is not registered in the system",
       invalidCode: "Invalid or expired code",
-      nameRequired: "Please enter your full name",
-      genericError: "A server error occurred, please try again",
-      networkError: "Couldn't reach the server — check your connection or try again later",
+      genericError: "Something went wrong, please try again",
       sessionExpired: "Your session has expired, please sign in again",
+      demoAccountsTitle: "Available demo accounts",
     },
     onboarding: {
       skip: "Skip",
@@ -634,49 +594,30 @@ const STR = {
       disclaimer:
         "The laws and regulations cited here are real and independently verifiable (official sources: laws.boe.gov.sa and rulebook.sama.gov.sa). The one exception is certain precise financial caps not publicly detailed by SAMA.",
       issuedOn: "Issued:",
-      monitorTitle: "Live monitoring of SAMA's official Rulebook",
-      monitorSubtitle: "The system checks these sources periodically and routes any detected change to mandatory human review — nothing is ever auto-applied",
-      lastChecked: "Last checked:",
-      neverChecked: "Not checked yet",
-      statusSynced: "In sync",
-      statusPending: "Change detected — pending review",
-      checkNow: "Check now",
-      checking: "Checking...",
-      pendingTitle: "Updates awaiting human approval",
-      pendingEmpty: "No pending updates right now",
-      detectedAt: "Detected:",
-      excerptLabel: "New content excerpt:",
-      approve: "Approve",
-      reject: "Reject",
-      decidedBy: "Decision:",
     },
-    riskAppetite: {
-      title: "Risk Appetite",
-      subtitle: "The board-approved Risk Appetite Statement, translated into a live setting that actually drives system decisions",
-      governanceNote: "SAMA's governance principles require an institution-specific risk appetite statement, not a generic one — SAMA examiners flag generic, non-institution-specific statements as a formal finding.",
-      currentLevelLabel: "Current level",
-      thresholdLabel: "Level-2 escalation threshold",
-      exposureLabel: "Current risk exposure",
-      exposureDesc: "Share of a live sample of transactions being processed right now that require human-review escalation, using the same logic as the live system",
-      levelConservative: "Conservative",
-      levelModerate: "Moderate",
-      levelAggressive: "Aggressive",
-      levelConservativeDesc: "Lowest threshold — escalates more cases to human review; fits institutions preferring greater caution",
-      levelModerateDesc: "The recommended default balance between precision and recall",
-      levelAggressiveDesc: "Higher threshold — trusts the model's assessment more, fewer escalations to human review",
-      configTitle: "Official approval details",
-      institutionLabel: "Institution name",
-      institutionPlaceholder: "e.g. Alinma Bank",
-      approvedByLabel: "Approved by",
-      approvedByPlaceholder: "e.g. Board Risk Committee",
-      approvedDateLabel: "Approval date",
-      saveButton: "Save & approve",
-      saving: "Saving...",
-      saved: "Risk appetite statement saved and approved",
-      adminOnlyNote: "Changing this setting requires a system-admin account — other users can only view it",
-      adminOnlyError: "This action requires a system-admin account",
-      notApproved: "Not yet approved",
-      loading: "Loading risk appetite data...",
+    methodology: {
+      title: "Accuracy Methodology",
+      subtitle: "How we actually measure model accuracy, and why this specific alert threshold was chosen",
+      currentOperating: "Current operating point",
+      threshold: "Active threshold",
+      precision: "Precision",
+      recall: "Recall",
+      f1: "F1 Score",
+      precisionExplain: "Of everything the model flagged as \"needs review\", what fraction actually did? Low precision means burdening staff with unnecessary reviews.",
+      recallExplain: "Of everything that actually needed review, what fraction did the model catch? Low recall means missing real cases.",
+      confusionMatrix: "Confusion Matrix",
+      truePositive: "True Positive",
+      truePositiveDesc: "Needed review, correctly flagged",
+      falsePositive: "False Positive",
+      falsePositiveDesc: "Didn't need review, wrongly flagged",
+      trueNegative: "True Negative",
+      trueNegativeDesc: "Didn't need review, correctly passed",
+      falseNegative: "False Negative",
+      falseNegativeDesc: "Needed review, but the model missed it",
+      tradeoffTitle: "Why threshold 0.55 specifically?",
+      tradeoffBody: "Raising the threshold reduces noise (higher precision) but misses more real cases (lower recall). Lowering it catches more but increases unnecessary reviews. The chart below shows this trade-off across different thresholds — the current one is a deliberate balance point, not an arbitrary number.",
+      testSetLabel: "Test set size",
+      loading: "Computing metrics from the live model...",
     },
     chart: {
       month: "Month",
@@ -689,7 +630,7 @@ const STR = {
   },
 };
 
-const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "riskAppetite", "chatbot", "limits"];
+const NAV_ORDER = ["overview", "monitor", "review", "audit", "analytics", "regulatory", "methodology", "chatbot", "limits"];
 const NAV_ICONS = {
   overview: LayoutDashboard,
   monitor: Radio,
@@ -697,7 +638,7 @@ const NAV_ICONS = {
   audit: History,
   analytics: BarChart3,
   regulatory: FileText,
-  riskAppetite: Scale,
+  methodology: Gauge,
   chatbot: MessageCircle,
   limits: ShieldAlert,
 };
@@ -755,6 +696,7 @@ const AR_EN_DICTIONARY = {
   "دليل مكافحة غسل الأموال وتمويل الإرهاب (ساما)": "the SAMA AML/CTF Guide",
   "نظام مكافحة غسل الأموال (م/20)": "the Anti-Money Laundering Law (Royal Decree M/20)",
   "إطار ساما للخدمات المصرفية المفتوحة": "the SAMA Open Banking Framework",
+  "قواعد المحافظ الإلكترونية": "the Electronic Wallets Rules",
   "لائحة مراقبة شركات مزودي خدمات الدفع (PSPR)": "the Payment Service Provider Regulations (PSPR)",
   "ضوابط التحقق من هوية العميل في الخدمات المصرفية المفتوحة": "Customer identity verification controls in Open Banking services",
   "تحديث السقوف اليومية لمعاملات الدفع الفوري": "Update to daily limits for instant payment transactions",
@@ -2116,165 +2058,9 @@ const PARSING_META = {
   queued: { text: "text-white/40", bg: "bg-white/[0.04]", border: "border-white/10" },
 };
 
-const REGULATORY_SOURCE_LOOKUP = {
-  laws_and_implementing_regs: { title_ar: "الأنظمة ولوائحها التنفيذية", title_en: "Laws and Implementing Regulations" },
-  regulations_and_instructions: { title_ar: "اللوائح والتعليمات التنظيمية", title_en: "Regulations and Instructions" },
-  sama_circulars: { title_ar: "تعاميم ساما (بالترتيب الزمني)", title_en: "SAMA Circulars (chronological)" },
-};
-
-function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
-  const m = t.regulatory;
-  const [sources, setSources] = useState([]);
-  const [pending, setPending] = useState([]);
-  const [checking, setChecking] = useState(false);
-  const [decidingId, setDecidingId] = useState(null);
-
-  const loadMonitorData = useCallback(() => {
-    const withTimeout = (path) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-      return fetch(`${API_BASE}${path}`, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
-    };
-    withTimeout("/regulatory-monitor/sources")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => json && setSources(json.sources))
-      .catch(() => {});
-    withTimeout("/regulatory-monitor/pending")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => json && setPending(json.items))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    loadMonitorData();
-  }, [loadMonitorData]);
-
-  const handleCheckNow = async () => {
-    setChecking(true);
-    try {
-      // The endpoint now responds immediately ({status: "started"}) and
-      // runs the actual check (concurrent fetches, ~5s worst case) in the
-      // background — so this click must never sit waiting on that. Poll
-      // shortly after instead of blocking on the original request.
-      await fetch(`${API_BASE}/regulatory-monitor/check-now`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      setTimeout(loadMonitorData, 3000);
-      setTimeout(loadMonitorData, 6500);
-    } catch {
-      /* offline — monitor section simply stays as last loaded */
-    } finally {
-      setTimeout(() => setChecking(false), 3000);
-    }
-  };
-
-  const handleDecide = async (itemId, decision) => {
-    setDecidingId(itemId);
-    try {
-      await fetch(`${API_BASE}/regulatory-monitor/pending/${itemId}/decide`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ decision }),
-      });
-      loadMonitorData();
-    } catch {
-      /* offline — nothing to update locally, next manual check will retry */
-    } finally {
-      setDecidingId(null);
-    }
-  };
-
+function RegulatoryTab({ regulatory, lang, t }) {
   return (
     <div className="space-y-4">
-      {/* Live regulatory monitor */}
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <h3 className="text-white font-bold text-sm flex items-center gap-2">
-            <Radio size={15} style={{ color: "var(--lavender)" }} />
-            {m.monitorTitle}
-          </h3>
-          <button
-            onClick={handleCheckNow}
-            disabled={checking}
-            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-opacity disabled:opacity-60"
-            style={{ borderColor: "rgba(166,172,255,0.3)", backgroundColor: "rgba(166,172,255,0.08)", color: "var(--lavender)" }}
-          >
-            {checking ? <Loader2 size={12} className="animate-spin" /> : <Radio size={12} />}
-            {checking ? m.checking : m.checkNow}
-          </button>
-        </div>
-        <p className="text-[11px] text-white/40 mb-4">{m.monitorSubtitle}</p>
-
-        <div className="grid sm:grid-cols-3 gap-3 mb-2">
-          {sources.map((src) => {
-            const isPendingSrc = pending.some((p) => p.source_key === src.key);
-            return (
-              <div key={src.key} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
-                <p className="text-[12.5px] font-bold text-white mb-1.5">{lang === "en" ? src.title_en : src.title_ar}</p>
-                <span
-                  className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mb-2"
-                  style={
-                    isPendingSrc
-                      ? { color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.12)" }
-                      : { color: "#6ee7b7", backgroundColor: "rgba(110,231,183,0.1)" }
-                  }
-                >
-                  {isPendingSrc ? m.statusPending : m.statusSynced}
-                </span>
-                <p className="text-[10.5px] text-white/35">
-                  {m.lastChecked} {src.last_checked_at ? timeAgo(src.last_checked_at, lang) : m.neverChecked}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Pending human-review queue for detected changes */}
-      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-3">
-          <ShieldAlert size={15} style={{ color: "var(--gold)" }} />
-          {m.pendingTitle}
-        </h3>
-        {pending.length === 0 && <p className="text-[11px] text-white/35">{m.pendingEmpty}</p>}
-        <div className="space-y-2.5">
-          {pending.map((item) => {
-            const src = REGULATORY_SOURCE_LOOKUP[item.source_key];
-            return (
-              <div key={item.id} className="rounded-xl border p-3.5" style={{ borderColor: "rgba(232,196,104,0.25)", backgroundColor: "rgba(232,196,104,0.04)" }}>
-                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-                  <p className="text-[12.5px] font-bold text-white">{src ? (lang === "en" ? src.title_en : src.title_ar) : item.source_key}</p>
-                  <span className="text-[10px] text-white/35">{m.detectedAt} {timeAgo(item.detected_at, lang)}</span>
-                </div>
-                <p className="text-[10.5px] text-white/40 mb-1">{m.excerptLabel}</p>
-                <p className="text-[11px] text-white/60 mb-3 leading-relaxed" dir={lang === "en" ? "ltr" : "rtl"}>«{item.new_excerpt}»</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleDecide(item.id, "approve")}
-                    disabled={decidingId === item.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold disabled:opacity-60"
-                    style={{ backgroundColor: "rgba(110,231,183,0.1)", borderColor: "rgba(110,231,183,0.3)", color: "#6ee7b7" }}
-                  >
-                    <ThumbsUp size={12} />
-                    {m.approve}
-                  </button>
-                  <button
-                    onClick={() => handleDecide(item.id, "reject")}
-                    disabled={decidingId === item.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold disabled:opacity-60"
-                    style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
-                  >
-                    <ThumbsDown size={12} />
-                    {m.reject}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
         <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
           <Zap size={16} style={{ color: "var(--gold)" }} />
@@ -2744,253 +2530,81 @@ function ConfusionCell({ value, label, desc, color }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Risk Appetite — operationalizes the board-approved Risk Appetite Statement
-// (a real SAMA governance requirement) as a live control: the selected
-// level directly changes RISK_APPETITE_STATE["threshold"] on the backend,
-// which the Level-2 classifier reads on every transaction. Editing is
-// restricted to the "admin" role; everyone else gets a read-only view —
-// mirroring how a real bank would restrict who may change a board-level
-// setting.
-// ---------------------------------------------------------------------------
-
-function RiskAppetiteTab({ lang, t, authUser, authToken }) {
-  const r = t.riskAppetite;
-  const isAdmin = authUser?.role === "admin";
-
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [level, setLevel] = useState("moderate");
-  const [institutionName, setInstitutionName] = useState("");
-  const [approvedBy, setApprovedBy] = useState("");
-  const [approvedDate, setApprovedDate] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState(null); // { ok: bool, text: string }
-
-  const loadData = useCallback(() => {
-    setLoading(true);
-    // 12s timeout — matches the same defensive pattern used elsewhere in
-    // the app (chatbot, main dashboard load). Without this, a slow/cold
-    // backend leaves this tab stuck on "loading" forever instead of
-    // falling back to local demo data.
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
-    fetch(`${API_BASE}/risk-appetite`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error("failed");
-        return res.json();
-      })
-      .then((json) => {
-        setData(json);
-        setLevel(json.level);
-        setInstitutionName(json.institution_name || "");
-        setApprovedBy(json.approved_by || "");
-        setApprovedDate(json.approved_date || "");
-      })
-      .catch(() => {
-        // Offline/timeout fallback — keeps the tab usable and honest about
-        // being local-only, consistent with the rest of the dashboard.
-        setData({
-          level: "moderate",
-          label_ar: "متوسط",
-          label_en: "Moderate",
-          threshold: 0.55,
-          institution_name: "",
-          approved_by: "",
-          approved_date: "",
-          current_exposure_pct: 24.5,
-          levels: {
-            conservative: { threshold: 0.4, label_ar: "متحفّظ", label_en: "Conservative" },
-            moderate: { threshold: 0.55, label_ar: "متوسط", label_en: "Moderate" },
-            aggressive: { threshold: 0.7, label_ar: "منفتح", label_en: "Aggressive" },
-          },
-        });
-      })
-      .finally(() => {
-        clearTimeout(timeoutId);
-        setLoading(false);
-      });
-  }, []);
+function MethodologyTab({ lang, t }) {
+  const [metrics, setMetrics] = useState(null);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let cancelled = false;
+    fetch(`${API_BASE}/model-metrics`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => !cancelled && setMetrics(d))
+      .catch(() => !cancelled && setMetrics(FALLBACK_MODEL_METRICS));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleSave = async () => {
-    setSaving(true);
-    setSaveMsg(null);
-    try {
-      const res = await fetch(`${API_BASE}/risk-appetite`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({
-          level,
-          institution_name: institutionName,
-          approved_by: approvedBy,
-          approved_date: approvedDate,
-        }),
-      });
-      if (res.status === 403) {
-        setSaveMsg({ ok: false, text: r.adminOnlyError });
-        return;
-      }
-      if (!res.ok) throw new Error("save failed");
-      const json = await res.json();
-      setData(json);
-      setSaveMsg({ ok: true, text: r.saved });
-    } catch {
-      setSaveMsg({ ok: false, text: r.adminOnlyError });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading || !data) {
-    return <p className="text-xs text-white/35 animate-fade-up">{r.loading}</p>;
+  if (!metrics) {
+    return (
+      <div className="aurora-border glass-panel rounded-2xl p-10 text-center text-white/40 text-sm animate-fade-up">{t.methodology.loading}</div>
+    );
   }
 
-  const levels = data.levels || {};
-  const levelMeta = {
-    conservative: { key: "conservative", label: r.levelConservative, desc: r.levelConservativeDesc, color: "var(--coral)" },
-    moderate: { key: "moderate", label: r.levelModerate, desc: r.levelModerateDesc, color: "var(--gold)" },
-    aggressive: { key: "aggressive", label: r.levelAggressive, desc: r.levelAggressiveDesc, color: "var(--lavender)" },
-  };
-  const exposurePct = data.current_exposure_pct ?? 0;
-  const exposureColor = exposurePct > 35 ? "var(--coral)" : exposurePct > 18 ? "var(--gold)" : "#6ee7b7";
+  const c = metrics.current;
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      <div>
-        <h2 className="font-display text-2xl font-black text-white">{r.title}</h2>
-        <p className="text-sm text-white/45 mt-1">{r.subtitle}</p>
+    <div className="space-y-4">
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
+          <Gauge size={16} style={{ color: "var(--orchid)" }} />
+          {t.methodology.title}
+        </h3>
+        <p className="text-[11px] text-white/40">{t.methodology.subtitle}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MetricCard label={t.methodology.precision} value={c.precision} color="var(--lavender)" explain={t.methodology.precisionExplain} />
+        <MetricCard label={t.methodology.recall} value={c.recall} color="var(--gold)" explain={t.methodology.recallExplain} />
+        <MetricCard label={t.methodology.f1} value={c.f1} color="var(--orchid)" />
+      </div>
+
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-bold text-white">{t.methodology.confusionMatrix}</p>
+          <span className="text-[10px] text-white/35">
+            {t.methodology.threshold}: <b style={{ color: "var(--gold)" }}>{c.threshold}</b> · {t.methodology.testSetLabel}: {numberFmt.format(metrics.test_set_size)}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <ConfusionCell value={c.true_positive} label={t.methodology.truePositive} desc={t.methodology.truePositiveDesc} color="var(--lavender)" />
+          <ConfusionCell value={c.false_positive} label={t.methodology.falsePositive} desc={t.methodology.falsePositiveDesc} color="var(--coral)" />
+          <ConfusionCell value={c.false_negative} label={t.methodology.falseNegative} desc={t.methodology.falseNegativeDesc} color="var(--coral)" />
+          <ConfusionCell value={c.true_negative} label={t.methodology.trueNegative} desc={t.methodology.trueNegativeDesc} color="var(--lavender)" />
+        </div>
+      </div>
+
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <p className="text-xs font-bold text-white mb-1">{t.methodology.tradeoffTitle}</p>
+        <p className="text-[11px] text-white/40 mb-4 leading-relaxed">{t.methodology.tradeoffBody}</p>
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={metrics.threshold_sweep} margin={{ left: -20, right: 10, top: 5, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <XAxis dataKey="threshold" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+            <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} domain={[0, 100]} />
+            <Tooltip contentStyle={{ backgroundColor: "#150c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="precision" name={t.methodology.precision} stroke="var(--lavender)" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="recall" name={t.methodology.recall} stroke="var(--gold)" strokeWidth={2} dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
 
       <div
-        className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2"
-        style={{ backgroundColor: "rgba(228,160,255,0.06)", border: "1px solid rgba(228,160,255,0.2)", color: "rgba(255,255,255,0.6)" }}
+        className="rounded-2xl p-4 text-[11px] leading-relaxed flex items-start gap-2 animate-fade-up"
+        style={{ backgroundColor: "rgba(232,196,104,0.06)", border: "1px solid rgba(232,196,104,0.2)", color: "rgba(255,255,255,0.55)" }}
       >
-        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--orchid)" }} />
-        {r.governanceNote}
-      </div>
-
-      {/* Live exposure gauge + current threshold */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="glass-panel aurora-border rounded-2xl p-5">
-          <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-3">{r.exposureLabel}</p>
-          <div className="flex items-end gap-2 mb-2">
-            <span className="text-3xl font-black" style={{ color: exposureColor }}>{exposurePct}%</span>
-          </div>
-          <div className="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden mb-3">
-            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(exposurePct, 100)}%`, backgroundColor: exposureColor }} />
-          </div>
-          <p className="text-[11px] text-white/45 leading-relaxed">{r.exposureDesc}</p>
-        </div>
-
-        <div className="glass-panel aurora-border rounded-2xl p-5">
-          <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-3">{r.currentLevelLabel}</p>
-          <div className="flex items-center gap-2 mb-3">
-            <Scale size={20} style={{ color: levelMeta[data.level]?.color || "var(--gold)" }} />
-            <span className="text-xl font-black text-white">{lang === "en" ? data.label_en : data.label_ar}</span>
-          </div>
-          <div className="flex items-center justify-between text-[12px]">
-            <span className="text-white/40">{r.thresholdLabel}</span>
-            <span className="font-mono font-bold text-white/80">{data.threshold}</span>
-          </div>
-          {data.approved_by ? (
-            <p className="text-[11px] text-white/35 mt-2">
-              {r.institutionLabel}: <span className="text-white/60">{data.institution_name}</span> · {r.approvedByLabel}: <span className="text-white/60">{data.approved_by}</span>
-            </p>
-          ) : (
-            <p className="text-[11px] mt-2" style={{ color: "var(--coral)" }}>{r.notApproved}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Level selector */}
-      <div className="glass-panel aurora-border rounded-2xl p-5">
-        <div className="grid sm:grid-cols-3 gap-3">
-          {Object.keys(levelMeta).map((key) => {
-            const meta = levelMeta[key];
-            const thresholdVal = levels[key]?.threshold;
-            const selected = level === key;
-            return (
-              <button
-                key={key}
-                disabled={!isAdmin}
-                onClick={() => setLevel(key)}
-                className="text-right rounded-xl border p-3.5 transition-all disabled:cursor-not-allowed"
-                style={
-                  selected
-                    ? { borderColor: meta.color, backgroundColor: `${meta.color}14` }
-                    : { borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.02)" }
-                }
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-sm" style={{ color: selected ? meta.color : "#fff" }}>{meta.label}</span>
-                  <span className="font-mono text-[11px] text-white/40">{thresholdVal}</span>
-                </div>
-                <p className="text-[11px] text-white/45 leading-relaxed">{meta.desc}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Approval configuration */}
-      <div className="glass-panel aurora-border rounded-2xl p-5">
-        <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide mb-4">{r.configTitle}</p>
-        <div className="grid sm:grid-cols-3 gap-3 mb-4">
-          <div>
-            <label className="text-[10.5px] text-white/40 block mb-1.5">{r.institutionLabel}</label>
-            <input
-              type="text"
-              value={institutionName}
-              onChange={(e) => setInstitutionName(e.target.value)}
-              placeholder={r.institutionPlaceholder}
-              disabled={!isAdmin}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="text-[10.5px] text-white/40 block mb-1.5">{r.approvedByLabel}</label>
-            <input
-              type="text"
-              value={approvedBy}
-              onChange={(e) => setApprovedBy(e.target.value)}
-              placeholder={r.approvedByPlaceholder}
-              disabled={!isAdmin}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="text-[10.5px] text-white/40 block mb-1.5">{r.approvedDateLabel}</label>
-            <input
-              type="date"
-              value={approvedDate}
-              onChange={(e) => setApprovedDate(e.target.value)}
-              disabled={!isAdmin}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
-            />
-          </div>
-        </div>
-
-        {isAdmin ? (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="py-2 px-5 rounded-xl font-bold text-xs flex items-center gap-2 transition-opacity disabled:opacity-60"
-            style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
-          >
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}
-            {saving ? r.saving : r.saveButton}
-          </button>
-        ) : (
-          <p className="text-[11px] text-white/35">{r.adminOnlyNote}</p>
-        )}
-
-        {saveMsg && (
-          <p className="text-[11px] mt-3" style={{ color: saveMsg.ok ? "#6ee7b7" : "var(--coral)" }}>{saveMsg.text}</p>
-        )}
+        <Info size={13} className="shrink-0 mt-0.5" style={{ color: "var(--gold)" }} />
+        {lang === "en" ? metrics.disclaimer_en : metrics.disclaimer_ar}
       </div>
     </div>
   );
@@ -3526,117 +3140,50 @@ function ToastStack({ toasts, onDismiss, onView, lang, t }) {
 }
 
 // ---------------------------------------------------------------------------
-// Login / Sign-up — real email-code (OTP) verification against the
-// backend's auth endpoints. Two entry points (sign in to an existing
-// account, or register a new one) both end at the same code-verification
-// step. In MEYAR_DEMO_MODE (the backend default while no real email
-// provider is wired in) the generated code is returned in the response so
-// the flow can be tested end-to-end without a live inbox — shown here
-// plainly as a demo notice, not hidden.
+// Login — real email-code (OTP) sign-in against the backend's auth
+// endpoints. Two steps: request a code for a registered work email, then
+// verify it to receive a signed session token. In MEYAR_DEMO_MODE (the
+// backend default while no real email provider is wired in) the generated
+// code is returned in the response so the flow can be tested end-to-end
+// without a live inbox — shown here plainly as a demo notice, not hidden.
 // ---------------------------------------------------------------------------
+
+const DEMO_ACCOUNTS = [
+  { email: "sara.alqahtani@meyar.demo", role_ar: "موظف الامتثال", role_en: "Compliance officer" },
+  { email: "abdulaziz.alharbi@meyar.demo", role_ar: "رئيس الهيئة الشرعية", role_en: "Sharia board chair" },
+  { email: "admin@meyar.demo", role_ar: "مدير النظام", role_en: "System admin" },
+];
 
 const ROLE_LABELS = {
   ar: { compliance_officer: "موظف الامتثال", sharia_board: "رئيس الهيئة الشرعية", admin: "مدير النظام" },
   en: { compliance_officer: "Compliance officer", sharia_board: "Sharia board chair", admin: "System admin" },
 };
 
-async function parseAuthError(res, a) {
-  // Surfaces the backend's actual reason instead of a single generic
-  // message, so a failed sign-in/sign-up is actually debuggable.
-  try {
-    const body = await res.json();
-    const detail = body?.detail;
-    if (detail === "not_registered") return { code: "not_registered", message: a.notRegistered };
-    if (detail === "already_registered") return { code: "already_registered", message: a.alreadyRegistered };
-    if (detail === "name_required") return { code: "generic", message: a.nameRequired };
-    if (res.status === 401) return { code: "generic", message: a.invalidCode };
-    return { code: "generic", message: typeof detail === "string" ? detail : a.genericError };
-  } catch {
-    return { code: "generic", message: a.genericError };
-  }
-}
-
-// 45s — long enough to survive a cold Render free-tier start (which can
-// take 50+ seconds per Render's own warning), unlike the 12s timeout used
-// for tabs elsewhere in the app. Login has no offline fallback — the user
-// genuinely must reach the real backend — so instead of a silent fallback
-// this just guarantees the "sending..." state can never hang forever
-// without at least a clear, actionable error.
-async function fetchAuthWithTimeout(url, options, timeoutMs = 45000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 function LoginScreen({ onSuccess, lang, t }) {
   const a = t.auth;
-  const [mode, setMode] = useState("login"); // "login" | "signup"
-  const [step, setStep] = useState("form"); // "form" | "code"
+  const [step, setStep] = useState("email"); // "email" | "code"
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null); // { code, message } | null
+  const [error, setError] = useState("");
   const [demoCode, setDemoCode] = useState(null);
-
-  const switchMode = (nextMode) => {
-    setMode(nextMode);
-    setStep("form");
-    setError(null);
-    setDemoCode(null);
-    setCode("");
-  };
-
-  const handleAuthResponse = async (res) => {
-    if (!res.ok) {
-      setError(await parseAuthError(res, a));
-      return false;
-    }
-    const data = await res.json();
-    if (data.demo_code) setDemoCode(data.demo_code);
-    setStep("code");
-    return true;
-  };
 
   const requestCode = async (e) => {
     e?.preventDefault();
     if (!email.trim()) return;
     setBusy(true);
-    setError(null);
+    setError("");
     try {
-      const res = await fetchAuthWithTimeout(`${API_BASE}/auth/request-code`, {
+      const res = await fetch(`${API_BASE}/auth/request-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
-      await handleAuthResponse(res);
-    } catch (err) {
-      console.error("Auth request-code network failure:", err);
-      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const register = async (e) => {
-    e?.preventDefault();
-    if (!name.trim() || !email.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetchAuthWithTimeout(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }),
-      });
-      await handleAuthResponse(res);
-    } catch (err) {
-      console.error("Auth register network failure:", err);
-      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
+      const data = await res.json();
+      if (data.demo_code) setDemoCode(data.demo_code);
+      setStep("code");
+    } catch {
+      setError(a.genericError);
     } finally {
       setBusy(false);
     }
@@ -3646,46 +3193,25 @@ function LoginScreen({ onSuccess, lang, t }) {
     e?.preventDefault();
     if (!code.trim()) return;
     setBusy(true);
-    setError(null);
+    setError("");
     try {
-      const res = await fetchAuthWithTimeout(`${API_BASE}/auth/verify-code`, {
+      const res = await fetch(`${API_BASE}/auth/verify-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
       });
       if (!res.ok) {
-        setError(await parseAuthError(res, a));
+        setError(a.invalidCode);
         setBusy(false);
         return;
       }
       const data = await res.json();
       onSuccess(data.token, data.user);
-    } catch (err) {
-      console.error("Auth verify-code network failure:", err);
-      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
+    } catch {
+      setError(a.genericError);
       setBusy(false);
     }
   };
-
-  const ErrorNote = () =>
-    error ? (
-      <div className="mb-3">
-        <p className="text-[11px]" style={{ color: "var(--coral)" }}>{error.message}</p>
-        {error.detail && (
-          <p className="text-[10px] text-white/30 mt-0.5" dir="ltr">{error.detail}</p>
-        )}
-        {error.code === "not_registered" && (
-          <button type="button" onClick={() => switchMode("signup")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
-            {a.goToSignup}
-          </button>
-        )}
-        {error.code === "already_registered" && (
-          <button type="button" onClick={() => switchMode("login")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
-            {a.goToLogin}
-          </button>
-        )}
-      </div>
-    ) : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--bg-obsidian)" }}>
@@ -3697,26 +3223,7 @@ function LoginScreen({ onSuccess, lang, t }) {
         </div>
 
         <div className="aurora-border glass-panel-strong rounded-2xl p-6 animate-fade-up">
-          {step === "form" && (
-            <div className="flex mb-5 rounded-xl bg-white/[0.04] p-1">
-              <button
-                onClick={() => switchMode("login")}
-                className="flex-1 py-2 rounded-lg text-xs font-bold transition-colors"
-                style={mode === "login" ? { backgroundColor: "var(--orchid)", color: "#1a0b26" } : { color: "rgba(255,255,255,0.45)" }}
-              >
-                {a.loginTab}
-              </button>
-              <button
-                onClick={() => switchMode("signup")}
-                className="flex-1 py-2 rounded-lg text-xs font-bold transition-colors"
-                style={mode === "signup" ? { backgroundColor: "var(--orchid)", color: "#1a0b26" } : { color: "rgba(255,255,255,0.45)" }}
-              >
-                {a.signupTab}
-              </button>
-            </div>
-          )}
-
-          {step === "form" && mode === "login" && (
+          {step === "email" ? (
             <form onSubmit={requestCode}>
               <p className="text-white font-bold text-sm mb-1">{a.emailStepTitle}</p>
               <p className="text-[11px] text-white/45 mb-4">{a.emailStepSubtitle}</p>
@@ -3732,7 +3239,7 @@ function LoginScreen({ onSuccess, lang, t }) {
                   required
                 />
               </div>
-              <ErrorNote />
+              {error && <p className="text-[11px] mb-3" style={{ color: "var(--coral)" }}>{error}</p>}
               <button
                 type="submit"
                 disabled={busy}
@@ -3743,49 +3250,7 @@ function LoginScreen({ onSuccess, lang, t }) {
                 {busy ? a.sending : a.sendCode}
               </button>
             </form>
-          )}
-
-          {step === "form" && mode === "signup" && (
-            <form onSubmit={register}>
-              <p className="text-white font-bold text-sm mb-1">{a.signupStepTitle}</p>
-              <p className="text-[11px] text-white/45 mb-4">{a.signupStepSubtitle}</p>
-              <div className="relative mb-2.5">
-                <UserCheck size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={a.namePlaceholder}
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
-                  required
-                />
-              </div>
-              <div className="relative mb-2.5">
-                <Mail size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={a.emailPlaceholder}
-                  dir="ltr"
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
-                  required
-                />
-              </div>
-              <ErrorNote />
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
-              >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />}
-                {busy ? a.creating : a.createAccount}
-              </button>
-            </form>
-          )}
-
-          {step === "code" && (
+          ) : (
             <form onSubmit={verifyCode}>
               <p className="text-white font-bold text-sm mb-1">{a.codeStepTitle}</p>
               <p className="text-[11px] text-white/45 mb-4">{a.codeStepSubtitle(email)}</p>
@@ -3809,7 +3274,7 @@ function LoginScreen({ onSuccess, lang, t }) {
                   <p className="text-[10.5px]" style={{ color: "var(--gold)" }}>{a.demoNotice(demoCode)}</p>
                 </div>
               )}
-              <ErrorNote />
+              {error && <p className="text-[11px] mb-3" style={{ color: "var(--coral)" }}>{error}</p>}
               <button
                 type="submit"
                 disabled={busy}
@@ -3821,7 +3286,7 @@ function LoginScreen({ onSuccess, lang, t }) {
               </button>
               <button
                 type="button"
-                onClick={() => { setStep("form"); setCode(""); setError(null); setDemoCode(null); }}
+                onClick={() => { setStep("email"); setCode(""); setError(""); setDemoCode(null); }}
                 className="w-full py-2 rounded-xl text-[11px] text-white/40 hover:text-white/70"
               >
                 {a.changeEmail}
@@ -3830,7 +3295,21 @@ function LoginScreen({ onSuccess, lang, t }) {
           )}
         </div>
 
-        <p className="text-center text-[9.5px] text-white/20 mt-3" dir="ltr">API: {API_BASE}</p>
+        <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[10px] font-bold text-white/35 uppercase tracking-wide mb-2">{a.demoAccountsTitle}</p>
+          <div className="space-y-1">
+            {DEMO_ACCOUNTS.map((acc) => (
+              <button
+                key={acc.email}
+                onClick={() => { setEmail(acc.email); setStep("email"); }}
+                className="w-full flex items-center justify-between text-[10.5px] text-white/45 hover:text-white/80 py-0.5"
+              >
+                <span dir="ltr">{acc.email}</span>
+                <span>{lang === "en" ? acc.role_en : acc.role_ar}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -4770,9 +4249,9 @@ export default function MeyarDashboard() {
 
           {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
 
-          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} authUser={authUser} authToken={authToken} />}
+          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
-          {activeTab === "riskAppetite" && <RiskAppetiteTab lang={lang} t={t} authUser={authUser} authToken={authToken} />}
+          {activeTab === "methodology" && <MethodologyTab lang={lang} t={t} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
