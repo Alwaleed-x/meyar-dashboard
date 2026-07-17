@@ -26,6 +26,7 @@ Run:
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -85,6 +86,16 @@ app.add_middleware(
 )
 
 RNG = random.Random(42)
+
+
+@app.on_event("startup")
+async def _launch_regulatory_watch():
+    """Starts the background regulatory-monitor loop once the app is up.
+    Disabled via MEYAR_REGWATCH_ENABLED=false (e.g. for a quick local test
+    run where you don't want a background task firing network calls)."""
+    if REGWATCH_ENABLED:
+        asyncio.create_task(_regulatory_watch_loop())
+
 
 # ---------------------------------------------------------------------------
 # Risk-scoring model — a real, trained classifier (not a lookup table).
@@ -1615,6 +1626,173 @@ def _call_gemini(prompt: str, timeout: int = 9, max_tokens: int = 180) -> Option
         return None
 
 
+# ---------------------------------------------------------------------------
+# Regulatory monitor — watches SAMA's real, public Rulebook pages
+# (rulebook.sama.gov.sa) for content changes on a schedule, and queues any
+# detected change for MANDATORY human review before it ever affects the
+# system. This is the same "machine alerts, human decides" principle
+# applied earlier to transactions and to Sharia questions — now applied to
+# the regulatory text itself. The monitor never auto-applies a change; it
+# only shortens the time between a real update and a human noticing it.
+#
+# IMPORTANT — this sandbox has no outbound network access, so the fetch
+# calls below cannot be exercised end-to-end here. The code is written to
+# run for real once deployed on Render (which does have internet access).
+# The hashing/queueing/review pipeline itself is tested independently of
+# the live fetch — see the accompanying test additions.
+# ---------------------------------------------------------------------------
+
+REGULATORY_WATCH_SOURCES = [
+    {
+        "key": "laws_and_implementing_regs",
+        "title_ar": "الأنظمة ولوائحها التنفيذية",
+        "title_en": "Laws and Implementing Regulations",
+        "url": "https://rulebook.sama.gov.sa/en/laws-and-implementing-regulations",
+    },
+    {
+        "key": "regulations_and_instructions",
+        "title_ar": "اللوائح والتعليمات التنظيمية",
+        "title_en": "Regulations and Instructions",
+        "url": "https://rulebook.sama.gov.sa/en/regulations-and-instructions",
+    },
+    {
+        "key": "sama_circulars",
+        "title_ar": "تعاميم ساما (بالترتيب الزمني)",
+        "title_en": "SAMA Circulars (chronological)",
+        "url": "https://rulebook.sama.gov.sa/en/node/6259",
+    },
+]
+
+# Default 6 hours; overridable so a demo can use a much shorter interval
+# (e.g. MEYAR_REGWATCH_INTERVAL_SECONDS=60) to show the loop actually firing.
+REGWATCH_INTERVAL_SECONDS = int(os.environ.get("MEYAR_REGWATCH_INTERVAL_SECONDS", 21600))
+REGWATCH_ENABLED = os.environ.get("MEYAR_REGWATCH_ENABLED", "true").lower() == "true"
+
+
+def _strip_html(raw_html: str) -> str:
+    """Dependency-free tag stripper used to normalize a fetched page before
+    hashing. Not a full HTML parser — deliberately simple, so it survives
+    minor markup changes (attribute order, added classes) without treating
+    them as a content change. Scripts/styles are dropped first since their
+    content is not visible regulatory text."""
+    text = re.sub(r"<script.*?</script>", " ", raw_html, flags=re.S | re.I)
+    text = re.sub(r"<style.*?</style>", " ", text, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"&nbsp;|&amp;|&quot;|&#39;", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _fetch_source_text(url: str, timeout: int = 15) -> Optional[str]:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Meyar-Regulatory-Monitor/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="ignore")
+        return _strip_html(raw)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, OSError):
+        return None
+
+
+def _hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _init_regulatory_watch_db() -> None:
+    conn = _db_connect()
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS regulatory_watch ("
+        "source_key TEXT PRIMARY KEY, content_hash TEXT, last_checked_at TEXT, last_changed_at TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS regulatory_update_queue ("
+        "id TEXT PRIMARY KEY, source_key TEXT, detected_at TEXT, old_hash TEXT, new_hash TEXT, "
+        "new_excerpt TEXT, status TEXT DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT)"
+    )
+    for src in REGULATORY_WATCH_SOURCES:
+        conn.execute(
+            "INSERT OR IGNORE INTO regulatory_watch (source_key, content_hash, last_checked_at, last_changed_at) "
+            "VALUES (?, NULL, NULL, NULL)",
+            (src["key"],),
+        )
+    conn.commit()
+    conn.close()
+
+
+def run_regulatory_check() -> dict:
+    """One full check cycle across all watched sources. Never raises —
+    a fetch failure for one source is recorded and skipped, it never
+    crashes the loop or blocks the other sources."""
+    results = []
+    conn = _db_connect()
+    now = _iso(_now())
+    for src in REGULATORY_WATCH_SOURCES:
+        text = _fetch_source_text(src["url"])
+        row = conn.execute(
+            "SELECT * FROM regulatory_watch WHERE source_key = ?", (src["key"],)
+        ).fetchone()
+        if text is None:
+            conn.execute(
+                "UPDATE regulatory_watch SET last_checked_at = ? WHERE source_key = ?", (now, src["key"])
+            )
+            results.append({"source_key": src["key"], "status": "fetch_failed"})
+            continue
+
+        new_hash = _hash_text(text)
+        old_hash = row["content_hash"] if row else None
+
+        if old_hash is None:
+            # First-ever check for this source: establishes the baseline to
+            # compare future checks against — not itself a "change", since
+            # there was nothing prior to compare it with.
+            conn.execute(
+                "UPDATE regulatory_watch SET content_hash = ?, last_checked_at = ? WHERE source_key = ?",
+                (new_hash, now, src["key"]),
+            )
+            results.append({"source_key": src["key"], "status": "baseline_established"})
+        elif new_hash != old_hash:
+            # Real change detected. Queued for human review — content_hash
+            # is deliberately NOT updated here, so a pending or rejected
+            # change keeps surfacing on every future cycle instead of
+            # silently vanishing.
+            entry_id = f"REG-{secrets.token_hex(4).upper()}"
+            conn.execute(
+                "INSERT INTO regulatory_update_queue "
+                "(id, source_key, detected_at, old_hash, new_hash, new_excerpt, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'pending')",
+                (entry_id, src["key"], now, old_hash, new_hash, text[:500]),
+            )
+            conn.execute(
+                "UPDATE regulatory_watch SET last_checked_at = ? WHERE source_key = ?", (now, src["key"])
+            )
+            results.append({"source_key": src["key"], "status": "change_detected", "queue_id": entry_id})
+        else:
+            conn.execute(
+                "UPDATE regulatory_watch SET last_checked_at = ? WHERE source_key = ?", (now, src["key"])
+            )
+            results.append({"source_key": src["key"], "status": "unchanged"})
+
+    conn.commit()
+    conn.close()
+    return {"checked_at": now, "results": results}
+
+
+async def _regulatory_watch_loop():
+    """Background loop started at app startup. Runs forever at
+    REGWATCH_INTERVAL_SECONDS, never lets one bad cycle kill the loop.
+    NOTE: this keeps the process itself alive as the scheduler — reliable
+    while the app is running, but a free-tier host that spins the service
+    down on inactivity will pause the loop too. Production should also
+    register an external scheduler (e.g. Render Cron Job / GitHub Actions)
+    hitting POST /api/regulatory-monitor/check-now, so checks still happen
+    on a schedule independent of whether the app happens to be awake."""
+    while True:
+        try:
+            await asyncio.to_thread(run_regulatory_check)
+        except Exception:
+            pass
+        await asyncio.sleep(REGWATCH_INTERVAL_SECONDS)
+
+
 def _rag_prompt(question: str, facts: str, lang: str) -> str:
     language_name = "English" if lang == "en" else "Arabic"
     return (
@@ -2049,6 +2227,7 @@ def _db_count_audit_by_decision_today(decision: str) -> int:
 
 
 _init_db()
+_init_regulatory_watch_db()
 
 _audit_counter = 0
 
@@ -2233,6 +2412,76 @@ def _current_risk_exposure_pct() -> float:
     _EXPOSURE_CACHE["value"] = pct
     _EXPOSURE_CACHE["computed_at"] = time.monotonic()
     return pct
+
+
+@app.get("/api/regulatory-monitor/sources")
+def get_regulatory_sources():
+    conn = _db_connect()
+    rows = {r["source_key"]: dict(r) for r in conn.execute("SELECT * FROM regulatory_watch").fetchall()}
+    conn.close()
+    out = []
+    for src in REGULATORY_WATCH_SOURCES:
+        row = rows.get(src["key"], {})
+        out.append(
+            {
+                **src,
+                "last_checked_at": row.get("last_checked_at"),
+                "last_changed_at": row.get("last_changed_at"),
+                "has_baseline": row.get("content_hash") is not None,
+            }
+        )
+    return {"sources": out, "check_interval_seconds": REGWATCH_INTERVAL_SECONDS}
+
+
+@app.get("/api/regulatory-monitor/pending")
+def get_regulatory_pending():
+    conn = _db_connect()
+    rows = conn.execute(
+        "SELECT * FROM regulatory_update_queue WHERE status = 'pending' ORDER BY detected_at DESC"
+    ).fetchall()
+    conn.close()
+    return {"items": [dict(r) for r in rows]}
+
+
+class RegulatoryDecisionRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+
+
+@app.post("/api/regulatory-monitor/pending/{item_id}/decide")
+def decide_regulatory_update(
+    item_id: str, payload: RegulatoryDecisionRequest, current_user: dict = Depends(get_current_user)
+):
+    conn = _db_connect()
+    row = conn.execute("SELECT * FROM regulatory_update_queue WHERE id = ?", (item_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="not_found")
+    reviewer = f'{current_user["name"]} ({current_user["email"]})'
+    now = _iso(_now())
+    status = "approved" if payload.decision == "approve" else "rejected"
+    conn.execute(
+        "UPDATE regulatory_update_queue SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+        (status, reviewer, now, item_id),
+    )
+    if status == "approved":
+        # Only a human-approved change ever updates the stored baseline —
+        # a rejected change leaves the old hash in place, so the (still
+        # different) live page keeps getting flagged on the next cycle.
+        conn.execute(
+            "UPDATE regulatory_watch SET content_hash = ?, last_changed_at = ? WHERE source_key = ?",
+            (row["new_hash"], now, row["source_key"]),
+        )
+    conn.commit()
+    conn.close()
+    return {"id": item_id, "status": status, "reviewed_by": reviewer}
+
+
+@app.post("/api/regulatory-monitor/check-now")
+def trigger_regulatory_check(current_user: dict = Depends(get_current_user)):
+    """Manual trigger — also the endpoint an external scheduler (Render Cron
+    Job, GitHub Actions, etc.) should call on a schedule in production, so
+    checks keep happening even if the app process itself has been idle."""
+    return run_regulatory_check()
 
 
 @app.get("/api/risk-appetite")
