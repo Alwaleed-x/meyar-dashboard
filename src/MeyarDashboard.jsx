@@ -3556,6 +3556,22 @@ async function parseAuthError(res, a) {
   }
 }
 
+// 45s — long enough to survive a cold Render free-tier start (which can
+// take 50+ seconds per Render's own warning), unlike the 12s timeout used
+// for tabs elsewhere in the app. Login has no offline fallback — the user
+// genuinely must reach the real backend — so instead of a silent fallback
+// this just guarantees the "sending..." state can never hang forever
+// without at least a clear, actionable error.
+async function fetchAuthWithTimeout(url, options, timeoutMs = 45000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function LoginScreen({ onSuccess, lang, t }) {
   const a = t.auth;
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -3592,7 +3608,7 @@ function LoginScreen({ onSuccess, lang, t }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/request-code`, {
+      const res = await fetchAuthWithTimeout(`${API_BASE}/auth/request-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -3612,7 +3628,7 @@ function LoginScreen({ onSuccess, lang, t }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetchAuthWithTimeout(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }),
@@ -3632,7 +3648,7 @@ function LoginScreen({ onSuccess, lang, t }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/verify-code`, {
+      const res = await fetchAuthWithTimeout(`${API_BASE}/auth/verify-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
