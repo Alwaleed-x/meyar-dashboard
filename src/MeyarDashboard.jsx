@@ -2130,11 +2130,16 @@ function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
   const [decidingId, setDecidingId] = useState(null);
 
   const loadMonitorData = useCallback(() => {
-    fetch(`${API_BASE}/regulatory-monitor/sources`)
+    const withTimeout = (path) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      return fetch(`${API_BASE}${path}`, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+    };
+    withTimeout("/regulatory-monitor/sources")
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => json && setSources(json.sources))
       .catch(() => {});
-    fetch(`${API_BASE}/regulatory-monitor/pending`)
+    withTimeout("/regulatory-monitor/pending")
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => json && setPending(json.items))
       .catch(() => {});
@@ -2764,7 +2769,13 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
 
   const loadData = useCallback(() => {
     setLoading(true);
-    fetch(`${API_BASE}/risk-appetite`)
+    // 12s timeout — matches the same defensive pattern used elsewhere in
+    // the app (chatbot, main dashboard load). Without this, a slow/cold
+    // backend leaves this tab stuck on "loading" forever instead of
+    // falling back to local demo data.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    fetch(`${API_BASE}/risk-appetite`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("failed");
         return res.json();
@@ -2777,8 +2788,8 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
         setApprovedDate(json.approved_date || "");
       })
       .catch(() => {
-        // Offline fallback — keeps the tab usable and honest about being
-        // local-only, consistent with the rest of the dashboard.
+        // Offline/timeout fallback — keeps the tab usable and honest about
+        // being local-only, consistent with the rest of the dashboard.
         setData({
           level: "moderate",
           label_ar: "متوسط",
@@ -2795,7 +2806,10 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
           },
         });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
