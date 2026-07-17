@@ -57,9 +57,6 @@ import {
   Filter,
   GitCompare,
   Bug,
-  Mail,
-  KeyRound,
-  LogOut,
   Loader2,
   Wand2,
   Presentation,
@@ -152,38 +149,6 @@ const STR = {
       roleLabel: "الدور الوظيفي",
       emailLabel: "البريد الإلكتروني",
       logout: "تسجيل الخروج",
-    },
-    auth: {
-      appName: "معيار",
-      tagline: "منظومة الرقابة المالية اللحظية",
-      loginTab: "تسجيل الدخول",
-      signupTab: "حساب جديد",
-      emailStepTitle: "تسجيل الدخول",
-      emailStepSubtitle: "أدخل بريدك الإلكتروني الوظيفي لإرسال رمز تحقق",
-      emailPlaceholder: "name@meyar.demo",
-      sendCode: "إرسال رمز التحقق",
-      sending: "جارٍ الإرسال...",
-      signupStepTitle: "إنشاء حساب جديد",
-      signupStepSubtitle: "بيانات بسيطة، ثم نرسل لك رمز تحقق لتأكيد بريدك",
-      namePlaceholder: "الاسم الكامل",
-      createAccount: "إنشاء الحساب وإرسال الرمز",
-      creating: "جارٍ الإنشاء...",
-      codeStepTitle: "أدخل رمز التحقق",
-      codeStepSubtitle: (email) => `أرسلنا رمز مكوَّن من ٦ أرقام إلى ${email}`,
-      codePlaceholder: "٠ ٠ ٠ ٠ ٠ ٠",
-      verify: "تحقق ودخول",
-      verifying: "جارٍ التحقق...",
-      changeEmail: "تغيير البريد الإلكتروني",
-      demoNotice: (code) => `وضع تجريبي: لا يوجد إرسال بريد فعلي حالياً، رمزك هو ${code}`,
-      notRegistered: "هذا البريد غير مسجَّل بالنظام.",
-      goToSignup: "أنشئ حساباً جديداً",
-      alreadyRegistered: "هذا البريد مسجَّل بالفعل.",
-      goToLogin: "سجّل الدخول بدلاً من ذلك",
-      invalidCode: "رمز غير صحيح أو منتهي الصلاحية",
-      nameRequired: "الرجاء إدخال الاسم الكامل",
-      genericError: "حدث خطأ من الخادم، حاول مرة أخرى",
-      networkError: "تعذّر الوصول للخادم — تحقّق من اتصالك بالإنترنت أو حاول لاحقاً",
-      sessionExpired: "انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً",
     },
     onboarding: {
       skip: "تخطّي",
@@ -371,8 +336,7 @@ const STR = {
       saveButton: "حفظ واعتماد",
       saving: "جارٍ الحفظ...",
       saved: "تم حفظ واعتماد بيان تقبّل المخاطر",
-      adminOnlyNote: "تعديل هذا الإعداد يتطلب صلاحية مدير النظام — أي مستخدم آخر يستطيع الاطّلاع فقط",
-      adminOnlyError: "هذا الإجراء يتطلب صلاحية مدير النظام",
+      genericError: "تعذّر حفظ الإعداد، حاول مرة أخرى",
       notApproved: "لم يُعتمَد بعد",
       loading: "جارٍ تحميل بيانات تقبّل المخاطر...",
     },
@@ -455,38 +419,6 @@ const STR = {
       roleLabel: "Role",
       emailLabel: "Email",
       logout: "Log out",
-    },
-    auth: {
-      appName: "Meyar",
-      tagline: "Real-time financial compliance system",
-      loginTab: "Sign in",
-      signupTab: "New account",
-      emailStepTitle: "Sign in",
-      emailStepSubtitle: "Enter your work email to receive a verification code",
-      emailPlaceholder: "name@meyar.demo",
-      sendCode: "Send verification code",
-      sending: "Sending...",
-      signupStepTitle: "Create a new account",
-      signupStepSubtitle: "A few basic details, then we'll send a code to confirm your email",
-      namePlaceholder: "Full name",
-      createAccount: "Create account & send code",
-      creating: "Creating...",
-      codeStepTitle: "Enter verification code",
-      codeStepSubtitle: (email) => `We sent a 6-digit code to ${email}`,
-      codePlaceholder: "0 0 0 0 0 0",
-      verify: "Verify & sign in",
-      verifying: "Verifying...",
-      changeEmail: "Change email",
-      demoNotice: (code) => `Demo mode: no real email is sent yet, your code is ${code}`,
-      notRegistered: "This email is not registered.",
-      goToSignup: "Create a new account",
-      alreadyRegistered: "This email is already registered.",
-      goToLogin: "Sign in instead",
-      invalidCode: "Invalid or expired code",
-      nameRequired: "Please enter your full name",
-      genericError: "A server error occurred, please try again",
-      networkError: "Couldn't reach the server — check your connection or try again later",
-      sessionExpired: "Your session has expired, please sign in again",
     },
     onboarding: {
       skip: "Skip",
@@ -673,8 +605,7 @@ const STR = {
       saveButton: "Save & approve",
       saving: "Saving...",
       saved: "Risk appetite statement saved and approved",
-      adminOnlyNote: "Changing this setting requires a system-admin account — other users can only view it",
-      adminOnlyError: "This action requires a system-admin account",
+      genericError: "Could not save the setting, please try again",
       notApproved: "Not yet approved",
       loading: "Loading risk appetite data...",
     },
@@ -2122,7 +2053,7 @@ const REGULATORY_SOURCE_LOOKUP = {
   sama_circulars: { title_ar: "تعاميم ساما (بالترتيب الزمني)", title_en: "SAMA Circulars (chronological)" },
 };
 
-function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
+function RegulatoryTab({ regulatory, lang, t }) {
   const m = t.regulatory;
   const [sources, setSources] = useState([]);
   const [pending, setPending] = useState([]);
@@ -2130,11 +2061,16 @@ function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
   const [decidingId, setDecidingId] = useState(null);
 
   const loadMonitorData = useCallback(() => {
-    fetch(`${API_BASE}/regulatory-monitor/sources`)
+    const withTimeout = (path) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      return fetch(`${API_BASE}${path}`, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+    };
+    withTimeout("/regulatory-monitor/sources")
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => json && setSources(json.sources))
       .catch(() => {});
-    fetch(`${API_BASE}/regulatory-monitor/pending`)
+    withTimeout("/regulatory-monitor/pending")
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => json && setPending(json.items))
       .catch(() => {});
@@ -2151,10 +2087,7 @@ function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
       // runs the actual check (concurrent fetches, ~5s worst case) in the
       // background — so this click must never sit waiting on that. Poll
       // shortly after instead of blocking on the original request.
-      await fetch(`${API_BASE}/regulatory-monitor/check-now`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      await fetch(`${API_BASE}/regulatory-monitor/check-now`, { method: "POST" });
       setTimeout(loadMonitorData, 3000);
       setTimeout(loadMonitorData, 6500);
     } catch {
@@ -2169,8 +2102,8 @@ function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
     try {
       await fetch(`${API_BASE}/regulatory-monitor/pending/${itemId}/decide`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ decision }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, reviewer_name: t.reviewQueue.defaultReviewer }),
       });
       loadMonitorData();
     } catch {
@@ -2749,9 +2682,8 @@ function ConfusionCell({ value, label, desc, color }) {
 // setting.
 // ---------------------------------------------------------------------------
 
-function RiskAppetiteTab({ lang, t, authUser, authToken }) {
+function RiskAppetiteTab({ lang, t }) {
   const r = t.riskAppetite;
-  const isAdmin = authUser?.role === "admin";
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2764,7 +2696,13 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
 
   const loadData = useCallback(() => {
     setLoading(true);
-    fetch(`${API_BASE}/risk-appetite`)
+    // 12s timeout — matches the same defensive pattern used elsewhere in
+    // the app (chatbot, main dashboard load). Without this, a slow/cold
+    // backend leaves this tab stuck on "loading" forever instead of
+    // falling back to local demo data.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    fetch(`${API_BASE}/risk-appetite`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("failed");
         return res.json();
@@ -2777,8 +2715,8 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
         setApprovedDate(json.approved_date || "");
       })
       .catch(() => {
-        // Offline fallback — keeps the tab usable and honest about being
-        // local-only, consistent with the rest of the dashboard.
+        // Offline/timeout fallback — keeps the tab usable and honest about
+        // being local-only, consistent with the rest of the dashboard.
         setData({
           level: "moderate",
           label_ar: "متوسط",
@@ -2795,7 +2733,10 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
           },
         });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -2808,7 +2749,7 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
     try {
       const res = await fetch(`${API_BASE}/risk-appetite`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           level,
           institution_name: institutionName,
@@ -2816,16 +2757,12 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
           approved_date: approvedDate,
         }),
       });
-      if (res.status === 403) {
-        setSaveMsg({ ok: false, text: r.adminOnlyError });
-        return;
-      }
       if (!res.ok) throw new Error("save failed");
       const json = await res.json();
       setData(json);
       setSaveMsg({ ok: true, text: r.saved });
     } catch {
-      setSaveMsg({ ok: false, text: r.adminOnlyError });
+      setSaveMsg({ ok: false, text: r.genericError });
     } finally {
       setSaving(false);
     }
@@ -2902,8 +2839,7 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
             return (
               <button
                 key={key}
-                disabled={!isAdmin}
-                onClick={() => setLevel(key)}
+                                onClick={() => setLevel(key)}
                 className="text-right rounded-xl border p-3.5 transition-all disabled:cursor-not-allowed"
                 style={
                   selected
@@ -2933,8 +2869,7 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
               value={institutionName}
               onChange={(e) => setInstitutionName(e.target.value)}
               placeholder={r.institutionPlaceholder}
-              disabled={!isAdmin}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
+                            className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
             />
           </div>
           <div>
@@ -2944,8 +2879,7 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
               value={approvedBy}
               onChange={(e) => setApprovedBy(e.target.value)}
               placeholder={r.approvedByPlaceholder}
-              disabled={!isAdmin}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
+                            className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
             />
           </div>
           <div>
@@ -2954,25 +2888,20 @@ function RiskAppetiteTab({ lang, t, authUser, authToken }) {
               type="date"
               value={approvedDate}
               onChange={(e) => setApprovedDate(e.target.value)}
-              disabled={!isAdmin}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
+                            className="w-full bg-white/[0.04] border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-[var(--orchid)]/50 disabled:opacity-50"
             />
           </div>
         </div>
 
-        {isAdmin ? (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="py-2 px-5 rounded-xl font-bold text-xs flex items-center gap-2 transition-opacity disabled:opacity-60"
-            style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
-          >
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}
-            {saving ? r.saving : r.saveButton}
-          </button>
-        ) : (
-          <p className="text-[11px] text-white/35">{r.adminOnlyNote}</p>
-        )}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="py-2 px-5 rounded-xl font-bold text-xs flex items-center gap-2 transition-opacity disabled:opacity-60"
+          style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
+        >
+          {saving ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />}
+          {saving ? r.saving : r.saveButton}
+        </button>
 
         {saveMsg && (
           <p className="text-[11px] mt-3" style={{ color: saveMsg.ok ? "#6ee7b7" : "var(--coral)" }}>{saveMsg.text}</p>
@@ -3511,303 +3440,8 @@ function ToastStack({ toasts, onDismiss, onView, lang, t }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Login / Sign-up — real email-code (OTP) verification against the
-// backend's auth endpoints. Two entry points (sign in to an existing
-// account, or register a new one) both end at the same code-verification
-// step. In MEYAR_DEMO_MODE (the backend default while no real email
-// provider is wired in) the generated code is returned in the response so
-// the flow can be tested end-to-end without a live inbox — shown here
-// plainly as a demo notice, not hidden.
-// ---------------------------------------------------------------------------
 
-const ROLE_LABELS = {
-  ar: { compliance_officer: "موظف الامتثال", sharia_board: "رئيس الهيئة الشرعية", admin: "مدير النظام" },
-  en: { compliance_officer: "Compliance officer", sharia_board: "Sharia board chair", admin: "System admin" },
-};
-
-async function parseAuthError(res, a) {
-  // Surfaces the backend's actual reason instead of a single generic
-  // message, so a failed sign-in/sign-up is actually debuggable.
-  try {
-    const body = await res.json();
-    const detail = body?.detail;
-    if (detail === "not_registered") return { code: "not_registered", message: a.notRegistered };
-    if (detail === "already_registered") return { code: "already_registered", message: a.alreadyRegistered };
-    if (detail === "name_required") return { code: "generic", message: a.nameRequired };
-    if (res.status === 401) return { code: "generic", message: a.invalidCode };
-    return { code: "generic", message: typeof detail === "string" ? detail : a.genericError };
-  } catch {
-    return { code: "generic", message: a.genericError };
-  }
-}
-
-function LoginScreen({ onSuccess, lang, t }) {
-  const a = t.auth;
-  const [mode, setMode] = useState("login"); // "login" | "signup"
-  const [step, setStep] = useState("form"); // "form" | "code"
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null); // { code, message } | null
-  const [demoCode, setDemoCode] = useState(null);
-
-  const switchMode = (nextMode) => {
-    setMode(nextMode);
-    setStep("form");
-    setError(null);
-    setDemoCode(null);
-    setCode("");
-  };
-
-  const handleAuthResponse = async (res) => {
-    if (!res.ok) {
-      setError(await parseAuthError(res, a));
-      return false;
-    }
-    const data = await res.json();
-    if (data.demo_code) setDemoCode(data.demo_code);
-    setStep("code");
-    return true;
-  };
-
-  const requestCode = async (e) => {
-    e?.preventDefault();
-    if (!email.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/auth/request-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      await handleAuthResponse(res);
-    } catch (err) {
-      console.error("Auth request-code network failure:", err);
-      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const register = async (e) => {
-    e?.preventDefault();
-    if (!name.trim() || !email.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }),
-      });
-      await handleAuthResponse(res);
-    } catch (err) {
-      console.error("Auth register network failure:", err);
-      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verifyCode = async (e) => {
-    e?.preventDefault();
-    if (!code.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/auth/verify-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
-      });
-      if (!res.ok) {
-        setError(await parseAuthError(res, a));
-        setBusy(false);
-        return;
-      }
-      const data = await res.json();
-      onSuccess(data.token, data.user);
-    } catch (err) {
-      console.error("Auth verify-code network failure:", err);
-      setError({ code: "network", message: a.networkError, detail: String(err?.message || err) });
-      setBusy(false);
-    }
-  };
-
-  const ErrorNote = () =>
-    error ? (
-      <div className="mb-3">
-        <p className="text-[11px]" style={{ color: "var(--coral)" }}>{error.message}</p>
-        {error.detail && (
-          <p className="text-[10px] text-white/30 mt-0.5" dir="ltr">{error.detail}</p>
-        )}
-        {error.code === "not_registered" && (
-          <button type="button" onClick={() => switchMode("signup")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
-            {a.goToSignup}
-          </button>
-        )}
-        {error.code === "already_registered" && (
-          <button type="button" onClick={() => switchMode("login")} className="text-[11px] font-bold mt-1" style={{ color: "var(--orchid)" }}>
-            {a.goToLogin}
-          </button>
-        )}
-      </div>
-    ) : null;
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--bg-obsidian)" }}>
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-6">
-          <MeyarLogo size={48} />
-          <p className="text-white font-black text-lg mt-3">{a.appName}</p>
-          <p className="text-[11px] text-white/40">{a.tagline}</p>
-        </div>
-
-        <div className="aurora-border glass-panel-strong rounded-2xl p-6 animate-fade-up">
-          {step === "form" && (
-            <div className="flex mb-5 rounded-xl bg-white/[0.04] p-1">
-              <button
-                onClick={() => switchMode("login")}
-                className="flex-1 py-2 rounded-lg text-xs font-bold transition-colors"
-                style={mode === "login" ? { backgroundColor: "var(--orchid)", color: "#1a0b26" } : { color: "rgba(255,255,255,0.45)" }}
-              >
-                {a.loginTab}
-              </button>
-              <button
-                onClick={() => switchMode("signup")}
-                className="flex-1 py-2 rounded-lg text-xs font-bold transition-colors"
-                style={mode === "signup" ? { backgroundColor: "var(--orchid)", color: "#1a0b26" } : { color: "rgba(255,255,255,0.45)" }}
-              >
-                {a.signupTab}
-              </button>
-            </div>
-          )}
-
-          {step === "form" && mode === "login" && (
-            <form onSubmit={requestCode}>
-              <p className="text-white font-bold text-sm mb-1">{a.emailStepTitle}</p>
-              <p className="text-[11px] text-white/45 mb-4">{a.emailStepSubtitle}</p>
-              <div className="relative mb-3">
-                <Mail size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={a.emailPlaceholder}
-                  dir="ltr"
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
-                  required
-                />
-              </div>
-              <ErrorNote />
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
-              >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />}
-                {busy ? a.sending : a.sendCode}
-              </button>
-            </form>
-          )}
-
-          {step === "form" && mode === "signup" && (
-            <form onSubmit={register}>
-              <p className="text-white font-bold text-sm mb-1">{a.signupStepTitle}</p>
-              <p className="text-[11px] text-white/45 mb-4">{a.signupStepSubtitle}</p>
-              <div className="relative mb-2.5">
-                <UserCheck size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={a.namePlaceholder}
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
-                  required
-                />
-              </div>
-              <div className="relative mb-2.5">
-                <Mail size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={a.emailPlaceholder}
-                  dir="ltr"
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-xs text-white text-right placeholder:text-white/25 focus:outline-none focus:border-[var(--orchid)]/50"
-                  required
-                />
-              </div>
-              <ErrorNote />
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
-              >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />}
-                {busy ? a.creating : a.createAccount}
-              </button>
-            </form>
-          )}
-
-          {step === "code" && (
-            <form onSubmit={verifyCode}>
-              <p className="text-white font-bold text-sm mb-1">{a.codeStepTitle}</p>
-              <p className="text-[11px] text-white/45 mb-4">{a.codeStepSubtitle(email)}</p>
-              <div className="relative mb-3">
-                <KeyRound size={14} className="absolute top-1/2 -translate-y-1/2 right-3 text-white/30" />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder={a.codePlaceholder}
-                  dir="ltr"
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl py-2.5 pr-9 pl-3 text-sm text-white text-center tracking-[6px] placeholder:text-white/20 focus:outline-none focus:border-[var(--orchid)]/50"
-                  required
-                  autoFocus
-                />
-              </div>
-              {demoCode && (
-                <div className="mb-3 rounded-lg border p-2.5" style={{ borderColor: "rgba(232,196,104,0.3)", backgroundColor: "rgba(232,196,104,0.08)" }}>
-                  <p className="text-[10.5px]" style={{ color: "var(--gold)" }}>{a.demoNotice(demoCode)}</p>
-                </div>
-              )}
-              <ErrorNote />
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 mb-2 transition-opacity disabled:opacity-60"
-                style={{ backgroundColor: "var(--orchid)", color: "#1a0b26" }}
-              >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={13} />}
-                {busy ? a.verifying : a.verify}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStep("form"); setCode(""); setError(null); setDemoCode(null); }}
-                className="w-full py-2 rounded-xl text-[11px] text-white/40 hover:text-white/70"
-              >
-                {a.changeEmail}
-              </button>
-            </form>
-          )}
-        </div>
-
-        <p className="text-center text-[9.5px] text-white/20 mt-3" dir="ltr">API: {API_BASE}</p>
-      </div>
-    </div>
-  );
-}
-
-
-function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentationMode, onTogglePresentation, authUser, onLogout, lang, t }) {
+function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentationMode, onTogglePresentation, lang, t }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -3824,36 +3458,6 @@ function SettingsModal({ onClose, onGoToLimits, onReplayOnboarding, presentation
             <X size={14} />
           </button>
         </div>
-
-        {authUser && (
-          <div className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5">
-            <p className="text-[10px] font-bold text-white/35 uppercase tracking-wide mb-2.5">{t.settingsModal.profileTitle}</p>
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
-              >
-                {authUser.name?.trim()?.[0] || "?"}
-              </div>
-              <div className="min-w-0">
-                <p className="text-white font-bold text-xs truncate">{authUser.name}</p>
-                <p className="text-[10.5px] text-white/40 truncate" dir="ltr">{authUser.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-[11px] mb-3">
-              <span className="text-white/40">{t.settingsModal.roleLabel}</span>
-              <span className="text-white/70 font-semibold">{ROLE_LABELS[lang]?.[authUser.role] || authUser.role}</span>
-            </div>
-            <button
-              onClick={onLogout}
-              className="w-full py-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
-              style={{ backgroundColor: "rgba(255,107,129,0.08)", borderColor: "rgba(255,107,129,0.25)", color: "var(--coral)" }}
-            >
-              <LogOut size={12} />
-              {t.settingsModal.logout}
-            </button>
-          </div>
-        )}
 
         <p className="text-[12px] text-white/60 leading-relaxed mb-4">{t.settingsModal.description}</p>
 
@@ -4074,7 +3678,7 @@ function NotificationsPanel({ transactions, onViewAll, onClose, t }) {
 // Sidebar
 // ---------------------------------------------------------------------------
 
-function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettingsOpen, authUser, t }) {
+function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettingsOpen, t }) {
   return (
     <aside
       className={`aurora-border glass-panel-strong flex flex-col transition-all duration-300 shrink-0 ${
@@ -4120,25 +3724,6 @@ function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, setSettings
       </nav>
 
       <div className="p-3 border-t border-white/5 space-y-1.5">
-        {authUser && (
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/[0.04] transition-all"
-          >
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0"
-              style={{ backgroundColor: "rgba(228,160,255,0.15)", color: "var(--orchid)" }}
-            >
-              {authUser.name?.trim()?.[0] || "?"}
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 text-right">
-                <p className="text-[11.5px] font-bold text-white truncate">{authUser.name}</p>
-                <p className="text-[9.5px] text-white/35 truncate">{ROLE_LABELS[t.dir === "ltr" ? "en" : "ar"]?.[authUser.role] || authUser.role}</p>
-              </div>
-            )}
-          </button>
-        )}
         <button
           onClick={() => setSettingsOpen(true)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/45 hover:bg-white/[0.04] hover:text-white transition-all"
@@ -4278,66 +3863,6 @@ const EMBEDDED_STYLE = `
 export default function MeyarDashboard() {
   const [lang, setLang] = useState("ar");
   const t = STR[lang];
-
-  const [authToken, setAuthToken] = useState(() => {
-    try {
-      return window.localStorage.getItem("meyar_auth_token");
-    } catch {
-      return null;
-    }
-  });
-  const [authUser, setAuthUser] = useState(null);
-  const [authChecking, setAuthChecking] = useState(true);
-
-  const handleLoginSuccess = useCallback((token, user) => {
-    try {
-      window.localStorage.setItem("meyar_auth_token", token);
-    } catch {
-      /* private-browsing or storage disabled — session stays in-memory only */
-    }
-    setAuthToken(token);
-    setAuthUser(user);
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    try {
-      window.localStorage.removeItem("meyar_auth_token");
-    } catch {
-      /* ignore */
-    }
-    setAuthToken(null);
-    setAuthUser(null);
-  }, []);
-
-  // Validate any stored token against the backend once on mount — a token
-  // surviving in localStorage from a previous session may have expired or
-  // been signed with a since-rotated secret, so it must be confirmed live
-  // rather than trusted at face value.
-  useEffect(() => {
-    if (!authToken) {
-      setAuthChecking(false);
-      return;
-    }
-    let cancelled = false;
-    fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${authToken}` } })
-      .then((res) => {
-        if (!res.ok) throw new Error("invalid session");
-        return res.json();
-      })
-      .then((user) => {
-        if (!cancelled) setAuthUser(user);
-      })
-      .catch(() => {
-        if (!cancelled) handleLogout();
-      })
-      .finally(() => {
-        if (!cancelled) setAuthChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -4505,7 +4030,7 @@ export default function MeyarDashboard() {
       if (!tx) return;
 
       const decision = decisionWord === "approve" ? "approved" : "rejected";
-      const reviewerName = authUser ? `${authUser.name} (${authUser.email})` : t.reviewQueue.defaultReviewer;
+      const reviewerName = t.reviewQueue.defaultReviewer;
       const nextReviewQueue = reviewQueue.filter((t) => t.id !== transactionId);
 
       // Transactions whose IDs start with "TXN-LOCAL" were generated in the
@@ -4520,15 +4045,9 @@ export default function MeyarDashboard() {
         try {
           const res = await fetch(`${API_BASE}/review-queue/${transactionId}/decide`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-            body: JSON.stringify({ decision: decisionWord }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision: decisionWord, reviewer_name: reviewerName }),
           });
-          if (res.status === 401) {
-            // Session expired mid-action — sign the person out rather than
-            // silently falling back to a local, unauthenticated decision.
-            handleLogout();
-            return;
-          }
           if (!res.ok) throw new Error("decide failed");
           const result = await res.json();
           if (result.decision === "not_found") {
@@ -4567,7 +4086,7 @@ export default function MeyarDashboard() {
       }
       setReviewStats(computeReviewStats(nextReviewQueue, nextAuditLog));
     },
-    [reviewQueue, auditLog, t, fetchJSON, authUser, authToken, handleLogout]
+    [reviewQueue, auditLog, t, fetchJSON]
   );
 
   const sparkSeeds = useMemo(() => {
@@ -4580,18 +4099,6 @@ export default function MeyarDashboard() {
       savings: seed(50, 20),
     };
   }, []);
-
-  if (authChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-obsidian)" }}>
-        <Loader2 size={22} className="animate-spin text-white/30" />
-      </div>
-    );
-  }
-
-  if (!authToken || !authUser) {
-    return <LoginScreen onSuccess={handleLoginSuccess} lang={lang} t={t} />;
-  }
 
   return (
     <div
@@ -4615,7 +4122,6 @@ export default function MeyarDashboard() {
           collapsed={sidebarCollapsed}
           setCollapsed={setSidebarCollapsed}
           setSettingsOpen={setSettingsOpen}
-          authUser={authUser}
           t={t}
         />
       </div>
@@ -4635,7 +4141,6 @@ export default function MeyarDashboard() {
                 setSettingsOpen(v);
                 setMobileNavOpen(false);
               }}
-              authUser={authUser}
               t={t}
             />
           </div>
@@ -4656,11 +4161,6 @@ export default function MeyarDashboard() {
           }}
           presentationMode={presentationMode}
           onTogglePresentation={() => setPresentationMode((p) => !p)}
-          authUser={authUser}
-          onLogout={() => {
-            setSettingsOpen(false);
-            handleLogout();
-          }}
           lang={lang}
           t={t}
         />
@@ -4740,9 +4240,9 @@ export default function MeyarDashboard() {
 
           {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
 
-          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} authUser={authUser} authToken={authToken} />}
+          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
 
-          {activeTab === "riskAppetite" && <RiskAppetiteTab lang={lang} t={t} authUser={authUser} authToken={authToken} />}
+          {activeTab === "riskAppetite" && <RiskAppetiteTab lang={lang} t={t} />}
 
           {activeTab === "chatbot" && <ChatbotTab lang={lang} t={t} />}
 
