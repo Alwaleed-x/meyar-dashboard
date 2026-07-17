@@ -332,6 +332,21 @@ const STR = {
       disclaimer:
         "الأنظمة والتعاميم المذكورة هنا حقيقية ويمكن التحقق منها بشكل مستقل (المصادر الرسمية: laws.boe.gov.sa و rulebook.sama.gov.sa). الاستثناء الوحيد هو بعض الأرقام الدقيقة للسقوف المالية غير المنشورة تفصيلياً من ساما.",
       issuedOn: "تاريخ الإصدار:",
+      monitorTitle: "المراقبة الحية لبوابة ساما الرسمية",
+      monitorSubtitle: "يفحص النظام هذي المصادر دورياً، ويحيل أي تغيير مكتشف وجوباً لمراجعة بشرية — لا يُعتمد شي تلقائياً",
+      lastChecked: "آخر فحص:",
+      neverChecked: "لم يُفحص بعد",
+      statusSynced: "متزامن",
+      statusPending: "تحديث مكتشف — بانتظار المراجعة",
+      checkNow: "افحص الآن",
+      checking: "جارٍ الفحص...",
+      pendingTitle: "تحديثات بانتظار الاعتماد البشري",
+      pendingEmpty: "لا توجد تحديثات معلَّقة حالياً",
+      detectedAt: "اكتُشف بتاريخ:",
+      excerptLabel: "مقتطف من المحتوى الجديد:",
+      approve: "اعتماد",
+      reject: "رفض",
+      decidedBy: "قرار:",
     },
     riskAppetite: {
       title: "تقبّل المخاطر",
@@ -619,6 +634,21 @@ const STR = {
       disclaimer:
         "The laws and regulations cited here are real and independently verifiable (official sources: laws.boe.gov.sa and rulebook.sama.gov.sa). The one exception is certain precise financial caps not publicly detailed by SAMA.",
       issuedOn: "Issued:",
+      monitorTitle: "Live monitoring of SAMA's official Rulebook",
+      monitorSubtitle: "The system checks these sources periodically and routes any detected change to mandatory human review — nothing is ever auto-applied",
+      lastChecked: "Last checked:",
+      neverChecked: "Not checked yet",
+      statusSynced: "In sync",
+      statusPending: "Change detected — pending review",
+      checkNow: "Check now",
+      checking: "Checking...",
+      pendingTitle: "Updates awaiting human approval",
+      pendingEmpty: "No pending updates right now",
+      detectedAt: "Detected:",
+      excerptLabel: "New content excerpt:",
+      approve: "Approve",
+      reject: "Reject",
+      decidedBy: "Decision:",
     },
     riskAppetite: {
       title: "Risk Appetite",
@@ -2086,9 +2116,155 @@ const PARSING_META = {
   queued: { text: "text-white/40", bg: "bg-white/[0.04]", border: "border-white/10" },
 };
 
-function RegulatoryTab({ regulatory, lang, t }) {
+const REGULATORY_SOURCE_LOOKUP = {
+  laws_and_implementing_regs: { title_ar: "الأنظمة ولوائحها التنفيذية", title_en: "Laws and Implementing Regulations" },
+  regulations_and_instructions: { title_ar: "اللوائح والتعليمات التنظيمية", title_en: "Regulations and Instructions" },
+  sama_circulars: { title_ar: "تعاميم ساما (بالترتيب الزمني)", title_en: "SAMA Circulars (chronological)" },
+};
+
+function RegulatoryTab({ regulatory, lang, t, authUser, authToken }) {
+  const m = t.regulatory;
+  const [sources, setSources] = useState([]);
+  const [pending, setPending] = useState([]);
+  const [checking, setChecking] = useState(false);
+  const [decidingId, setDecidingId] = useState(null);
+
+  const loadMonitorData = useCallback(() => {
+    fetch(`${API_BASE}/regulatory-monitor/sources`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => json && setSources(json.sources))
+      .catch(() => {});
+    fetch(`${API_BASE}/regulatory-monitor/pending`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => json && setPending(json.items))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadMonitorData();
+  }, [loadMonitorData]);
+
+  const handleCheckNow = async () => {
+    setChecking(true);
+    try {
+      await fetch(`${API_BASE}/regulatory-monitor/check-now`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      loadMonitorData();
+    } catch {
+      /* offline — monitor section simply stays as last loaded */
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleDecide = async (itemId, decision) => {
+    setDecidingId(itemId);
+    try {
+      await fetch(`${API_BASE}/regulatory-monitor/pending/${itemId}/decide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ decision }),
+      });
+      loadMonitorData();
+    } catch {
+      /* offline — nothing to update locally, next manual check will retry */
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Live regulatory monitor */}
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h3 className="text-white font-bold text-sm flex items-center gap-2">
+            <Radio size={15} style={{ color: "var(--lavender)" }} />
+            {m.monitorTitle}
+          </h3>
+          <button
+            onClick={handleCheckNow}
+            disabled={checking}
+            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-opacity disabled:opacity-60"
+            style={{ borderColor: "rgba(166,172,255,0.3)", backgroundColor: "rgba(166,172,255,0.08)", color: "var(--lavender)" }}
+          >
+            {checking ? <Loader2 size={12} className="animate-spin" /> : <Radio size={12} />}
+            {checking ? m.checking : m.checkNow}
+          </button>
+        </div>
+        <p className="text-[11px] text-white/40 mb-4">{m.monitorSubtitle}</p>
+
+        <div className="grid sm:grid-cols-3 gap-3 mb-2">
+          {sources.map((src) => {
+            const isPendingSrc = pending.some((p) => p.source_key === src.key);
+            return (
+              <div key={src.key} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+                <p className="text-[12.5px] font-bold text-white mb-1.5">{lang === "en" ? src.title_en : src.title_ar}</p>
+                <span
+                  className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mb-2"
+                  style={
+                    isPendingSrc
+                      ? { color: "var(--gold)", backgroundColor: "rgba(232,196,104,0.12)" }
+                      : { color: "#6ee7b7", backgroundColor: "rgba(110,231,183,0.1)" }
+                  }
+                >
+                  {isPendingSrc ? m.statusPending : m.statusSynced}
+                </span>
+                <p className="text-[10.5px] text-white/35">
+                  {m.lastChecked} {src.last_checked_at ? timeAgo(src.last_checked_at, lang) : m.neverChecked}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Pending human-review queue for detected changes */}
+      <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
+        <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-3">
+          <ShieldAlert size={15} style={{ color: "var(--gold)" }} />
+          {m.pendingTitle}
+        </h3>
+        {pending.length === 0 && <p className="text-[11px] text-white/35">{m.pendingEmpty}</p>}
+        <div className="space-y-2.5">
+          {pending.map((item) => {
+            const src = REGULATORY_SOURCE_LOOKUP[item.source_key];
+            return (
+              <div key={item.id} className="rounded-xl border p-3.5" style={{ borderColor: "rgba(232,196,104,0.25)", backgroundColor: "rgba(232,196,104,0.04)" }}>
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                  <p className="text-[12.5px] font-bold text-white">{src ? (lang === "en" ? src.title_en : src.title_ar) : item.source_key}</p>
+                  <span className="text-[10px] text-white/35">{m.detectedAt} {timeAgo(item.detected_at, lang)}</span>
+                </div>
+                <p className="text-[10.5px] text-white/40 mb-1">{m.excerptLabel}</p>
+                <p className="text-[11px] text-white/60 mb-3 leading-relaxed" dir={lang === "en" ? "ltr" : "rtl"}>«{item.new_excerpt}»</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDecide(item.id, "approve")}
+                    disabled={decidingId === item.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold disabled:opacity-60"
+                    style={{ backgroundColor: "rgba(110,231,183,0.1)", borderColor: "rgba(110,231,183,0.3)", color: "#6ee7b7" }}
+                  >
+                    <ThumbsUp size={12} />
+                    {m.approve}
+                  </button>
+                  <button
+                    onClick={() => handleDecide(item.id, "reject")}
+                    disabled={decidingId === item.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold disabled:opacity-60"
+                    style={{ backgroundColor: "rgba(255,107,129,0.1)", borderColor: "rgba(255,107,129,0.3)", color: "var(--coral)" }}
+                  >
+                    <ThumbsDown size={12} />
+                    {m.reject}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="aurora-border glass-panel rounded-2xl p-5 animate-fade-up">
         <h3 className="text-white font-bold text-sm flex items-center gap-2 mb-1">
           <Zap size={16} style={{ color: "var(--gold)" }} />
@@ -4559,7 +4735,7 @@ export default function MeyarDashboard() {
 
           {activeTab === "audit" && <AuditTrailTab auditLog={auditLog} lang={lang} t={t} />}
 
-          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} />}
+          {activeTab === "regulatory" && <RegulatoryTab regulatory={regulatory} lang={lang} t={t} authUser={authUser} authToken={authToken} />}
 
           {activeTab === "riskAppetite" && <RiskAppetiteTab lang={lang} t={t} authUser={authUser} authToken={authToken} />}
 
