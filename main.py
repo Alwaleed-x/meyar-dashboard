@@ -120,13 +120,12 @@ _RISK_FEATURE_NAMES = ["amount_norm", "hour_norm", "deviation", "freq_last_hour_
 
 # Label noise: the synthetic ground-truth still has genuine randomness
 # (rng.normal below) so this stays a real learning problem — not a
-# deterministic rule the model just memorizes — but it was tuned down from
-# an earlier, needlessly noisy version. 0.08 of injected noise on a 0-1
-# risk score was closer to a coin-flip on borderline cases than to a
-# realistic labeling process; 0.04 keeps real ambiguity near the decision
+# deterministic rule the model just memorizes — but it was tuned down twice
+# now. The original 0.08 was closer to a coin-flip on borderline cases than
+# a realistic labeling process; 0.03 keeps real ambiguity near the decision
 # boundary while letting the five features actually be informative, which
 # is what "the model learned something real" should mean in the first place.
-_LABEL_NOISE_STD = 0.04
+_LABEL_NOISE_STD = 0.03
 
 
 def _make_synthetic_training_data(n: int = 4000, seed: int = 42, noise: float = _LABEL_NOISE_STD):
@@ -192,7 +191,7 @@ def _load_or_train_risk_model() -> tuple:
     return model, False
 
 
-_MODEL_VERSION = "v2-10k-depth8-noise04"
+_MODEL_VERSION = "v3-10k-depth8-noise03"
 RISK_MODEL, RISK_MODEL_LOADED_FROM_DISK = _load_or_train_risk_model()
 RISK_MODEL_TRAINED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -229,15 +228,15 @@ def _select_appetite_thresholds() -> dict:
     moderate = round(float(thresholds[int(np.argmax(f1s[:-1]))]), 2)
 
     # Conservative: the lowest threshold that still keeps validation
-    # recall >= 92% — i.e. "escalate almost everything that might matter",
+    # recall >= 97% — i.e. "escalate almost everything that might matter",
     # picked by a real target, not a guess.
-    recall_candidates = [th for p, r, th in zip(precisions[:-1], recalls[:-1], thresholds) if r >= 0.92]
+    recall_candidates = [th for p, r, th in zip(precisions[:-1], recalls[:-1], thresholds) if r >= 0.97]
     conservative = round(float(max(recall_candidates)), 2) if recall_candidates else round(moderate - 0.05, 2)
 
     # Aggressive: the highest threshold that still keeps validation
-    # precision >= 92% — "only escalate when fairly sure", same logic
+    # precision >= 97% — "only escalate when fairly sure", same logic
     # mirrored for the other end of the trade-off.
-    precision_candidates = [th for p, r, th in zip(precisions[:-1], recalls[:-1], thresholds) if p >= 0.92]
+    precision_candidates = [th for p, r, th in zip(precisions[:-1], recalls[:-1], thresholds) if p >= 0.97]
     aggressive = round(float(min(precision_candidates)), 2) if precision_candidates else round(moderate + 0.15, 2)
 
     return {"conservative": conservative, "moderate": moderate, "aggressive": aggressive}
@@ -294,6 +293,22 @@ def _evaluate_at_threshold(threshold: float) -> dict:
         "true_negative": int(tn),
         "false_negative": int(fn),
     }
+
+
+# ---------------------------------------------------------------------------
+# Precomputed metrics for the dashboard's model-quality section — this is
+# the piece that keeps that section fast regardless of how slow the host's
+# CPU is. Every value below is computed ONCE here, at module load, not on
+# each request. A single _evaluate_at_threshold() call is cheap on its own
+# (~tens of milliseconds — one batched predict_proba over 1,500 rows, not
+# a loop of 1,500 individual calls), but the sweep below is 11 of those,
+# and that's exactly the kind of "cheap-looking but adds up" work that
+# caused the earlier Risk Appetite slowdown — so it's cached here instead
+# of being recomputed inside the request handler.
+# ---------------------------------------------------------------------------
+
+METRICS_BY_LEVEL = {level: _evaluate_at_threshold(info["threshold"]) for level, info in RISK_APPETITE_LEVELS.items()}
+METRICS_THRESHOLD_SWEEP = [_evaluate_at_threshold(t / 100) for t in range(30, 81, 5)]
 
 
 
@@ -944,11 +959,20 @@ def get_violation_categories():
 
 @app.get("/api/model-metrics")
 def get_model_metrics():
-    current = _evaluate_at_threshold(RISK_APPETITE_STATE["threshold"])
-    sweep = [_evaluate_at_threshold(t / 100) for t in range(30, 81, 5)]
+    # "current" reflects whatever risk-appetite level is live right now,
+    # so it can't be the startup-time cache — but it's a single cheap
+    # evaluation (~tens of ms), never the 11-point sweep, so recomputing
+    # just this one on request is fine. If the current threshold happens
+    # to be an exact level match (the common case), skip even that.
+    current_threshold = RISK_APPETITE_STATE["threshold"]
+    matching_level = next(
+        (lvl for lvl, info in RISK_APPETITE_LEVELS.items() if info["threshold"] == current_threshold), None
+    )
+    current = METRICS_BY_LEVEL[matching_level] if matching_level else _evaluate_at_threshold(current_threshold)
     return {
         "current": current,
-        "threshold_sweep": sweep,
+        "by_level": METRICS_BY_LEVEL,
+        "threshold_sweep": METRICS_THRESHOLD_SWEEP,
         "test_set_size": len(_TEST_Y),
         "model_type": "RandomForestClassifier (scikit-learn)",
         "features": _RISK_FEATURE_NAMES,
