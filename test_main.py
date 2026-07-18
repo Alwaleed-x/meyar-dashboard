@@ -44,6 +44,16 @@ def test_model_metrics_are_real_numbers_in_valid_range():
     assert data["test_set_size"] > 0
 
 
+def test_all_risk_appetite_levels_meet_a_strong_accuracy_bar():
+    # Locks in the stronger-model requirement: every profile's F1 on the
+    # held-out test set must clear a real bar, not just "some valid number".
+    resp = client.get("/api/model-metrics")
+    by_level = resp.json()["by_level"]
+    assert set(by_level) == {"conservative", "moderate", "aggressive"}
+    for level, metrics in by_level.items():
+        assert metrics["f1"] >= 80.0, f"{level} F1 dropped below the required bar: {metrics['f1']}"
+
+
 def test_high_risk_features_score_higher_than_low_risk_features():
     high = main._score_transaction_risk(amount=470_000, hour=14, deviation=0.95, freq_last_hour=7, is_first_time=1)
     low = main._score_transaction_risk(amount=1_000, hour=14, deviation=0.05, freq_last_hour=0, is_first_time=0)
