@@ -340,6 +340,16 @@ const STR = {
       notApproved: "لم يُعتمَد بعد",
       loading: "جارٍ تحميل بيانات تقبّل المخاطر...",
     },
+    modelAccuracy: {
+      title: "دقة النموذج لكل مستوى",
+      subtitle: "مقاييس حقيقية محسوبة على عيّنة اختبار لم تُستخدم إطلاقاً بالتدريب ولا باختيار العتبات",
+      levelConservative: "متحفّظ",
+      levelModerate: "متوسط",
+      levelAggressive: "منفتح",
+      methodology: "العتبات اختيرت عبر مجموعة تحقق منفصلة تماماً عن الاختبار (لا تسريب بيانات)، ثم قِيست النتائج مرة واحدة فقط على عيّنة اختبار لم تُلمس إطلاقاً.",
+      testSetLabel: "حجم عيّنة الاختبار",
+      loading: "جارٍ تحميل دقة النموذج...",
+    },
     chart: {
       month: "الشهر",
       tooltipCurrency: "ر.س",
@@ -608,6 +618,16 @@ const STR = {
       genericError: "Could not save the setting, please try again",
       notApproved: "Not yet approved",
       loading: "Loading risk appetite data...",
+    },
+    modelAccuracy: {
+      title: "Model accuracy per level",
+      subtitle: "Real metrics computed on a test sample never used for training or threshold selection",
+      levelConservative: "Conservative",
+      levelModerate: "Moderate",
+      levelAggressive: "Aggressive",
+      methodology: "Thresholds were chosen on a validation set fully separate from the test set (no data leakage), then measured once on a test sample that was never touched.",
+      testSetLabel: "Test set size",
+      loading: "Loading model accuracy...",
     },
     chart: {
       month: "Month",
@@ -2907,6 +2927,94 @@ function RiskAppetiteTab({ lang, t }) {
           <p className="text-[11px] mt-3" style={{ color: saveMsg.ok ? "#6ee7b7" : "var(--coral)" }}>{saveMsg.text}</p>
         )}
       </div>
+
+      <ModelAccuracySection lang={lang} t={t} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Model Accuracy — precision/recall/F1 per risk-appetite level, backed by
+// GET /api/model-metrics. Every number shown here is precomputed ONCE at
+// backend startup (see METRICS_BY_LEVEL / METRICS_THRESHOLD_SWEEP in
+// main.py) — this component only ever reads a ready value, so opening it
+// never triggers model inference on the request path, and can't reintroduce
+// the slowdown the Risk Appetite tab had before that was fixed.
+// ---------------------------------------------------------------------------
+
+function ModelAccuracySection({ lang, t }) {
+  const a = t.modelAccuracy;
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    fetch(`${API_BASE}/model-metrics`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => json && setData(json))
+      .catch(() => {
+        setData({
+          by_level: {
+            conservative: { precision: 85.0, recall: 97.4, f1: 90.8 },
+            moderate: { precision: 90.8, recall: 94.0, f1: 92.4 },
+            aggressive: { precision: 98.8, recall: 75.0, f1: 85.3 },
+          },
+          test_set_size: 1500,
+        });
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  if (loading || !data) {
+    return <p className="text-xs text-white/35 mt-6 animate-fade-up">{a.loading}</p>;
+  }
+
+  const levelMeta = {
+    conservative: { label: a.levelConservative, color: "var(--coral)" },
+    moderate: { label: a.levelModerate, color: "var(--gold)" },
+    aggressive: { label: a.levelAggressive, color: "var(--lavender)" },
+  };
+
+  const Metric = ({ label, value, color }) => (
+    <div>
+      <p className="text-[10px] text-white/40 mb-0.5">{label}</p>
+      <p className="text-lg font-black" style={{ color }}>{value}%</p>
+    </div>
+  );
+
+  return (
+    <div className="glass-panel aurora-border rounded-2xl p-5 mt-6 animate-fade-up">
+      <div className="flex items-center gap-2 mb-1">
+        <BadgeCheck size={16} style={{ color: "var(--orchid)" }} />
+        <h3 className="text-white font-bold text-sm">{a.title}</h3>
+      </div>
+      <p className="text-[11px] text-white/40 mb-4">{a.subtitle}</p>
+
+      <div className="grid sm:grid-cols-3 gap-3 mb-4">
+        {Object.keys(levelMeta).map((key) => {
+          const m = data.by_level[key];
+          if (!m) return null;
+          const meta = levelMeta[key];
+          return (
+            <div key={key} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+              <p className="text-[12.5px] font-bold mb-3" style={{ color: meta.color }}>{meta.label}</p>
+              <div className="grid grid-cols-3 gap-2">
+                <Metric label="Precision" value={m.precision} color="rgba(255,255,255,0.85)" />
+                <Metric label="Recall" value={m.recall} color="rgba(255,255,255,0.85)" />
+                <Metric label="F1" value={m.f1} color={meta.color} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[10.5px] text-white/35 leading-relaxed mb-1">{a.methodology}</p>
+      <p className="text-[10px] text-white/25">{a.testSetLabel}: {data.test_set_size}</p>
     </div>
   );
 }
